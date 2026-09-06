@@ -1,54 +1,101 @@
+// =============================================================================
+// L'écran de connexion
+// =============================================================================
+// Reprend le traitement de fond du projet de référence : deux auréoles
+// colorées, une grille fine, et un masque radial qui fait disparaître la
+// grille sur les bords.
+// =============================================================================
+
 .connexion {
+  position: relative;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+
+  // Les auréoles portent la profondeur. Sans fond coloré dessous, une surface
+  // translucide ne se distingue pas d'une surface opaque — le verre dépoli
+  // n'existe que par ce qu'on devine à travers.
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--primary) 16%, transparent) 0%, transparent 55%),
+    radial-gradient(circle at 85% 90%, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 50%),
+    var(--fond);
+
+  overflow: hidden;
+}
+
+// La grille de fond.
+//
+// ⚠️ Le masque est ce qui la rend supportable. Sans lui, elle couvre l'écran
+// d'un quadrillage uniforme qui entre en concurrence avec le contenu. Masquée
+// en ellipse, elle s'efface vers les bords et ne suggère plus qu'une texture.
+.connexion::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--verre-bordure) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--verre-bordure) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 0%, transparent 75%);
+
+  // Sans cela, la grille intercepte les clics destinés au formulaire.
+  pointer-events: none;
+}
+
+// --- L'en-tête ---------------------------------------------------------------
+.entete-marque {
+  position: relative;   // repasse au-dessus de la grille
+  margin-bottom: 2.5rem;
+}
+
+.embleme {
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0 auto 1.5rem;
   display: grid;
   place-items: center;
-  padding: 1.5rem;
-
-  // Les auréoles diffuses du fond, reprises de la référence. Elles donnent
-  // sa profondeur au verre dépoli : sans fond coloré dessous, une surface
-  // translucide ne se distingue pas d'une surface opaque.
-  background:
-    radial-gradient(circle at 0% 0%, var(--aureole-1) 0%, transparent 45%),
-    radial-gradient(circle at 100% 100%, var(--aureole-2) 0%, transparent 45%);
-}
-
-.connexion__panneau {
-  width: 100%;
-  max-width: 26rem;
-  padding: 2.25rem;
-}
-
-.marque {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  margin-bottom: 0.35rem;
-}
-
-.marque__mot {
-  font-size: 1.9rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: #fff;
+  font-size: 1.6rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
-  // Le logotype suit le thème et reste net à toute taille — ce qu'une image
-  // matricielle avec fond opaque ne saurait pas faire sur du verre dépoli.
+  letter-spacing: 0.05em;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.titre {
+  font-size: 3.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 1rem;
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.marque__role {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--texte-attenue);
-}
-
 .accroche {
   color: var(--texte-attenue);
-  font-size: 0.86rem;
-  margin-bottom: 1.75rem;
+  font-size: 1.05rem;
+  max-width: 34rem;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+
+// --- Le panneau --------------------------------------------------------------
+.connexion__panneau {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  padding: 2rem;
+  text-align: left;
 }
 
 form { display: flex; flex-direction: column; }
@@ -66,27 +113,35 @@ form .gu-libelle:not(:first-child) { margin-top: 1rem; }
   font-size: 0.82rem;
 }
 
-.note {
-  margin-top: 1.5rem;
-  font-size: 0.74rem;
-  color: var(--texte-attenue);
-  line-height: 1.5;
-}
-
+// --- La bascule de thème -----------------------------------------------------
 .bascule-theme {
   position: fixed;
   top: 1.25rem;
   right: 1.25rem;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 50%;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 9999px;
   border: 1px solid var(--verre-bordure);
   background: var(--verre-fond);
   backdrop-filter: blur(12px);
   color: var(--texte);
-  font-size: 1rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
 
   &:hover { border-color: var(--primary); }
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// --- Petits écrans -----------------------------------------------------------
+@media (max-width: 640px) {
+  // 3,25rem tiendrait sur deux ou trois lignes et mangerait l'écran d'un
+  // téléphone. La hiérarchie tient sans cette taille-là.
+  .titre { font-size: 2.25rem; }
+  .accroche { font-size: 0.95rem; }
+  .entete-marque { margin-bottom: 2rem; }
 }
