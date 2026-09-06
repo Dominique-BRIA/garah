@@ -33,6 +33,24 @@
   --danger: #ef4444;
   --info: #0ea5e9;
 
+  // --- La marque -------------------------------------------------------------
+  //
+  // ⚠️ LA SEULE VALEUR DE CE FICHIER QUI NE SOIT PAS UN DÉFAUT.
+  //
+  //    Tout le reste ici est une INTENTION, que chaque application redéfinit
+  //    avec ses propres valeurs (D-03). Celle-ci est une CONSTANTE : la
+  //    couleur de l'emblème ne change ni avec le thème, ni avec
+  //    l'application. Une marque qui change de couleur selon l'écran où on
+  //    la regarde cesse d'être une marque.
+  //
+  //    Elle est donc volontairement ABSENTE du bloc du thème sombre : sa
+  //    valeur est choisie pour tenir sur les deux fonds, #f8fafc comme
+  //    #0c0c14.
+  //
+  //    Ne pas la redéfinir dans styles.scss. Le jour où la charte change,
+  //    elle change ICI, une fois, pour les trois frontends.
+  --marque: #12a594;
+
   // --- Rayons ---------------------------------------------------------------
   --radius-sm: 8px;
   --radius-md: 12px;

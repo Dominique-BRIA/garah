@@ -153,3 +153,11 @@ code {
 .chevron { font-size: 0.65rem; color: var(--texte-attenue); }
 
 .cellule-marchand { display: flex; align-items: center; gap: 0.7rem; }
+
+// Une ligne de tableau qui mene quelque part.
+//
+// Le curseur est le SEUL indice qu'une ligne est cliquable : sans lui,
+// personne ne devine qu'il faut cliquer plutot que chercher un bouton.
+.gu-tableau tbody tr.cliquable {
+  cursor: pointer;
+}

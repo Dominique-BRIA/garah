@@ -6,10 +6,15 @@
       @else { {{ total() }} produit(s) au catalogue }
     </p>
   </div>
-  <button type="button" class="gu-btn gu-btn--secondaire"
-          (click)="charger()" [disabled]="chargement()">
-    <gu-icone nom="arrows-rotate" /> Actualiser
-  </button>
+  <div class="actions">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+    @if (session.peut('PRODUIT_CREER')) {
+      <a routerLink="/produits/nouveau" class="gu-btn gu-btn--primaire">Nouveau produit</a>
+    }
+  </div>
 </header>
 
 @if (erreur(); as message) {
@@ -50,7 +55,7 @@
       </thead>
       <tbody>
         @for (produit of produits(); track produit.id) {
-          <tr>
+          <tr class="cliquable" [routerLink]="['/produits', produit.id]">
             <td>
               <div class="cellule-produit">
                 @if (produit.urlPhotoPrincipale) {

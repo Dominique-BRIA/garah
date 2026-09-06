@@ -17,6 +17,11 @@ export const routes: Routes = [
       { path: 'marchands', loadComponent: () => import('./marchands/marchands').then((m) => m.Marchands) },
       { path: 'categories', loadComponent: () => import('./categories/categories').then((m) => m.Categories) },
       { path: 'produits', loadComponent: () => import('./produits/produits').then((m) => m.Produits) },
+      { path: 'produits/nouveau', loadComponent: () => import('./produits/nouveau-produit').then((m) => m.NouveauProduit) },
+      // ⚠️ APRES 'produits/nouveau'. Place avant, ':id' capturerait le mot
+      //    « nouveau » et tenterait de charger un produit d'identifiant
+      //    « nouveau » — 404 au lieu du formulaire.
+      { path: 'produits/:id', loadComponent: () => import('./produits/fiche-produit').then((m) => m.FicheProduit) },
     ],
   },
   { path: '**', redirectTo: '' },

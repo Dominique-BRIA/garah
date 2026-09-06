@@ -1,0 +1,221 @@
+// La fiche produit. Les motifs communs viennent de styles.scss.
+
+.retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texte-attenue);
+  text-decoration: none;
+
+  &:hover { color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// Le chevron pointe vers la droite dans le jeu d'icônes : on le retourne
+// plutôt que d'embarquer une seconde icône pour la même forme.
+.retour__fleche {
+  transform: rotate(180deg);
+  font-size: 0.7rem;
+}
+
+.entete h1 { font-size: 1.6rem; }
+
+.actions { display: flex; align-items: center; gap: 0.75rem; }
+
+// --- Les prérequis de publication --------------------------------------------
+.prerequis {
+  display: flex;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.5rem;
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 7%, var(--verre-fond));
+}
+
+.prerequis__icone { color: var(--warning); font-size: 1.15rem; margin-top: 0.1rem; }
+.prerequis__titre { font-weight: 600; margin-bottom: 0.35rem; }
+
+.prerequis ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--texte-attenue);
+  font-size: 0.86rem;
+  line-height: 1.7;
+}
+
+// --- Les deux colonnes -------------------------------------------------------
+//
+// auto-fit : à l'étroit, les sections passent l'une sous l'autre sans point de
+// rupture à maintenir. La barre latérale se replie déjà à 900px, et un palier
+// fixe ignorerait ce cas.
+.colonnes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.section-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+
+  h2 { font-size: 1.05rem; }
+}
+
+.vide {
+  color: var(--texte-attenue);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.petit-texte { font-size: 0.8rem; }
+
+// --- Déclinaisons ------------------------------------------------------------
+.variante {
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--verre-bordure);
+
+  &:first-of-type { border-top: none; padding-top: 0; }
+}
+
+.variante__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.variante__libelle { font-weight: 600; margin-right: 0.5rem; }
+
+.paliers {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  font-size: 0.84rem;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-sm);
+    color: var(--texte-attenue);
+  }
+
+  li:nth-child(odd) { background: var(--surface-douce); }
+
+  strong {
+    color: var(--texte);
+    // Les prix s'alignent verticalement : sans chiffres à largeur fixe, la
+    // colonne des montants ondule d'une ligne à l'autre.
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// --- Les formulaires en ligne ------------------------------------------------
+.encart {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-douce);
+
+  .gu-libelle:not(:first-child) { margin-top: 0.75rem; }
+}
+
+.duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+// --- Photos ------------------------------------------------------------------
+//
+// Le champ de fichier natif est inhabillable. On le rend invisible et c'est le
+// <label> qui porte l'apparence : le clic sur le label ouvre le sélecteur.
+.televerser {
+  position: relative;
+  cursor: pointer;
+
+  input[type='file'] {
+    // Ni display:none ni visibility:hidden : un champ retiré du flux n'est
+    // plus atteignable au clavier, et le bouton devient inutilisable sans
+    // souris.
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.galerie {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.75rem;
+}
+
+.vignette-media {
+  position: relative;
+  margin: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface-douce);
+  aspect-ratio: 1;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  figcaption {
+    position: absolute;
+    left: 0.4rem;
+    bottom: 0.4rem;
+    font-size: 0.6rem;
+  }
+}
+
+.retirer {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.7rem;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { background: var(--danger); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+}
+
+// --- Le formulaire de creation -----------------------------------------------
+.formulaire {
+  max-width: 34rem;
+
+  form { display: flex; flex-direction: column; }
+  .gu-libelle:not(:first-child) { margin-top: 1rem; }
+}
+
+.boutons-centre {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}

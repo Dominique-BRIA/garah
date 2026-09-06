@@ -5,7 +5,11 @@
   <title>GARAH — Administration</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Deux déclarations, et l'ordre compte peu : un navigateur qui sait lire
+       le SVG le préfère et reste net à toutes les tailles ; les autres
+       retombent sur le .ico sans qu'on ait à les détecter. -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon.ico" sizes="32x32">
 
   <!--
     L'écran d'attente, écrit ICI et pas dans un composant.
@@ -52,28 +56,58 @@
       color: transparent;
     }
 
-    .demarrage__anneau {
-      width: 1.75rem;
-      height: 1.75rem;
-      border: 2px solid rgba(128, 128, 128, 0.25);
-      border-top-color: #4f46e5;
-      border-radius: 50%;
-      animation: demarrage-rotation 0.9s linear infinite;
+    /* La marque remplace l'anneau qui tournait ici.
+
+       Elle dit la même chose — il se passe quelque chose — mais elle le dit
+       avec la marque, et l'écran d'attente cesse d'être un écran générique.
+       Le dessin est recopié ici plutôt qu'importé : une requête de plus, à
+       l'instant précis où l'on essaie d'afficher quelque chose vite, irait
+       contre le but de cet écran. */
+    .demarrage__marque {
+      width: 3.25rem;
+      height: 3.25rem;
+      display: block;
     }
 
-    @keyframes demarrage-rotation { to { transform: rotate(360deg); } }
+    /* Le niveau monte, tient en haut, redescend. Le palier est ce qui
+       distingue une respiration d'un va-et-vient mécanique. */
+    #demarrage-niveau-rect {
+      animation: demarrage-remplir 2s ease-in-out infinite;
+    }
 
-    /* Le réglage système « réduire les animations » vaut aussi ici. */
+    @keyframes demarrage-remplir {
+      0% { transform: translateY(17px); }
+      45%, 60% { transform: none; }
+      100% { transform: translateY(17px); }
+    }
+
+    /* Le réglage système « réduire les animations » vaut aussi ici : la marque
+       doit alors apparaître ENTIÈRE, jamais figée à mi-remplissage. */
     @media (prefers-reduced-motion: reduce) {
-      .demarrage__anneau { animation: none; }
+      #demarrage-niveau-rect { animation: none; transform: none; }
     }
   </style>
 </head>
 <body>
   <ga-root>
     <div class="demarrage">
+      <svg class="demarrage__marque" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="demarrage-degrade" gradientUnits="userSpaceOnUse"
+                          x1="7.5" y1="7.5" x2="40" y2="40">
+            <stop offset="0" stop-color="#4f46e5" />
+            <stop offset="1" stop-color="#aa3bff" />
+          </linearGradient>
+          <clipPath id="demarrage-niveau">
+            <rect id="demarrage-niveau-rect" x="8" y="24" width="34" height="18" />
+          </clipPath>
+        </defs>
+        <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="url(#demarrage-degrade)"
+              stroke-width="5" />
+        <path d="M10 25A15 15 0 0 0 40 25Z" fill="url(#demarrage-degrade)"
+              clip-path="url(#demarrage-niveau)" />
+      </svg>
       <span class="demarrage__mot">GARAH</span>
-      <div class="demarrage__anneau"></div>
     </div>
   </ga-root>
 </body>

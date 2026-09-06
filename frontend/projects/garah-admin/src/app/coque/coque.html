@@ -3,6 +3,7 @@
   <header class="barre-mobile">
     <button type="button" class="bouton-menu" (click)="menuOuvert.set(!menuOuvert())"
             [attr.aria-expanded]="menuOuvert()" aria-label="Ouvrir le menu"><gu-icone nom="bars" /></button>
+    <gu-marque taille="1.65rem" />
     <span class="marque__mot">GARAH</span>
   </header>
 
@@ -14,9 +15,14 @@
 
   <aside class="barre-laterale" [class.barre-laterale--ouverte]="menuOuvert()">
     <div class="barre-laterale__defilant">
+      <!-- La marque est DÉCORATIVE ici : le mot « GARAH » est juste à côté, et
+           l'annoncer ferait entendre « GARAH GARAH » au lecteur d'écran. -->
       <div class="marque">
-        <span class="marque__mot">GARAH</span>
-        <span class="marque__role">Administration</span>
+        <gu-marque taille="2.15rem" />
+        <div class="marque__texte">
+          <span class="marque__mot">GARAH</span>
+          <span class="marque__role">Administration</span>
+        </div>
       </div>
 
       <nav>

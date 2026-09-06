@@ -62,10 +62,23 @@
   border-top: 1px solid var(--verre-bordure);
 }
 
+// La marque et le mot, côte à côte : l'emblème donne le point d'accroche,
+// le mot donne le nom. L'un sans l'autre marche moins bien — un emblème seul
+// n'apprend rien tant qu'il n'est pas connu, un mot seul n'accroche pas l'œil.
 .marque {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
   margin-bottom: 2rem;
+}
+
+// ⚠️ `min-width: 0` : sans lui, ce bloc refuse de rétrécir sous la largeur de
+// son texte et pousse l'emblème hors de la barre latérale au lieu de le
+// laisser tranquille.
+.marque__texte {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .marque__mot {

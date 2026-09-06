@@ -1,16 +1,18 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { DecimalPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { Icone, Page, ResumeProduit } from 'garah-ui';
+import { RouterLink } from '@angular/router';
+import { Icone, Page, ResumeProduit, ServiceSession } from 'garah-ui';
 
 @Component({
   selector: 'ga-produits',
-  imports: [DecimalPipe, Icone],
+  imports: [DecimalPipe, Icone, RouterLink],
   templateUrl: './produits.html',
   styleUrl: './produits.scss',
 })
 export class Produits {
   private readonly http = inject(HttpClient);
+  protected readonly session = inject(ServiceSession);
 
   protected readonly produits = signal<readonly ResumeProduit[]>([]);
   protected readonly total = signal(0);

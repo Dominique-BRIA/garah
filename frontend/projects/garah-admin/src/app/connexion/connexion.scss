@@ -54,19 +54,47 @@
   margin-bottom: 2.5rem;
 }
 
-// La banniere : l'image porte deja le nom, elle remplace titre et embleme.
+// L'emblème, puis le nom, puis le rôle : la hiérarchie de l'écran d'entrée.
 //
-// ⚠️ Une largeur MAXIMALE, pas fixe. L'image fait 1408px de large : sans
-//    plafond elle deborderait sur un telephone, et sans max-width: 100% elle
-//    forcerait un defilement horizontal de toute la page.
-.banniere {
-  display: block;
-  width: 100%;
-  max-width: 30rem;
-  margin: 0 auto 1.75rem;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--ombre-large);
+// ⚠️ CET ÉCRAN N'AFFICHE PLUS LA BANNIÈRE PHOTOGRAPHIQUE.
+//
+//    Elle pèse 586 Ko et c'est la PREMIÈRE chose que télécharge quelqu'un qui
+//    n'est pas encore connecté — sur une connexion mobile camerounaise, la
+//    page reste vide le temps qu'elle arrive. L'emblème fait moins d'un Ko,
+//    dit la même chose, et suit le thème sans second fichier.
+//
+//    C'est le même arbitrage que les icônes : on avait renoncé à 360 Ko de
+//    police pour neuf icônes. Renoncer ici à 586 Ko pour une image décorative
+//    est la même décision, au même endroit du raisonnement.
+//
+//    `<gu-logo />` reste disponible pour la vitrine, où une photographie de
+//    produits a un vrai rôle à jouer.
+.embleme {
+  margin: 0 auto 1.25rem;
+}
+
+.titre {
+  font-size: clamp(2.4rem, 9vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  margin: 0;
+
+  // Le même dégradé que la barre latérale : c'est ce qui fait reconnaître le
+  // back-office d'un écran à l'autre.
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.sous-titre {
+  margin: 0.55rem 0 1.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--texte-attenue);
 }
 
 .accroche {

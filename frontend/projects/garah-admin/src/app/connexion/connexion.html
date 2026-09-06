@@ -5,9 +5,17 @@
   </button>
 
   <header class="entete-marque">
-    <!-- Le mot GARAH est DANS l'image : un titre par-dessus ferait doublon.
-         L'intitule reste accessible par l'attribut alt. -->
-    <gu-logo hauteur="auto" alt="GARAH" class="banniere" />
+    <!-- L'emblème est DÉCORATIF : le nom est écrit juste en dessous, et
+         l'annoncer ferait entendre « GARAH GARAH » au lecteur d'écran.
+
+         Il s'anime une fois, à l'ouverture : c'est le seul écran où l'on
+         arrive sans rien avoir demandé, donc le seul où un mouvement
+         n'interrompt personne. -->
+    <gu-marque class="embleme" taille="5rem" animee="entree" />
+
+    <h1 class="titre">GARAH</h1>
+    <p class="sous-titre">Administration</p>
+
     <p class="accroche">
       Plateforme de commerce, de service client et de logistique.
       Connectez-vous pour accéder à l'administration.

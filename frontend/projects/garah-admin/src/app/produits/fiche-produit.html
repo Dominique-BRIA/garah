@@ -1,0 +1,216 @@
+@if (erreur() && !produit()) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ erreur() }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement() && !produit()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (produit(); as p) {
+
+  <a routerLink="/produits" class="retour">
+    <gu-icone nom="chevron-right" class="retour__fleche" /> Tous les produits
+  </a>
+
+  <header class="entete">
+    <div>
+      <h1>{{ p.nom }}</h1>
+      <p class="sous-titre">
+        <code>{{ p.reference }}</code>
+        @if (p.categorie) { · {{ p.categorie.nom }} }
+      </p>
+    </div>
+
+    <div class="actions">
+      <span class="gu-badge" [class]="badge(p.statut)">{{ p.statut }}</span>
+
+      @if (p.statut !== 'PUBLIE' && session.peut('PRODUIT_PUBLIER')) {
+        <button type="button" class="gu-btn gu-btn--primaire"
+                (click)="publier()" [disabled]="!publiable() || action() !== null">
+          Publier
+        </button>
+      }
+      @if (p.statut === 'PUBLIE' && session.peut('PRODUIT_DEPUBLIER')) {
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="depublier()" [disabled]="action() !== null">Dépublier</button>
+      }
+    </div>
+  </header>
+
+  @if (erreur(); as m) {
+    <p class="alerte" role="alert">{{ m }}</p>
+  }
+
+  <!-- Ce qui manque pour publier, DIT AVANT le clic.
+       Le serveur refuserait de toute façon ; laisser l'utilisateur découvrir
+       laquelle des trois conditions manque, c'est lui faire deviner ce qu'on
+       sait déjà. -->
+  @if (!publiable()) {
+    <div class="gu-carte prerequis">
+      <gu-icone nom="triangle-exclamation" class="prerequis__icone" />
+      <div>
+        <p class="prerequis__titre">Il manque encore quelque chose pour publier</p>
+        <ul>
+          @if (manques().variante) { <li>une déclinaison active</li> }
+          @if (manques().prix) { <li>un prix</li> }
+          @if (manques().photo) { <li>une photo</li> }
+        </ul>
+      </div>
+    </div>
+  }
+
+  <div class="colonnes">
+    <!-- ---------------- Déclinaisons et prix ---------------- -->
+    <section class="gu-carte">
+      <header class="section-entete">
+        <h2>Déclinaisons</h2>
+        @if (session.peut('VARIANTE_CREER')) {
+          <button type="button" class="gu-btn gu-btn--secondaire petit"
+                  (click)="formVariante.set(!formVariante())">Ajouter</button>
+        }
+      </header>
+
+      @if (formVariante()) {
+        <form class="encart" (ngSubmit)="ajouterVariante()" novalidate>
+          <label class="gu-libelle" for="sku">Référence de la déclinaison</label>
+          <input id="sku" name="sku" class="gu-champ" required maxlength="50"
+                 [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
+
+          <label class="gu-libelle" for="lib">Intitulé</label>
+          <input id="lib" name="libelle" class="gu-champ" required maxlength="200"
+                 placeholder="Taille 42 — Blanc"
+                 [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
+
+          <div class="boutons">
+            <button type="button" class="gu-btn gu-btn--secondaire petit"
+                    (click)="formVariante.set(false)">Annuler</button>
+            <button type="submit" class="gu-btn gu-btn--primaire petit"
+                    [disabled]="action() !== null || !sku() || !libelle()">Ajouter</button>
+          </div>
+        </form>
+      }
+
+      @if (variantes().length === 0) {
+        <p class="vide">
+          Aucune déclinaison. Un article sans variante en a quand même une :
+          créez-en une, même unique.
+        </p>
+      } @else {
+        @for (v of variantes(); track v.id) {
+          <article class="variante">
+            <div class="variante__entete">
+              <div>
+                <span class="variante__libelle">{{ v.libelle }}</span>
+                <code>{{ v.sku }}</code>
+              </div>
+              @if (session.peut('PRIX_CREER')) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="ouvrirPalier(v.id)">Prix</button>
+              }
+            </div>
+
+            @if (v.paliers.length === 0) {
+              <p class="vide petit-texte">Aucun prix défini.</p>
+            } @else {
+              <ul class="paliers">
+                @for (palier of v.paliers; track palier.quantiteMin) {
+                  <li>
+                    <span>
+                      @if (palier.quantiteMax) {
+                        {{ palier.quantiteMin }} à {{ palier.quantiteMax }}
+                      } @else {
+                        {{ palier.quantiteMin }} et plus
+                      }
+                    </span>
+                    <strong>{{ palier.prixUnitaire }} {{ palier.devise }}</strong>
+                  </li>
+                }
+              </ul>
+            }
+
+            @if (formPalier() === v.id) {
+              <form class="encart" (ngSubmit)="definirPalier()" novalidate>
+                <div class="duo">
+                  <div>
+                    <label class="gu-libelle" for="qmin">À partir de</label>
+                    <input id="qmin" name="qmin" type="number" min="1" class="gu-champ"
+                           [ngModel]="quantiteMin()" (ngModelChange)="quantiteMin.set(+$event)" />
+                  </div>
+                  <div>
+                    <label class="gu-libelle" for="qmax">Jusqu’à</label>
+                    <input id="qmax" name="qmax" type="number" min="1" class="gu-champ"
+                           placeholder="illimité"
+                           [ngModel]="quantiteMax()"
+                           (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
+                  </div>
+                </div>
+                <p class="aide">Laisser vide pour « et au-delà ».</p>
+
+                <label class="gu-libelle" for="prix">Prix unitaire (FCFA, TTC)</label>
+                <input id="prix" name="prix" type="number" min="0" class="gu-champ"
+                       [ngModel]="prix()" (ngModelChange)="prix.set($event === '' ? null : +$event)" />
+
+                <div class="boutons">
+                  <button type="button" class="gu-btn gu-btn--secondaire petit"
+                          (click)="formPalier.set(null)">Annuler</button>
+                  <button type="submit" class="gu-btn gu-btn--primaire petit"
+                          [disabled]="action() !== null || prix() === null">Enregistrer</button>
+                </div>
+              </form>
+            }
+          </article>
+        }
+      }
+
+      @if (erreurForm(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+    </section>
+
+    <!-- ---------------- Photos ---------------- -->
+    <section class="gu-carte">
+      <header class="section-entete">
+        <h2>Photos</h2>
+        @if (session.peut('PRODUIT_AJOUTER_PHOTO')) {
+          <!-- Un <label> plutôt qu'un bouton : le champ de fichier natif est
+               inhabillable, mais un label lui est associé et déclenche le
+               sélecteur au clic. On garde donc l'apparence du reste. -->
+          <label class="gu-btn gu-btn--secondaire petit televerser">
+            @if (action() === 'photo') {
+              <gu-icone nom="circle-notch" tourne />
+            } @else {
+              <gu-icone nom="upload" />
+            }
+            Ajouter
+            <input type="file" accept="image/*" (change)="televerser($event)"
+                   [disabled]="action() !== null" />
+          </label>
+        }
+      </header>
+
+      @if (p.medias.length === 0) {
+        <p class="vide">Aucune photo. Une photo au moins est requise pour publier.</p>
+      } @else {
+        <div class="galerie">
+          @for (media of p.medias; track media.id) {
+            <figure class="vignette-media">
+              <img [src]="media.url" [alt]="p.nom" loading="lazy" />
+              @if (media.principal) {
+                <figcaption class="gu-badge gu-badge--info">Principale</figcaption>
+              }
+              @if (session.peut('PRODUIT_SUPPRIMER_PHOTO')) {
+                <button type="button" class="retirer" (click)="supprimerMedia(media.id)"
+                        [disabled]="action() !== null" aria-label="Retirer cette photo">
+                  <gu-icone nom="xmark" />
+                </button>
+              }
+            </figure>
+          }
+        </div>
+      }
+    </section>
+  </div>
+}

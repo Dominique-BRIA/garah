@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Avatar, Icone, ServiceSession, ServiceTheme } from 'garah-ui';
+import { Avatar, Icone, Marque, ServiceSession, ServiceTheme } from 'garah-ui';
 
 interface Entree {
   readonly libelle: string;
@@ -12,7 +12,7 @@ interface Entree {
 
 @Component({
   selector: 'ga-coque',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icone, Avatar],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icone, Avatar, Marque],
   templateUrl: './coque.html',
   styleUrl: './coque.scss',
 })

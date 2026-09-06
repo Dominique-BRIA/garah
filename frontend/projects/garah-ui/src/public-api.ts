@@ -24,6 +24,7 @@ export * from './lib/icones/icone';
 export * from './lib/icones/traces';
 
 // --- La marque ---
+export * from './lib/marque/marque';
 export * from './lib/marque/logo';
 export * from './lib/marque/avatar';
 
