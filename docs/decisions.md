@@ -1001,3 +1001,76 @@ concaténation au lieu d'une signature. Aucun frontend n'a à changer.
 > un contournement de contrainte financière. Il fonctionne, il est testé
 > (`StockageReelTest` fait un aller-retour réel contre Backblaze), mais le
 > bucket public reste la bonne réponse pour du contenu public.
+
+---
+
+## D-22 — Un Worker Cloudflare devant l'API, pour contourner le filtrage Orange
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — contournement, pas architecture cible
+
+**Le fait, mesuré.** Depuis une connexion Orange Cameroun,
+`garah-api.onrender.com` est inaccessible :
+
+```text
+DNS      216.24.57.15, 216.24.57.7   ✅ résolution correcte
+TCP 443  établi                       ✅ la connexion s'ouvre
+TLS      connection closed on send    ❌ poignée de main coupée
+```
+
+Le TCP passe, le TLS est coupé net : signature d'un **filtrage par SNI**.
+L'opérateur lit le nom de domaine dans le premier paquet TLS et referme.
+
+**Pourquoi ce n'est pas un détail technique.** GARAH vend à Douala et Bangui.
+Orange est l'un des deux opérateurs majeurs du marché visé. Une vitrine que
+la moitié des acheteurs ne peut pas ouvrir n'est pas une vitrine — et le
+symptôme serait le plus déroutant qui soit : « le site ne marche pas » chez
+certains, parfaitement chez d'autres.
+
+**Choix.** Un **Cloudflare Worker** en proxy inverse, sur le sous-domaine
+gratuit `*.workers.dev`.
+
+```text
+navigateur  ──▶  garah-api.<compte>.workers.dev   ← Cloudflare, non filtré
+                     │
+                     ▼
+                 garah-api.onrender.com           ← jamais vu du navigateur
+```
+
+**Pourquoi un proxy et pas une redirection.** Un `301` vers `onrender.com`
+ferait ouvrir au navigateur une connexion vers ce nom-là, qu'Orange couperait
+comme avant. Il faut que Cloudflare aille chercher l'amont **lui-même**.
+
+**Pourquoi pas un domaine personnalisé.** Il en faudrait un, et il n'y en a
+pas encore. `workers.dev` est gratuit et immédiat.
+
+**⚠️ Quatre points que le proxy doit respecter**, chacun corrigeant une panne
+silencieuse :
+
+| | Sans quoi |
+|---|---|
+| `X-Forwarded-For` = `CF-Connecting-IP` | tous les événements de sécurité portent l'IP de Cloudflare — le score de risque devient aveugle |
+| `Set-Cookie` transmis intact | plusieurs en-têtes fusionnés = session impossible à prolonger (D-19) |
+| Aucun cache (`cacheTtl: 0`) | Cloudflare est un cache **partagé** : `/api/commandes/miennes` servi au visiteur suivant |
+| `redirect: "manual"` | un `Location` vers `onrender.com` renverrait le navigateur dans le filtrage |
+
+**Ce que ça ne règle pas.** Le **démarrage à froid de 197 secondes**.
+Cloudflare proxie, il ne réveille pas Render : l'instance gratuite s'endort
+toujours après 15 minutes, et le premier visiteur attend toujours trois
+minutes. Pour une vitrine, c'est équivalent à être hors ligne.
+
+**Ce que ça coûte aussi.** L'API et les frontends restent sur deux **sites**
+différents (`workers.dev` et `vercel.app`) : `SameSite=None` reste obligatoire,
+et la protection CSRF continue de reposer sur l'en-tête `X-Garah-Client`
+(D-19) plutôt que d'être structurelle.
+
+> 🎯 **Ce contournement renforce l'argument du VPS.** Un domaine à soi
+> (`api.garah.cm`) réglerait d'un coup : le filtrage Orange, la mise en veille,
+> `SameSite=Lax` (D-19) et le domaine personnalisé qu'exige Cloudflare R2
+> (D-20). Quatre décisions en attente se referment avec un seul domaine.
+>
+> D-14 annonçait un VPS « sous une semaine ». Ce n'est plus une optimisation,
+> c'est la condition pour que le produit soit joignable par ses clients.
+
+**Réversible.** Le fichier `deploiement/proxy-cloudflare.js` ne contient qu'une
+constante à changer le jour de la bascule.
