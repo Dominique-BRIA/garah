@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "ui:watch": "ng build garah-ui --watch",
+    "admin": "ng serve garah-admin --port 4200"
   },
   "prettier": {
     "printWidth": 100,

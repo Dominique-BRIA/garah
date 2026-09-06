@@ -1,9 +1,24 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { Observable, catchError, switchMap, take, throwError } from 'rxjs';
 
 import { ConfigurationApi } from './configuration-api';
 import { ServiceSession } from './service-session';
+
+/**
+ * Les routes où un {@code 401} veut dire autre chose qu'« expiré ».
+ *
+ * <p>Ce sont celles qui <b>établissent</b> ou <b>détruisent</b> la session,
+ * jamais celles qui s'en servent. Y tenter un rafraîchissement n'a aucun sens :
+ * il n'y a rien à rafraîchir.</p>
+ */
+const REPONDENT_401_METIER = [
+  '/api/auth/connexion',
+  '/api/auth/inscription',
+  '/api/auth/rafraichir',
+  '/api/auth/deconnexion',
+] as const;
+
 
 /**
  * L'intercepteur unique : URL absolue, en-tête client, jeton, rafraîchissement.
@@ -32,20 +47,6 @@ import { ServiceSession } from './service-session';
  *    et la requête d'origine est rejouée.
  * ═══════════════════════════════════════════════════════════════════════════
  */
-/**
- * Les routes où un {@code 401} veut dire autre chose qu'« expiré ».
- *
- * <p>Ce sont celles qui <b>établissent</b> ou <b>détruisent</b> la session,
- * jamais celles qui s'en servent. Y tenter un rafraîchissement n'a aucun sens :
- * il n'y a rien à rafraîchir.</p>
- */
-const REPONDENT_401_METIER = [
-  '/api/auth/connexion',
-  '/api/auth/inscription',
-  '/api/auth/rafraichir',
-  '/api/auth/deconnexion',
-] as const;
-
 export function intercepteurApi(
   requete: HttpRequest<unknown>,
   suite: HttpHandlerFn,
@@ -116,9 +117,33 @@ function rejouerApresRafraichissement(
   erreurOrigine: HttpErrorResponse,
 ): Observable<HttpEvent<unknown>> {
   return session.rafraichir().pipe(
-    filter((jeton): jeton is string => jeton !== null),
     take(1),
-    switchMap(() => suite(preparer(requete, config, session))),
+
+    // 🎯 UN OBSERVABLE DOIT TOUJOURS ÉMETTRE OU ÉCHOUER, JAMAIS SE TAIRE.
+    //
+    // La première version filtrait le cas `null` :
+    //
+    //     filter((jeton): jeton is string => jeton !== null)
+    //
+    // Ça paraissait raisonnable — « ignorer l'absence de jeton ». En réalité,
+    // `rafraichir()` renvoie `null` quand le renouvellement échoue : le filtre
+    // supprimait donc la SEULE émission, et l'observable se terminait sans
+    // rien dire.
+    //
+    // Le composant appelant, qui n'attendait que `next` ou `error`, ne
+    // recevait ni l'un ni l'autre. Son indicateur de chargement tournait
+    // indéfiniment, sans message, sans erreur en console — le pire symptôme
+    // qui soit, parce qu'il n'y a rien à chercher.
+    //
+    // On transforme donc explicitement l'absence de jeton en erreur.
+    switchMap((jeton) => {
+      if (jeton === null) {
+        session.terminer();
+        return throwError(() => erreurOrigine);
+      }
+      return suite(preparer(requete, config, session));
+    }),
+
     catchError(() => {
       session.terminer();
       return throwError(() => erreurOrigine);
