@@ -23,7 +23,21 @@ WORKDIR /build
 # touche que du code Java ne retelecharge pas Spring Boot.
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
-RUN ./mvnw -B -ntp dependency:go-offline
+
+# chmod +x AVANT tout appel au wrapper.
+#
+# ⚠️ Sans cette ligne, le premier deploiement echoue sur :
+#        /bin/sh: 1: ./mvnw: Permission denied
+#
+# Pourquoi : git sur Windows ne suit pas le bit executable (core.filemode
+# vaut false). Le fichier part donc en 100644, et Linux refuse de l executer.
+# Le bit a ete corrige dans l index (git update-index --chmod=+x), mais on ne
+# s en remet pas a ca : il suffit qu un mvnw soit un jour re-ajoute depuis
+# Windows pour que le probleme revienne — et il ne se verrait qu au
+# deploiement suivant, jamais en local ou tout marche.
+#
+# Une ligne ici vaut mieux qu une convention que personne ne peut verifier.
+RUN chmod +x mvnw && ./mvnw -B -ntp dependency:go-offline
 
 # Les sources ensuite : c est la couche qui change a chaque commit.
 COPY src/ src/
