@@ -177,9 +177,25 @@ Le tableau des transitions autorisées — c'est **ça** qu'on code, pas le dess
 | Depuis | Vers | Déclencheur | Permission requise |
 |---|---|---|---|
 | `EN_ATTENTE_PAIEMENT` | `PAYEE` | Webhook opérateur confirmé | *(système)* |
-| `EN_ATTENTE_PAIEMENT` | `ANNULEE` | Délai dépassé, ou client | `COMMANDE_ANNULER` |
+| `EN_ATTENTE_PAIEMENT` | `ANNULEE` | Délai dépassé, ou **client** | `COMMANDE_ANNULER` |
 | `PAYEE` | `EN_PREPARATION` | Responsable | `PREPARATION_COMMENCER` |
-| `PAYEE` | `ANNULEE` | Décision + remboursement | `COMMANDE_ANNULER` |
+| `PAYEE` | `ANNULEE` | **Admin uniquement**, motif obligatoire + remboursement | `COMMANDE_ANNULER` |
+
+> 📌 **Le client ne peut pas annuler une commande déjà payée**
+> ([D-12](../decisions.md#d-12--pas-dannulation-client-après-paiement)).
+>
+> Une fois le paiement confirmé, la commande entre dans la chaîne logistique :
+> le stock est décrémenté, la préparation est lancée, l'acheminement vers
+> Bangui peut démarrer. Laisser le client défaire ça d'un clic, c'est faire
+> supporter à l'entreprise le coût d'une décision qu'il ne mesure pas.
+>
+> S'il change d'avis, la voie est la **réclamation** — un humain décide,
+> et un Admin peut annuler avec remboursement si c'est justifié.
+>
+> **Ce que ça implique pour l'interface :** le bouton « Annuler » doit
+> disparaître dès le passage à `PAYEE`, et le client doit avoir été **prévenu
+> avant de payer** que le paiement est définitif. Une règle métier invisible
+> à l'écran est une règle qui génère des réclamations.
 | `EN_PREPARATION` | `PRETE` | Responsable | `PREPARATION_TERMINER` |
 | `PRETE` | `EXPEDIEE` | Départ enregistré | `EXPEDITION_EXPEDIER` |
 | `EXPEDIEE` | `DISPONIBLE` | Arrivée au point de retrait | `MARCHANDISE_RECEPTIONNER` |

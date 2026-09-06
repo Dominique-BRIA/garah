@@ -426,36 +426,155 @@ commission a posteriori en cas de litige avec un marchand.
 
 ---
 
-## D-11 — Pas de TVA en v1 — dette assumée
+## D-11 — TVA présente dès la v1, au taux 0
 
 **Date :** 06/09/2026
-**Statut :** ⚠️ décision **provisoire**, à revoir
+**Statut :** ✅ actée
 
-**Choix.** Aucune gestion de TVA ni de taxes en v1. Le prix affiché est le prix
-payé.
+**Choix.** La TVA est **modélisée dès maintenant**, avec un taux à **0** partout.
+Le jour où elle devra s'appliquer, il suffira de changer un taux — aucune
+migration, aucune commande passée non calculable.
+
+**Le point décisif : les prix sont stockés en TTC**, et la TVA en est *extraite*.
 
 ```text
-commande
-  montant_articles   150 000
-  montant_frais        8 000
-  montant_remise           0
-  montant_total      158 000
+❌ Prix stocké en HT
+   Activer la TVA à 19,25 % fait BONDIR tous les prix affichés de 19,25 %.
+   Personne n'a décidé ça.
+
+✅ Prix stocké en TTC  (choix retenu)
+   Activer la TVA ne change AUCUN prix affiché.
+   Elle est extraite :  montant_tva = montant_ligne × taux ÷ (100 + taux)
 ```
 
-**Ce qui a été fait pour limiter la dette.** Les montants sont **déjà séparés**
-(articles / frais / remise / total) plutôt que fondus dans un seul total.
-Ajouter `montant_ht` et `montant_tva` plus tard sera une migration additive,
-sans réécriture du calcul.
+**Conséquences sur le modèle.**
 
-> ⚠️ **Ce que cette dette coûtera réellement.**
-> Ce n'est pas la migration du schéma qui fait mal — c'est que les commandes
-> **déjà passées** n'auront aucune TVA calculable rétroactivement. Si
-> l'administration fiscale la réclame un jour sur l'exercice écoulé, il
-> faudra la recalculer à la main, commande par commande.
+```text
+produit.taux_tva              le taux courant, défaut 0
+ligne_commande.taux_tva       PHOTO, figé à la commande
+ligne_commande.montant_tva    extrait du montant TTC
+commande.montant_tva          somme des lignes, informatif
+```
+
+La contrainte `montant_total = articles + frais − remise` reste **inchangée**,
+puisque tout est déjà en TTC. C'est le signe que le sens de calcul est le bon.
+
+> ⚠️ **Simplifications assumées, à revoir le jour où le taux sera activé :**
 >
-> Il faut donc trancher cette question **avant la mise en production**,
-> pas avant la fin du développement.
+> - une remise devrait réduire la TVA proportionnellement ;
+> - les frais d'acheminement peuvent être taxables ;
+> - une facture conforme demande une numérotation séquentielle sans trou.
+>
+> À 0 %, aucune de ces trois n'a d'effet. Elles sont notées ici pour ne pas
+> être découvertes le jour de l'activation.
 
-**À vérifier auprès du métier :** GARAH est-elle assujettie à la TVA au
-Cameroun ? Y a-t-il un régime particulier pour les ventes vers la République
-centrafricaine (export) ? Ces deux réponses changent le modèle.
+**À vérifier auprès du métier avant activation :** GARAH est-elle assujettie
+à la TVA au Cameroun ? Les ventes vers la Centrafrique sont-elles de l'export
+(donc exonérées) ? Ces deux réponses décideront si le taux vit sur le produit,
+sur la catégorie, ou sur le couple produit × destination.
+
+---
+
+## D-12 — Pas d'annulation client après paiement
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** Un client **ne peut pas** annuler une commande qu'il a déjà payée.
+
+```text
+EN_ATTENTE_PAIEMENT ──▶ ANNULEE     ✅ le client peut (rien n'est engagé)
+PAYEE               ──▶ ANNULEE     ⚠️ ADMIN uniquement, motif obligatoire
+                                       + remboursement
+```
+
+**Pourquoi.** Une fois le paiement confirmé, la commande entre dans la chaîne :
+le stock est engagé, la préparation démarre, l'acheminement vers Bangui peut
+partir. Laisser le client défaire tout ça d'un clic ferait supporter à
+l'entreprise le coût d'une décision qu'il ne mesure pas.
+
+**La voie de recours du client** reste la **réclamation** : un humain examine,
+et un Admin peut annuler avec remboursement si c'est justifié.
+
+> ⚠️ **Ce que ça impose à l'interface** — et c'est souvent oublié :
+> le bouton « Annuler » doit disparaître dès le passage à `PAYEE`, **et** le
+> client doit être averti **avant de payer** que le paiement est définitif.
+> Une règle métier invisible à l'écran ne protège de rien : elle produit
+> des réclamations.
+
+---
+
+## D-13 — Frais d'acheminement paramétrables, pas basés sur le poids
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — précise D-10
+
+**Choix.** Les frais **ne dépendront pas du poids**.
+
+**La raison est de terrain, et elle est excellente :** la plupart des marchands
+**ne connaissent pas le poids unitaire** de leur marchandise. Une grille au
+kilo produirait des données inventées, donc des frais faux, donc des litiges.
+
+**Ce sur quoi les frais dépendront, à terme :**
+
+- le **point de récupération** (déjà en place, D-10) ;
+- des **paramètres du produit** (volume, fragilité, catégorie — à définir) ;
+- la **quantité commandée**.
+
+**En v1 :** un montant fixe par point de récupération, figé dans la commande.
+Le modèle ne s'oppose pas à l'évolution, puisque `commande.montant_frais` est
+une photo : le mode de calcul peut changer sans invalider les commandes passées.
+
+> 📌 **La leçon de modélisation :**
+> ne modélise jamais une grille tarifaire sur une donnée que **la personne qui
+> saisit ne connaît pas**. Elle inventera une valeur, et tes calculs seront
+> faux avec l'apparence d'être justes.
+
+---
+
+## D-14 — Hébergement : Render, Vercel, Neon, Backblaze B2
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — provisoire, VPS envisagé sous une semaine
+
+**Choix.** Pour les tests et la première mise en ligne, tout en gratuit :
+
+| Élément | Hébergeur |
+|---|---|
+| API Spring Boot | **Render** |
+| Les 3 frontends Angular | **Vercel** (3 projets) |
+| Base PostgreSQL | **Neon** |
+| Fichiers (photos, vidéos, pièces jointes) | **Backblaze B2** |
+
+**Ce que ça impose au code, dès maintenant.**
+
+| Contrainte | Ce qu'il faut faire |
+|---|---|
+| Render n'a **pas de disque persistant** | Aucun fichier écrit localement. Tout va sur B2, dès le premier jour. |
+| Render (offre gratuite) **s'endort** | Premier appel lent après inactivité. Ne pas confondre avec un bug. |
+| Neon limite les **connexions** | Pool HikariCP réduit (5 à 10), jamais le défaut de 10 par instance. |
+| Neon impose **SSL** | `sslmode=require` dans l'URL JDBC. |
+| Vercel sert du **statique** | Les 3 apps Angular sont construites en fichiers ; pas de rendu serveur en v1. |
+| Trois domaines distincts | **CORS** à configurer sérieusement côté API. |
+| B2 est **compatible S3** | Utiliser le SDK S3 — le jour du VPS, basculer vers MinIO ne change que l'URL. |
+
+> 🎯 **Le vrai enjeu de ces choix : la réversibilité.**
+> Un VPS est prévu sous une semaine. Chacune de ces briques doit donc pouvoir
+> être remplacée **sans réécrire le code** :
+>
+> ```text
+> Neon      → PostgreSQL sur le VPS      une URL JDBC à changer
+> B2        → MinIO sur le VPS           une URL et des clés à changer
+> Render    → un conteneur sur le VPS    la même image
+> Vercel    → Nginx sur le VPS           les mêmes fichiers statiques
+> ```
+>
+> C'est possible **à condition** que rien ne soit jamais codé en dur :
+> toute URL, clé ou identifiant vit dans une **variable d'environnement**.
+> Le jour de la bascule doit être un changement de configuration, pas un chantier.
+
+**Conséquence sur `media.url`.** La table ne stocke **pas** une URL complète
+(`https://f003.backblazeb2.com/...`), mais une **clé d'objet**
+(`produits/42/photo-1.jpg`). L'URL est reconstruite à l'affichage à partir
+d'une variable d'environnement. Sinon, changer d'hébergeur de fichiers
+obligerait à réécrire toutes les lignes de la table.

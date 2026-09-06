@@ -422,8 +422,8 @@ erDiagram
         bigint produit_id FK
         bigint variante_id FK "null = photo du produit"
         varchar type "PHOTO|VIDEO"
-        varchar url
-        varchar url_miniature
+        varchar cle_objet "produits/42/photo-1.jpg - PAS une URL complete"
+        varchar cle_miniature
         int ordre
         boolean principal
     }
@@ -582,7 +582,66 @@ WHERE variante_id = :variante AND quantite_disponible >= :n;
 | Pas d'adresse : `point_recuperation_id` est **obligatoire** | D-05 |
 | Pas d'espèces : le paiement précède l'expédition | D-06 |
 | `montant_frais` = frais d'acheminement du point choisi | D-10 |
-| Pas de TVA en v1, mais des montants séparés | D-11 |
+| TVA présente dès la v1, **au taux 0** | D-11 |
+
+### La TVA, et le piège du prix HT
+
+[D-11](../decisions.md#d-11--tva-presente-des-la-v1-au-taux-0) : la TVA est
+modélisée dès maintenant, mais le taux vaut **0** partout au départ.
+
+La question qui décide de tout : **le prix saisi dans le catalogue est-il HT
+ou TTC ?**
+
+```text
+❌ SI ON STOCKE DU HT
+
+   Aujourd'hui  prix_unitaire_ht = 15 000, taux = 0   → le client paie 15 000
+   Le jour où on active la TVA à 19,25 % :
+                prix_unitaire_ht = 15 000, taux = 19,25 → le client paie 17 888
+
+   Tous les prix du catalogue augmentent de 19,25 % du jour au lendemain.
+   Personne n'a décidé ça. C'est un accident.
+
+
+✅ SI ON STOCKE DU TTC (choix retenu)
+
+   Aujourd'hui  prix_unitaire = 15 000 TTC, taux = 0     → client paie 15 000
+                                                            dont 0 de TVA
+   Le jour où on active la TVA à 19,25 % :
+                prix_unitaire = 15 000 TTC, taux = 19,25 → client paie 15 000
+                                                            dont 2 419 de TVA
+
+   Le prix affiché ne bouge pas. La TVA est EXTRAITE du prix.
+```
+
+Le calcul d'extraction :
+
+```text
+montant_tva = montant_ligne × taux ÷ (100 + taux)
+
+  15 000 × 19,25 ÷ 119,25 = 2 421   (et non 15 000 × 0,1925 = 2 888)
+```
+
+> 🎯 **La leçon, valable bien au-delà de la TVA :**
+> quand une donnée vaut zéro aujourd'hui mais pas demain, demande-toi
+> **ce qui bougera le jour où elle changera**. Si c'est un montant que le
+> client voit, tu as choisi le mauvais sens de calcul.
+>
+> Ici : le prix affiché est ce qui compte. Tout le reste s'en déduit.
+
+Le taux vit sur `produit.taux_tva` (défaut `0`), et il est **figé** dans
+`ligne_commande.taux_tva` à la commande — comme la commission, comme les frais.
+
+> ⚠️ **Simplification assumée à revoir le jour où le taux passera à 19,25 % :**
+> une remise devrait réduire la TVA proportionnellement, et les frais
+> d'acheminement peuvent être taxables. À 0 %, ces subtilités ne changent
+> rien. Elles sont notées dans D-11 pour ne pas être oubliées.
+
+La contrainte de cohérence reste donc **inchangée**, ce qui est bon signe :
+
+```sql
+CHECK (montant_total = montant_articles + montant_frais - montant_remise)
+```
 
 ### Les frais d'acheminement
 
@@ -686,10 +745,11 @@ erDiagram
         bigint point_recuperation_id FK "OBLIGATOIRE - retrait uniquement"
         char langue "fr|en|sg - langue des notifications"
         varchar statut "EN_ATTENTE_PAIEMENT|PAYEE|EN_PREPARATION|PRETE|EXPEDIEE|DISPONIBLE|RETIREE|ANNULEE"
-        numeric montant_articles
-        numeric montant_frais "frais de service ou d acheminement"
+        numeric montant_articles "TTC"
+        numeric montant_frais "acheminement - TTC"
         numeric montant_remise
-        numeric montant_total
+        numeric montant_total "TTC = articles + frais - remise"
+        numeric montant_tva "somme des TVA de lignes - informatif"
         char devise
         timestamptz date_creation
     }
@@ -703,8 +763,10 @@ erDiagram
         varchar designation "PHOTO du nom produit"
         jsonb attributs "PHOTO: taille M, couleur Bleu"
         int quantite
-        numeric prix_unitaire "PHOTO"
-        numeric montant_ligne
+        numeric prix_unitaire "PHOTO - TTC"
+        numeric montant_ligne "TTC = quantite x prix_unitaire"
+        numeric taux_tva "PHOTO - 0 en v1"
+        numeric montant_tva "EXTRAIT du TTC"
         numeric taux_commission "PHOTO"
         numeric montant_commission "PHOTO"
     }
@@ -1673,10 +1735,11 @@ Elles n'empêchent pas d'avancer, mais il faudra y répondre :
 | Q7 | Le **catalogue** est-il saisi en 3 langues ? | Domaine 12 | ✅ Non, **interface seule** ([D-09](../decisions.md#d-09--multilingue--linterface-seulement)) |
 | Q8 | Le **back-office** est-il multilingue ? | `garah-admin` | ✅ Oui, les **3 langues** ([D-09](../decisions.md#d-09--multilingue--linterface-seulement)) |
 | Q9 | Des **frais** facturés au client ? | `commande.montant_frais` | ✅ Oui, **par point de récupération** ([D-10](../decisions.md#d-10--frais-dacheminement-par-point-de-récupération)) |
-| Q3 | TVA ou taxes ? | `commande`, facturation | ⚠️ **Reportée** — dette assumée ([D-11](../decisions.md#d-11--pas-de-tva-en-v1--dette-assumée)) |
+| Q3 | TVA ou taxes ? | `commande`, facturation | ✅ Modélisée **au taux 0**, prix stockés en TTC ([D-11](../decisions.md#d-11--tva-présente-dès-la-v1-au-taux-0)) |
+| Q10 | Les frais dépendent-ils du poids ? | `lieu`, `commande` | ✅ **Non** — les marchands ignorent le poids ([D-13](../decisions.md#d-13--frais-dacheminement-paramétrables-pas-basés-sur-le-poids)) |
+| Q11 | Le client peut-il annuler après paiement ? | Domaines 5 et 8 | ✅ **Non**, Admin uniquement ([D-12](../decisions.md#d-12--pas-dannulation-client-après-paiement)) |
 | Q5 | Durée de conservation de `vue_produit` avant purge ? | Domaine 11 | ⏳ ouverte |
-| Q10 | Les frais d'acheminement dépendent-ils du **poids** ou du **nombre de colis** ? | `lieu`, `commande` | ⏳ ouverte |
-| Q11 | Un client peut-il **annuler** une commande déjà payée, et est-il remboursé ? | Domaines 5 et 8 | ⏳ ouverte |
+| Q12 | Sur quels paramètres du produit les frais évolueront-ils (volume, fragilité, catégorie) ? | `lieu`, `produit` | ⏳ ouverte |
 
 ---
 
