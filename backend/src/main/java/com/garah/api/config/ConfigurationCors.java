@@ -35,7 +35,23 @@ public class ConfigurationCors {
         // explicitement qui a le droit d'appeler.
         configuration.setAllowedOrigins(List.of(origines.split("\\s*,\\s*")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept-Language"));
+        // 🎯 CETTE LISTE EST LA PROTECTION CSRF, pas une formalite.
+        //
+        // FiltreOrigineCsrf exige l'en-tete X-Garah-Client sur les deux routes
+        // qui s'authentifient par cookie. Un en-tete non standard force le
+        // navigateur a faire un PREFLIGHT, arbitre par les origines ci-dessus :
+        // une page tierce echoue au preflight et sa requete n'est jamais
+        // envoyee, cookie ou pas (D-19).
+        //
+        // ⚠️ Deux consequences a ne pas perdre de vue :
+        //    - retirer cet en-tete de la liste casse le rafraichissement AVANT
+        //      qu'il n'atteigne l'API : deconnexion toutes les 15 minutes, sans
+        //      la moindre erreur serveur ;
+        //    - mettre "*" dans GARAH_CORS_ORIGINS annulerait la protection
+        //      entiere. C'est pourquoi le joker est interdit plus bas.
+        configuration.setAllowedHeaders(
+                List.of("Authorization", "Content-Type", "Accept-Language",
+                        com.garah.api.config.FiltreOrigineCsrf.ENTETE));
         configuration.setExposedHeaders(List.of("Location"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

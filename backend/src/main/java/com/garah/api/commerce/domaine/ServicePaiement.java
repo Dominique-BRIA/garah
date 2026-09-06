@@ -234,6 +234,46 @@ public class ServicePaiement {
                 Paiement.remboursement(commandeId, montant, moyen, origineType, origineId));
     }
 
+    /**
+     * Note la référence de transaction obtenue auprès de l'opérateur.
+     *
+     * <p>Le paiement passe alors de {@code INITIE} à {@code EN_ATTENTE} : la
+     * demande est partie, le client doit maintenant valider sur son téléphone.
+     * <b>Rien n'est encaissé à ce stade.</b></p>
+     *
+     * <p>Sans cette référence, le paiement serait définitivement orphelin :
+     * ni le webhook ni la réconciliation ne pourraient le retrouver, et un
+     * client débité ne serait jamais crédité.</p>
+     */
+    /**
+     * Rembourse, et renvoie un DTO plutôt que l'entité.
+     *
+     * <p>Surcouche mince sur {@link #rembourser} : la couche web n'a pas le
+     * droit de toucher une entité JPA, et ArchUnit le vérifie. Les tests, eux,
+     * continuent d'appeler {@code rembourser} et de raisonner sur l'entité.</p>
+     */
+    @Transactional
+    public ResumePaiement rembourserEtResumer(Long commandeId, BigDecimal montant,
+                                              MoyenPaiement moyen, String origineType,
+                                              Long origineId) {
+        return ResumePaiement.de(
+                rembourser(commandeId, montant, moyen, origineType, origineId));
+    }
+
+    @Transactional
+    public Paiement enregistrerAupresOperateur(Long paiementId, String reference) {
+        Paiement paiement = paiements.findById(paiementId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Paiement", paiementId));
+
+        if (paiement.getStatut() != StatutPaiement.INITIE) {
+            throw new ConflitEtat("PAIEMENT_DEJA_ENGAGE",
+                    "Ce paiement a déjà été transmis à l'opérateur.");
+        }
+
+        paiement.mettreEnAttente(reference);
+        return paiement;
+    }
+
     @Transactional(readOnly = true)
     public BigDecimal resteAPayer(Long commandeId) {
         Commande commande = commandes.findById(commandeId)

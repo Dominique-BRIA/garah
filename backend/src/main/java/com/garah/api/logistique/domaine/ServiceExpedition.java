@@ -284,4 +284,17 @@ public class ServiceExpedition {
     private Lieu charger(Long id) {
         return lieux.findById(id).orElseThrow(() -> RessourceIntrouvable.de("Lieu", id));
     }
+
+    /** Une expédition avec ses colis. Convertie dans la transaction. */
+    @Transactional(readOnly = true)
+    public VueExpedition vue(Long expeditionId) {
+        return VueExpedition.complete(expeditions.findById(expeditionId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Expédition", expeditionId)));
+    }
+
+    /** Remplit un colis, et renvoie un DTO plutôt que l'entité. */
+    @Transactional
+    public VueLigneColis remplirEtResumer(Long colisId, Long ligneCommandeId, int quantite) {
+        return VueLigneColis.de(remplir(colisId, ligneCommandeId, quantite), colisId);
+    }
 }

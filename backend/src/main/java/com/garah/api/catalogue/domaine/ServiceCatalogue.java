@@ -4,6 +4,7 @@ import com.garah.api.catalogue.infra.*;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.commun.stockage.StockageObjet;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,16 +42,27 @@ public class ServiceCatalogue {
     private final MediaRepository medias;
     private final TarificationRepository tarifications;
 
+    /**
+     * Traduit les clés d'objet en adresses affichables.
+     *
+     * <p>Depuis D-21, le catalogue ne peut plus se contenter de renvoyer des
+     * clés : avec un bucket privé, seul le serveur peut fabriquer une URL
+     * lisible, puisqu'il faut la signer.</p>
+     */
+    private final StockageObjet urlsMedias;
+
     public ServiceCatalogue(ProduitRepository produits,
                             VarianteRepository variantes,
                             CategorieProduitRepository categories,
                             MediaRepository medias,
-                            TarificationRepository tarifications) {
+                            TarificationRepository tarifications,
+                            StockageObjet urlsMedias) {
         this.produits = produits;
         this.variantes = variantes;
         this.categories = categories;
         this.medias = medias;
         this.tarifications = tarifications;
+        this.urlsMedias = urlsMedias;
     }
 
     /**
@@ -79,7 +91,7 @@ public class ServiceCatalogue {
         // n'y a pas de déclinaison, les deux se confondent naturellement.
         produit.ajouterVariante(reference, nom, true);
 
-        return DetailProduit.de(produit);
+        return DetailProduit.de(produit, urlsMedias::urlPublique);
     }
 
     @Transactional
@@ -123,6 +135,40 @@ public class ServiceCatalogue {
     }
 
     /**
+     * Les médias d'un produit, du principal au dernier.
+     *
+     * <p>Lecture transactionnelle : {@code open-in-view} est à {@code false},
+     * donc tout ce qui doit être lu l'est ici, pas à la sérialisation.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<Media> mediasDe(Long produitId) {
+        return medias.findByProduitIdOrderByOrdreAsc(produitId);
+    }
+
+    /**
+     * Retire un média du catalogue et renvoie sa clé d'objet.
+     *
+     * <p>La clé est renvoyée pour que l'appelant puisse supprimer le fichier
+     * <b>après</b> la transaction. La lire après coup sur une entité détachée
+     * marcherait ici, mais dépendre de ce détail est exactement le genre de
+     * fragilité qui casse au premier changement de mapping.</p>
+     *
+     * <p>⚠️ Supprimer la photo principale d'un produit publié le laisse sans
+     * photo principale — l'invariant I-12 n'est vérifié qu'à la publication.
+     * Le back-office doit donc en désigner une autre ; à défaut, la liste du
+     * catalogue affichera ce produit sans vignette.</p>
+     */
+    @Transactional
+    public String detacherMedia(Long mediaId) {
+        Media media = medias.findById(mediaId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Média", mediaId));
+
+        String cle = media.getCleObjet();
+        medias.delete(media);
+        return cle;
+    }
+
+    /**
      * Publie un produit — l'opération la plus contrôlée du catalogue.
      *
      * <p>L'invariant I-12 ne peut PAS être une contrainte SQL : « au moins une
@@ -136,7 +182,7 @@ public class ServiceCatalogue {
      */
     @Transactional
     public DetailProduit publier(Long produitId) {
-        return DetailProduit.de(publierEntite(produitId));
+        return DetailProduit.de(publierEntite(produitId), urlsMedias::urlPublique);
     }
 
     private Produit publierEntite(Long produitId) {
@@ -173,7 +219,7 @@ public class ServiceCatalogue {
 
         verifierTransition(produit, nouveau);
         produit.changerStatut(nouveau);
-        return DetailProduit.de(produit);
+        return DetailProduit.de(produit, urlsMedias::urlPublique);
     }
 
     // -------------------------------------------------------------------------
@@ -195,7 +241,7 @@ public class ServiceCatalogue {
                 ? produits.findByStatut(StatutProduit.PUBLIE, pagination)
                 : produits.findByCategorieIdAndStatut(categorieId, StatutProduit.PUBLIE, pagination);
 
-        return resultats.map(ResumeProduit::de);
+        return resultats.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique));
     }
 
     /**
@@ -211,7 +257,7 @@ public class ServiceCatalogue {
                 .filter(Produit::estPublie)
                 .orElseThrow(() -> RessourceIntrouvable.de("Produit", slug));
 
-        return DetailProduit.de(produit);
+        return DetailProduit.de(produit, urlsMedias::urlPublique);
     }
 
     /**
@@ -230,7 +276,7 @@ public class ServiceCatalogue {
         // Même instance gérée : cette requête ne fait qu'initialiser `medias`.
         produits.chargerAvecMedias(produitId);
 
-        return DetailProduit.de(produit);
+        return DetailProduit.de(produit, urlsMedias::urlPublique);
     }
 
     private void verifierTransition(Produit produit, StatutProduit vers) {

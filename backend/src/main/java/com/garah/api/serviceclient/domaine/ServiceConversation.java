@@ -199,4 +199,64 @@ public class ServiceConversation {
         return conversations.findById(conversationId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Conversation", conversationId));
     }
+
+    /**
+     * Une conversation avec tous ses messages, prête à être sérialisée.
+     *
+     * <p>La conversion en DTO a lieu ICI, dans la transaction. {@code getMessages()}
+     * est une collection paresseuse et {@code open-in-view} vaut {@code false} :
+     * la convertir dans le contrôleur lèverait un {@code LazyInitializationException}
+     * — à l'exécution seulement, jamais à la compilation.</p>
+     */
+    @Transactional(readOnly = true)
+    public VueConversation vue(Long conversationId) {
+        return VueConversation.complete(conversations.findById(conversationId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Conversation", conversationId)));
+    }
+
+    /**
+     * Évalue, et renvoie un DTO plutôt que l'entité.
+     *
+     * <p>Surcouche mince sur {@link #evaluer} : la couche web n'a pas le droit
+     * de toucher une entité JPA, et ArchUnit le vérifie à chaque build.</p>
+     */
+    @Transactional
+    public VueEvaluation evaluerEtResumer(Long conversationId, int note, String commentaire) {
+        return VueEvaluation.de(evaluer(conversationId, note, commentaire));
+    }
+
+    /**
+     * Vérifie qu'un appelant a le droit de toucher à cette conversation.
+     *
+     * <h2>⚠️ Ce contrôle manquait, et c'était une fuite de données</h2>
+     *
+     * <p>Les routes de conversation n'exigent aucune permission : un client
+     * n'en a aucune, son accès repose sur la <b>propriété</b> de ses données
+     * (chapitre 08). Mais tant que personne ne vérifiait cette propriété,
+     * « aucune permission exigée » voulait dire « ouvert à tout compte
+     * connecté ».</p>
+     *
+     * <p>N'importe quel client pouvait donc, en changeant un identifiant :
+     * lire la conversation d'un autre, y écrire, consulter ses prix négociés,
+     * et <b>accepter ou refuser ses propositions</b>.</p>
+     *
+     * <p><b>On répond « introuvable », jamais « interdit ».</b> Un 403
+     * confirmerait que la conversation existe — et parcourir les identifiants
+     * suffirait à mesurer l'activité du service client.</p>
+     *
+     * @param estClient un client ne voit que les siennes ; un responsable, dont
+     *                  le métier est justement de traiter celles des autres,
+     *                  passe. Ses droits sont contrôlés par les
+     *                  {@code @PreAuthorize} des routes qui lui sont réservées.
+     */
+    @Transactional(readOnly = true)
+    public void exigerAcces(Long conversationId, Long utilisateurId, boolean estClient) {
+        Conversation conversation = conversations.findById(conversationId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Conversation", conversationId));
+
+        if (estClient && !conversation.getClientId().equals(utilisateurId)) {
+            throw RessourceIntrouvable.de("Conversation", conversationId);
+        }
+    }
+
 }

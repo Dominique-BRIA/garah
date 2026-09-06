@@ -3,6 +3,7 @@ package com.garah.api.catalogue.domaine;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 /**
  * La fiche complète d'un produit.
@@ -32,10 +33,29 @@ public record DetailProduit(
     public record VarianteResumee(Long id, String sku, String libelle, boolean parDefaut, String statut) {
     }
 
-    public record MediaResume(Long id, String type, String cleObjet, boolean principal, int ordre) {
+    /**
+     * ⚠️ {@code url} est <b>obligatoire</b> depuis D-21, {@code cleObjet} ne
+     * l'est plus.
+     *
+     * <p>Avant, le frontend recevait une clé et la préfixait lui-même avec
+     * {@code baseUrlMedias}. Ce modèle ne fonctionne plus avec un bucket
+     * privé : construire l'adresse demande une <b>signature</b>, donc la clé
+     * secrète — qu'un frontend ne doit évidemment jamais détenir.</p>
+     *
+     * <p>{@code cleObjet} reste exposé pour le back-office (c'est ce que la
+     * base stocke, et ce qu'on montre en cas d'incident), mais aucun affichage
+     * ne doit plus s'appuyer dessus.</p>
+     */
+    public record MediaResume(Long id, String type, String cleObjet, String url,
+                              boolean principal, int ordre) {
     }
 
-    public static DetailProduit de(Produit p) {
+    /**
+     * @param versUrl transforme une clé d'objet en adresse affichable —
+     *                concaténation ou signature selon le bucket. Le DTO ignore
+     *                laquelle des deux, et c'est voulu.
+     */
+    public static DetailProduit de(Produit p, UnaryOperator<String> versUrl) {
         return new DetailProduit(
                 p.getId(),
                 p.getReference(),
@@ -52,7 +72,8 @@ public record DetailProduit(
                                 v.estParDefaut(), v.getStatut()))
                         .toList(),
                 p.getMedias().stream()
-                        .map(m -> new MediaResume(m.getId(), m.getType().name(), m.getCleObjet(),
+                        .map(m -> new MediaResume(m.getId(), m.getType().name(),
+                                m.getCleObjet(), versUrl.apply(m.getCleObjet()),
                                 m.estPrincipal(), m.getOrdre()))
                         .toList());
     }

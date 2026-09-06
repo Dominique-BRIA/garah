@@ -45,6 +45,12 @@ public class ControleurConfiguration {
         return Map.of(
                 "version", version,
                 "baseUrlMedias", stockage.baseUrl(),
+                // ⚠️ Quand c'est vrai, le frontend NE PEUT PAS fabriquer une URL
+                // à partir d'une clé : il faudrait signer, donc détenir la clé
+                // secrète. Il doit utiliser les URL complètes renvoyées par
+                // l'API, et ne pas les mettre en cache au-delà de quelques
+                // jours — elles expirent (D-21).
+                "urlsMediasSignees", stockage.urlsSignees(),
                 // La devise est fixée par le pays d'exploitation. Elle est
                 // annoncée pour que les trois frontends formatent les montants
                 // de la même façon, sans la recopier chacun de leur côté.

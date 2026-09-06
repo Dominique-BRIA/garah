@@ -140,8 +140,13 @@ public class ServiceAuthentification {
      * CLIENT       aucune permission : son accès repose sur la PROPRIÉTÉ
      *              de ses données, pas sur des droits
      * </pre>
+     *
+     * <p>Publique parce que le rafraîchissement la rejoue à chaque
+     * renouvellement (D-19) : les droits sont RELUS en base, jamais recopiés
+     * du jeton précédent. C'est ce qui fait qu'un droit retiré s'applique en
+     * 15 minutes au lieu de 60.</p>
      */
-    private Set<String> permissionsDe(Utilisateur utilisateur) {
+    public Set<String> permissionsDe(Utilisateur utilisateur) {
         return switch (utilisateur.getType()) {
             case SUPER_ADMIN -> new LinkedHashSet<>(casUtilisation.tousLesCodesActifs());
             case ADMIN -> new LinkedHashSet<>(casUtilisation.codesActifsHorsModule(MODULE_SECURITE));

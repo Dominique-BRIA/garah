@@ -1,5 +1,6 @@
 package com.garah.api.commun;
 
+import com.garah.api.commun.stockage.SignataireS3;
 import com.garah.api.commun.stockage.StockageObjet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,8 +20,22 @@ class StockageObjetTest {
 
     private static final String BASE = "https://f003.backblazeb2.com/file/garah-medias";
 
+    /**
+     * Un signataire <b>inactif</b> : le cas du bucket public.
+     *
+     * <p>Construit avec des variables vides, donc {@code estActif()} vaut faux
+     * et {@link StockageObjet} retombe sur la simple concaténation — le
+     * comportement que cette classe vérifie.</p>
+     *
+     * <p>Le cas du bucket privé, lui, ne se teste pas ici : signer exige de
+     * vraies clés. Il est couvert par {@code StockageReelTest}, qui dépose un
+     * fichier et le relit vraiment.</p>
+     */
+    private static final SignataireS3 SANS_SIGNATURE =
+            new SignataireS3("", "", "", "", "", false, 7);
+
     private StockageObjet avecBase(String base) {
-        return new StockageObjet(base);
+        return new StockageObjet(base, SANS_SIGNATURE);
     }
 
     @Test

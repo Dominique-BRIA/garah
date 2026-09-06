@@ -18,6 +18,21 @@ public interface PaiementRepository extends JpaRepository<Paiement, Long> {
     List<Paiement> findByCommandeIdOrderByDateInitiationDesc(Long commandeId);
 
     /**
+     * Les paiements en attente qui ont bien atteint l'opérateur.
+     *
+     * <p>Alimente la réconciliation périodique. Le filtre sur la reference est
+     * essentiel : un paiement sans référence n'a jamais été transmis, et
+     * interroger Campay à son sujet n'aurait aucun sens.</p>
+     */
+    @Query("""
+            SELECT p FROM Paiement p
+             WHERE p.statut = :statut
+               AND p.referenceTransaction IS NOT NULL
+             ORDER BY p.dateInitiation
+            """)
+    List<Paiement> enAttenteAvecReference(@Param("statut") StatutPaiement statut);
+
+    /**
      * La somme des mouvements confirmes d un type donne, pour une commande.
      *
      * <p>Sert deux controles :</p>

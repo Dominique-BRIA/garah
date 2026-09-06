@@ -188,4 +188,17 @@ public class ServiceNegociation {
         return propositions.findById(propositionId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Proposition de prix", propositionId));
     }
+
+    /**
+     * La conversation dans laquelle vit une proposition.
+     *
+     * <p>Sert au contrôle de propriété : les routes de proposition ne portent
+     * qu'un identifiant de proposition, mais le droit d'y toucher se juge sur
+     * la <b>conversation</b> qui la contient.</p>
+     */
+    @Transactional(readOnly = true)
+    public Long conversationDe(Long propositionId) {
+        return charger(propositionId).getConversationId();
+    }
+
 }

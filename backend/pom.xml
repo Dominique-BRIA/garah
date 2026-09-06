@@ -19,6 +19,10 @@
 
     <properties>
         <java.version>24</java.version>
+        <!-- Une seule version du SDK S3 pour s3 ET url-connection-client :
+             deux versions differentes dans le meme projet produisent des
+             erreurs de chargement de classe illisibles. -->
+        <awssdk.version>2.31.78</awssdk.version>
     </properties>
 
     <dependencies>
@@ -66,6 +70,37 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Stockage des fichiers. Le SDK S3 d'AWS, utilise contre Backblaze B2
+             (compatible S3) : le jour de la bascule vers MinIO sur le VPS,
+             seules l'URL et les cles changent, pas une ligne de code (D-14).
+
+             ⚠️ netty-nio-client est EXCLU au profit de url-connection-client.
+             Le client Netty par defaut pese ~8 Mo de dependances et demarre un
+             pool de threads asynchrone dont on n'a aucun usage : on televerse
+             quelques photos, pas des flux continus. Sur Render, l'image plus
+             legere demarre plus vite — et chaque reveil de l'instance gratuite
+             paie ce demarrage (D-14). -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${awssdk.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+            <version>${awssdk.version}</version>
         </dependency>
 
         <!-- Lit backend/.env au demarrage et en fait des proprietes Spring.

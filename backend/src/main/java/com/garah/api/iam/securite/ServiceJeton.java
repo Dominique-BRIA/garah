@@ -34,8 +34,21 @@ public class ServiceJeton {
     private final JwtEncoder encodeur;
     private final Duration duree;
 
+    /**
+     * ⚠️ Le défaut est passé de 60 à <b>15 minutes</b> avec D-19.
+     *
+     * <p>Un JWT ne peut pas être révoqué : sa durée de vie EST le délai
+     * maximal pendant lequel un droit retiré, ou un compte bloqué, reste
+     * effectif. Passer de 60 à 15 divise ce délai par quatre.</p>
+     *
+     * <p>Ce serait insupportable pour l'utilisateur — se reconnecter toutes
+     * les quinze minutes — sans le jeton de rafraîchissement qui l'accompagne
+     * ({@code ServiceRafraichissement}). Les deux vont ensemble : réduire la
+     * durée sans ajouter le rafraîchissement ne ferait qu'énerver tout le
+     * monde.</p>
+     */
     public ServiceJeton(JwtEncoder encodeur,
-                        @Value("${GARAH_JWT_EXPIRATION_MINUTES:60}") long minutes) {
+                        @Value("${GARAH_JWT_EXPIRATION_MINUTES:15}") long minutes) {
         this.encodeur = encodeur;
         this.duree = Duration.ofMinutes(minutes);
     }

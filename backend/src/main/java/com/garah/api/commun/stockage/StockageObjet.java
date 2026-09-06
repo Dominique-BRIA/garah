@@ -44,6 +44,15 @@ public class StockageObjet {
     private final String baseUrl;
 
     /**
+     * Signe les URL quand le bucket est privé ; inactif sinon (D-21).
+     *
+     * <p>C'est le seul endroit du projet qui connaît cette différence. Tout le
+     * reste appelle {@link #urlPublique} et ignore si l'adresse obtenue est une
+     * concaténation ou une signature temporaire.</p>
+     */
+    private final SignataireS3 signataire;
+
+    /**
      * ⚠️ <b>Une variable VIDE n'est pas une variable ABSENTE.</b>
      *
      * <p>La première version se contentait de
@@ -68,12 +77,21 @@ public class StockageObjet {
      * <p>D'où l'avertissement au démarrage : le repli est correct pour
      * développer, et catastrophique en production. Il doit se voir.</p>
      */
-    public StockageObjet(@Value("${GARAH_MEDIA_BASE_URL:}") String baseUrl) {
+    public StockageObjet(@Value("${GARAH_MEDIA_BASE_URL:}") String baseUrl,
+                         SignataireS3 signataire) {
+        this.signataire = signataire;
+
         String valeur = sansBarreFinale(baseUrl);
 
         if (valeur.isBlank()) {
-            log.warn("GARAH_MEDIA_BASE_URL n'est pas renseignee : repli sur {}. "
-                    + "En production, TOUTES les images seront introuvables.", DEFAUT);
+            // ⚠️ L'avertissement ne vaut que pour un bucket PUBLIC. Quand les
+            // URL sont signées (D-21), le préfixe n'est jamais utilisé : le
+            // signaler comme un oubli entraînerait à ignorer le message le
+            // jour où il compte vraiment.
+            if (!signataire.estActif()) {
+                log.warn("GARAH_MEDIA_BASE_URL n'est pas renseignee : repli sur {}. "
+                        + "En production, TOUTES les images seront introuvables.", DEFAUT);
+            }
             valeur = DEFAUT;
         }
 
@@ -107,12 +125,38 @@ public class StockageObjet {
             return cle;
         }
 
-        return baseUrl + "/" + cle.replaceFirst("^/+", "");
+        String propre = cle.replaceFirst("^/+", "");
+
+        // Bucket privé : une simple concaténation donnerait un 401 chez chaque
+        // visiteur — sans la moindre erreur côté serveur. On signe (D-21).
+        if (signataire.estActif()) {
+            return signataire.url(propre);
+        }
+
+        return baseUrl + "/" + propre;
     }
 
     /** Le préfixe tel qu'il sera annoncé aux trois frontends. */
     public String baseUrl() {
         return baseUrl;
+    }
+
+    /**
+     * Les URL de médias sont-elles signées, donc <b>temporaires</b> ?
+     *
+     * <p>Annoncé aux frontends par {@code /api/configuration}. Deux
+     * comportements en dépendent :</p>
+     *
+     * <ul>
+     *   <li>quand c'est {@code false}, le frontend peut construire lui-même une
+     *       URL à partir de {@code baseUrlMedias} et d'une clé ;</li>
+     *   <li>quand c'est {@code true}, il ne le peut <b>pas</b> — il faudrait
+     *       la clé secrète — et il doit utiliser les URL complètes renvoyées
+     *       par l'API, sans les mettre en cache au-delà de quelques jours.</li>
+     * </ul>
+     */
+    public boolean urlsSignees() {
+        return signataire.estActif();
     }
 
     private static boolean estAbsolue(String valeur) {

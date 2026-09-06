@@ -230,4 +230,11 @@ public class ServiceRetour {
                     "le retour " + retour.getNumero(), retour.getStatut().name(), vers.name());
         }
     }
+
+    /** Un retour avec ses lignes. Converti dans la transaction. */
+    @Transactional(readOnly = true)
+    public VueRetour vue(Long retourId) {
+        return VueRetour.complete(retours.findById(retourId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Retour", retourId)));
+    }
 }
