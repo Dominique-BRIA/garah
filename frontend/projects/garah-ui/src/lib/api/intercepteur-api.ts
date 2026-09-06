@@ -1,0 +1,134 @@
+import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
+
+import { ConfigurationApi } from './configuration-api';
+import { ServiceSession } from './service-session';
+
+/**
+ * L'intercepteur unique : URL absolue, en-tête client, jeton, rafraîchissement.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * TROIS CONTRATS QUE LE BACKEND IMPOSE, ET QUI NE SE VOIENT PAS
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 1. `X-Garah-Client` sur TOUTE requête.
+ *    Le cookie de rafraîchissement est en `SameSite=None` — obligatoire, car
+ *    Vercel et le Worker Cloudflare sont deux sites différents (D-19, D-22).
+ *    Le navigateur l'envoie donc aussi depuis une page tierce. Le backend exige
+ *    un en-tête personnalisé sur `/rafraichir` et `/deconnexion` : il force un
+ *    préflight CORS que seules nos origines passent.
+ *
+ *    ⚠️ Sans cet en-tête, la session meurt au bout de 15 minutes avec un 403 —
+ *       et rien avant ne le laisse deviner.
+ *
+ * 2. `withCredentials: true`, sinon le cookie ne part jamais.
+ *    Une requête cross-origin n'emporte AUCUN cookie par défaut. Le
+ *    rafraîchissement échouerait systématiquement, sans erreur serveur.
+ *
+ * 3. Le jeton d'accès vit 15 MINUTES.
+ *    Il n'est pas rangé dans `localStorage` : il reste en mémoire (voir
+ *    {@link ServiceSession}). Un 401 déclenche un rafraîchissement automatique
+ *    et la requête d'origine est rejouée.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+export function intercepteurApi(
+  requete: HttpRequest<unknown>,
+  suite: HttpHandlerFn,
+): Observable<HttpEvent<unknown>> {
+  const config = inject(ConfigurationApi);
+  const session = inject(ServiceSession);
+
+  // Les appels sortants vers autre chose que notre API (les médias sur
+  // Backblaze, par exemple) ne doivent recevoir NI notre jeton NI nos cookies.
+  // Y joindre l'un ou l'autre les enverrait à un tiers.
+  if (!estAppelApi(requete.url, config.baseUrl)) {
+    return suite(requete);
+  }
+
+  return suite(preparer(requete, config, session)).pipe(
+    catchError((erreur: unknown) => {
+      if (!(erreur instanceof HttpErrorResponse) || erreur.status !== 401) {
+        return throwError(() => erreur);
+      }
+
+      // ⚠️ Un 401 SUR la route de rafraîchissement signifie que la session est
+      // réellement finie. Réessayer produirait une boucle infinie — le piège
+      // classique de ce motif.
+      if (requete.url.includes('/api/auth/rafraichir')) {
+        session.terminer();
+        return throwError(() => erreur);
+      }
+
+      return rejouerApresRafraichissement(requete, suite, config, session, erreur);
+    }),
+  );
+}
+
+/**
+ * Rejoue la requête après avoir renouvelé le jeton.
+ *
+ * <p>🎯 <b>Le point délicat : plusieurs requêtes échouent EN MÊME TEMPS.</b>
+ * Un tableau de bord lance six appels au chargement ; le jeton expire ; les six
+ * reçoivent un 401 en même temps. Sans coordination, six rafraîchissements
+ * partent en parallèle.</p>
+ *
+ * <p>Ce serait pire qu'inefficace : le backend fait tourner le jeton à chaque
+ * rafraîchissement (D-19). Le deuxième appel présenterait un jeton déjà
+ * consommé, le backend y verrait un VOL, et <b>révoquerait toute la
+ * famille</b> — déconnectant l'utilisateur au moment précis où l'on essayait
+ * de le maintenir connecté.</p>
+ *
+ * <p>{@link ServiceSession.rafraichir} garantit donc un seul appel en vol, et
+ * les autres attendent son résultat.</p>
+ */
+function rejouerApresRafraichissement(
+  requete: HttpRequest<unknown>,
+  suite: HttpHandlerFn,
+  config: ConfigurationApi,
+  session: ServiceSession,
+  erreurOrigine: HttpErrorResponse,
+): Observable<HttpEvent<unknown>> {
+  return session.rafraichir().pipe(
+    filter((jeton): jeton is string => jeton !== null),
+    take(1),
+    switchMap(() => suite(preparer(requete, config, session))),
+    catchError(() => {
+      session.terminer();
+      return throwError(() => erreurOrigine);
+    }),
+  );
+}
+
+/** Pose l'URL absolue, l'en-tête client, les cookies et le jeton. */
+function preparer(
+  requete: HttpRequest<unknown>,
+  config: ConfigurationApi,
+  session: ServiceSession,
+): HttpRequest<unknown> {
+  const jeton = session.jetonAcces();
+
+  return requete.clone({
+    url: absolue(requete.url, config.baseUrl),
+    withCredentials: true,
+    setHeaders: {
+      'X-Garah-Client': '1',
+      ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
+    },
+  });
+}
+
+/**
+ * Les composants écrivent `/api/produits` ; l'API vit ailleurs.
+ *
+ * <p>Centraliser ici évite que chaque service concatène l'URL de base — et
+ * qu'un oubli produise un appel vers l'origine du frontend, qui répondrait la
+ * page d'accueil au lieu d'un JSON.</p>
+ */
+function absolue(url: string, base: string): string {
+  return url.startsWith('/') ? `${base}${url}` : url;
+}
+
+function estAppelApi(url: string, base: string): boolean {
+  return url.startsWith('/api/') || url.startsWith(base);
+}

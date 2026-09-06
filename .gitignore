@@ -35,3 +35,8 @@ Desktop.ini
 # Etat local de wrangler : cache et sessions de deploiement.
 # Rien d utile a partager, et peut contenir des identifiants de compte.
 .wrangler/
+
+# --- Frontend Angular --------------------------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/

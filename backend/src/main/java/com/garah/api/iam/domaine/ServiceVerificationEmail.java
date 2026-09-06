@@ -76,17 +76,30 @@ public class ServiceVerificationEmail {
     private final PasserelleEmail emails;
     private final Duration validite;
     private final String baseUrl;
+    private final String urlApi;
 
     public ServiceVerificationEmail(JetonVerificationEmailRepository jetons,
                                     UtilisateurRepository utilisateurs,
                                     PasserelleEmail emails,
                                     @Value("${GARAH_VERIFICATION_VALIDITE_HEURES:48}") long heures,
-                                    @Value("${GARAH_URL_VERIFICATION:}") String baseUrl) {
+                                    @Value("${GARAH_URL_VERIFICATION:}") String baseUrl,
+                                    @Value("${GARAH_URL_API:}") String urlApi) {
         this.jetons = jetons;
         this.utilisateurs = utilisateurs;
         this.emails = emails;
         this.validite = Duration.ofHours(heures);
         this.baseUrl = baseUrl == null ? "" : baseUrl.strip().replaceFirst("/+$", "");
+        this.urlApi = urlApi == null ? "" : urlApi.strip().replaceFirst("/+$", "");
+
+        // ⚠️ Un lien relatif ne mène nulle part depuis une boîte mail. Si le
+        // SMTP est actif et qu'aucune adresse absolue n'est connue, chaque
+        // message partira avec un lien mort — et rien ne le signalerait, ni
+        // côté serveur ni côté client.
+        if (this.baseUrl.isBlank() && this.urlApi.isBlank() && emails.estConfigure()) {
+            log.warn("Ni GARAH_URL_VERIFICATION ni GARAH_URL_API ne sont renseignes : "
+                    + "les liens de confirmation seront RELATIFS, donc inutilisables "
+                    + "dans un e-mail.");
+        }
     }
 
     /**
@@ -248,16 +261,36 @@ public class ServiceVerificationEmail {
     /**
      * L'URL sur laquelle pointe le lien.
      *
-     * <p>Par défaut, la route {@code GET} de l'API elle-même : le flux est ainsi
-     * complet <b>sans frontend</b>, ce qui compte tant qu'Angular n'existe pas.
-     * {@code GARAH_URL_VERIFICATION} la remplacera par la page du frontend le
-     * jour venu — une variable, pas une modification de code.</p>
+     * <p>⚠️ <b>Elle doit être ABSOLUE.</b> Un lien relatif
+     * ({@code /api/auth/verification?jeton=…}) est parfaitement valide dans une
+     * page web et totalement inutilisable dans un e-mail : le client de
+     * messagerie n'a aucune origine sur laquelle le résoudre. C'était le cas de
+     * la première version — le message partait, et le lien ne menait nulle
+     * part.</p>
+     *
+     * <p>Deux variables, dans cet ordre de priorité :</p>
+     * <ol>
+     *   <li>{@code GARAH_URL_VERIFICATION} — la page du frontend, le jour où
+     *       elle existera ;</li>
+     *   <li>{@code GARAH_URL_API} — l'adresse publique de l'API, qui sert
+     *       elle-même une page de confirmation. Le flux est ainsi complet
+     *       <b>sans frontend</b>.</li>
+     * </ol>
+     *
+     * <p>Sans l'une ni l'autre, on retombe sur un lien relatif — utilisable
+     * uniquement quand le message finit dans les journaux, en développement.
+     * Le constructeur avertit dans ce cas.</p>
      */
-    private String lienDe(String jeton) {
+    String lienDe(String jeton) {
         String encode = URLEncoder.encode(jeton, StandardCharsets.UTF_8);
-        return baseUrl.isBlank()
-                ? "/api/auth/verification?jeton=" + encode
-                : baseUrl + "?jeton=" + encode;
+
+        if (!baseUrl.isBlank()) {
+            return baseUrl + "?jeton=" + encode;
+        }
+        if (!urlApi.isBlank()) {
+            return urlApi + "/api/auth/verification?jeton=" + encode;
+        }
+        return "/api/auth/verification?jeton=" + encode;
     }
 
     /**

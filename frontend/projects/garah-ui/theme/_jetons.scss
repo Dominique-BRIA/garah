@@ -1,0 +1,125 @@
+// =============================================================================
+// Les jetons du design system GARAH
+// =============================================================================
+// 🎯 CE FICHIER DÉCLARE DES NOMS, PAS DES VALEURS DE MARQUE.
+//
+// C'est l'inversion par les jetons de D-03 : `garah-ui` déclare des INTENTIONS
+// (`--primary`, `--danger`, `--surface`), et chaque application fournit ses
+// propres valeurs. Un bouton de la librairie écrit `background: var(--primary)`
+// et devient indigo dans le back-office, violet sur la vitrine — sans une
+// ligne de code dupliquée.
+//
+// ⚠️ INTERDICTION ABSOLUE d'écrire une couleur en dur dans un composant de
+//    `garah-ui`. Le jour où quelqu'un y met `#6366f1`, les trois thèmes cessent
+//    d'être des thèmes : ce composant-là gardera sa couleur partout, et
+//    personne ne comprendra pourquoi.
+//
+// Les valeurs ci-dessous sont des DÉFAUTS raisonnables, pas la charte. Elles
+// existent pour qu'un composant s'affiche correctement même si une application
+// oublie d'en redéfinir un.
+// =============================================================================
+
+:root {
+  // --- Intentions de couleur ------------------------------------------------
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+
+  --accent: #aa3bff;
+  --accent-secondary: #3b82f6;
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #0ea5e9;
+
+  // --- Rayons ---------------------------------------------------------------
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  // --- Typographie ----------------------------------------------------------
+  //
+  // Une pile de repli COMPLÈTE derrière chaque police. Sur un téléphone
+  // d'entrée de gamme avec une connexion lente, la police distante peut ne
+  // jamais arriver : sans repli, le navigateur choisit un serif par défaut et
+  // toute l'interface change de caractère.
+  --police: 'Outfit', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --police-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  // --- Thème clair (défaut) -------------------------------------------------
+  --fond: #f8fafc;
+  --texte: #0f172a;
+  --texte-attenue: #64748b;
+
+  // Le verre dépoli : une surface translucide posée sur un fond dégradé.
+  --verre-fond: rgba(255, 255, 255, 0.7);
+  --verre-bordure: rgba(226, 232, 240, 0.8);
+  --verre-ombre: 0 8px 32px rgba(15, 23, 42, 0.05);
+
+  --surface: #ffffff;
+  --surface-douce: rgba(15, 23, 42, 0.04);
+  --surface-douce-survol: #f1f5f9;
+
+  --champ-fond: rgba(255, 255, 255, 0.8);
+  --champ-fond-actif: #ffffff;
+  --champ-bordure: rgba(0, 0, 0, 0.1);
+
+  --ombre-large: 0 10px 25px -5px rgba(15, 23, 42, 0.1),
+                 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+
+  // Les auréoles du fond de page, très diffuses.
+  --aureole-1: rgba(99, 102, 241, 0.04);
+  --aureole-2: rgba(59, 130, 246, 0.04);
+}
+
+// =============================================================================
+// Thème sombre
+// =============================================================================
+// ⚠️ Trois états, pas deux — et c'est ce qui est presque toujours raté.
+//
+//   [data-theme="dark"]   choix explicite de l'utilisateur
+//   [data-theme="light"]  choix explicite, qui doit gagner MÊME si le système
+//                         est en sombre
+//   (rien)                on suit le système
+//
+// D'où la garde `:not([data-theme='light'])` sur la règle média : sans elle,
+// un utilisateur qui force le mode clair sur un système en sombre obtient
+// quand même le thème sombre, et le bouton de bascule paraît cassé.
+// =============================================================================
+
+@mixin jetons-sombres {
+  --fond: #0c0c14;
+  --texte: #f3f4f6;
+  --texte-attenue: #9ca3af;
+
+  --verre-fond: rgba(18, 18, 30, 0.75);
+  --verre-bordure: rgba(170, 59, 255, 0.15);
+  --verre-ombre: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  --surface: #12121e;
+  --surface-douce: rgba(255, 255, 255, 0.05);
+  --surface-douce-survol: #1a1a2e;
+
+  --champ-fond: rgba(255, 255, 255, 0.03);
+  --champ-fond-actif: rgba(26, 26, 42, 0.95);
+  --champ-bordure: rgba(255, 255, 255, 0.1);
+
+  --ombre-large: 0 10px 25px -5px rgba(0, 0, 0, 0.5),
+                 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+
+  --aureole-1: rgba(170, 59, 255, 0.06);
+  --aureole-2: rgba(59, 130, 246, 0.06);
+}
+
+:root[data-theme='dark'] {
+  @include jetons-sombres;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include jetons-sombres;
+  }
+}

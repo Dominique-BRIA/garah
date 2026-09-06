@@ -64,7 +64,8 @@ public class PasserelleEmail {
     public PasserelleEmail(ObjectProvider<JavaMailSender> expediteur,
                            @Value("${spring.mail.host:}") String hote,
                            @Value("${GARAH_MAIL_EXPEDITEUR:}") String adresseExpediteur,
-                           @Value("${GARAH_MAIL_NOM_EXPEDITEUR:GARAH}") String nomExpediteur) {
+                           @Value("${GARAH_MAIL_NOM_EXPEDITEUR:GARAH}") String nomExpediteur,
+                           @Value("${garah.mail.active:true}") boolean actif) {
 
         this.expediteur = expediteur;
         this.adresseExpediteur = adresseExpediteur == null ? "" : adresseExpediteur.strip();
@@ -73,7 +74,20 @@ public class PasserelleEmail {
 
         // Une variable VIDE n'est pas une variable ABSENTE : on teste le
         // contenu, jamais la présence. C'est la leçon de StockageObjet.
-        this.configure = hote != null && !hote.isBlank() && !this.adresseExpediteur.isBlank();
+        // ⚠️ Le drapeau garah.mail.active PRIME sur tout le reste.
+        //
+        // Poser spring.mail.host a vide dans la configuration de test ne
+        // suffisait pas : spring-dotenv fait entrer GARAH_MAIL_HOST depuis
+        // .env avec une precedence superieure, et la suite envoyait de VRAIS
+        // e-mails — 293 secondes sur une seule classe, et sept messages du
+        // quota consommes a chaque execution.
+        //
+        // Un drapeau explicite ne depend d aucun ordre de precedence. C est le
+        // meme mecanisme que garah.planification.active et
+        // garah.limitation-debit.active, qui fonctionnent deja.
+        this.configure = actif
+                && hote != null && !hote.isBlank()
+                && !this.adresseExpediteur.isBlank();
 
         if (!configure) {
             log.warn("L'envoi d'e-mails n'est pas configure (spring.mail.host / "

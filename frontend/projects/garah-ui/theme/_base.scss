@@ -1,0 +1,291 @@
+// =============================================================================
+// Les motifs partagés : coque, cartes, boutons, tableaux, badges
+// =============================================================================
+// Repris du projet de référence, avec ses commentaires : ils expliquent des
+// pièges de mise en page qui ont chacun coûté une séance de débogage.
+//
+// Aucune couleur en dur ici non plus — uniquement des `var(--…)` déclarés dans
+// `_jetons.scss`.
+// =============================================================================
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--fond);
+  color: var(--texte);
+  font-family: var(--police);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+// La transition de thème est posée sur les propriétés de COULEUR uniquement.
+//
+// ⚠️ Un `transition: all` universel — comme dans la référence — anime aussi
+// `transform`, `width` et `height`. Le résultat se voit surtout sur un
+// téléphone modeste : chaque ouverture de menu devient saccadée, parce que le
+// navigateur anime des dizaines d'éléments qui n'ont aucune raison de bouger.
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+// Respecte le réglage système « réduire les animations ». Ce n'est pas un
+// détail de confort : les animations déclenchent des malaises chez certaines
+// personnes, et le navigateur nous dit explicitement de nous abstenir.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: var(--texte);
+  letter-spacing: -0.02em;
+}
+
+// --- Barres de défilement ----------------------------------------------------
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--fond); }
+::-webkit-scrollbar-thumb {
+  background: var(--verre-bordure);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+// --- La carte en verre dépoli ------------------------------------------------
+.gu-carte {
+  background: var(--verre-fond);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--verre-ombre);
+}
+
+.gu-carte:hover {
+  border-color: color-mix(in srgb, var(--primary) 25%, transparent);
+  box-shadow: var(--verre-ombre),
+              0 0 20px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+// --- Boutons -----------------------------------------------------------------
+.gu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+  transition: all 0.2s ease-in-out;
+
+  // ⚠️ Un bouton désactivé doit se VOIR désactivé, pas seulement refuser le
+  // clic. Sans cela, l'utilisateur clique, rien ne se passe, et il conclut que
+  // l'application est cassée.
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  // Le focus visible au clavier. Le retirer « parce que c'est moche » rend
+  // l'application inutilisable sans souris.
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+.gu-btn--primaire {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 45%, transparent);
+  }
+}
+
+.gu-btn--secondaire {
+  background: var(--surface-douce);
+  border-color: var(--verre-bordure);
+  color: var(--texte);
+
+  &:hover:not(:disabled) {
+    background: var(--surface-douce-survol);
+    border-color: var(--texte-attenue);
+  }
+}
+
+.gu-btn--danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--danger) 30%, transparent);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--danger) 45%, transparent);
+  }
+}
+
+// --- Tableaux ----------------------------------------------------------------
+//
+// Les lignes « flottent » : `border-collapse: separate` avec un espacement
+// vertical, et chaque cellule porte son propre fond. C'est ce qui permet
+// d'arrondir les extrémités de ligne et de la soulever au survol.
+.gu-tableau-defilant {
+  width: 100%;
+  overflow-x: auto;
+  // ⚠️ Le tableau défile DANS son conteneur, jamais la page entière. Sans
+  // cela, une colonne de trop fait défiler tout le document horizontalement,
+  // barre latérale comprise.
+}
+
+.gu-tableau {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.65rem;
+
+  th {
+    padding: 0.75rem 1.25rem;
+    font-weight: 700;
+    color: var(--texte-attenue);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 2px solid var(--verre-bordure);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 1.1rem 1.25rem;
+    background: var(--surface);
+    border-top: 1px solid var(--verre-bordure);
+    border-bottom: 1px solid var(--verre-bordure);
+    font-size: 0.9rem;
+    color: var(--texte);
+    vertical-align: middle;
+  }
+
+  // Les extrémités arrondies : seules la première et la dernière cellule
+  // portent une bordure latérale, sinon chaque cellule serait encadrée.
+  td:first-child {
+    border-left: 1px solid var(--verre-bordure);
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+  }
+
+  td:last-child {
+    border-right: 1px solid var(--verre-bordure);
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+  }
+
+  tbody tr {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+
+    &:hover td {
+      border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+  }
+}
+
+// --- Badges ------------------------------------------------------------------
+.gu-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+@each $nom, $jeton in (succes: --success, danger: --danger, alerte: --warning, info: --info) {
+  .gu-badge--#{$nom} {
+    background: color-mix(in srgb, var(#{$jeton}) 12%, transparent);
+    color: var(#{$jeton});
+    border-color: color-mix(in srgb, var(#{$jeton}) 25%, transparent);
+  }
+}
+
+.gu-badge--neutre {
+  background: var(--surface-douce);
+  color: var(--texte-attenue);
+  border-color: var(--verre-bordure);
+}
+
+// --- Champs de saisie --------------------------------------------------------
+.gu-champ {
+  width: 100%;
+  padding: 0.7rem 0.95rem;
+  background: var(--champ-fond);
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+  color: var(--texte);
+  font-family: inherit;
+  font-size: 0.9rem;
+
+  &::placeholder { color: var(--texte-attenue); }
+
+  &:focus {
+    outline: none;
+    background: var(--champ-fond-actif);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+  }
+
+  // Un champ en erreur se signale par la COULEUR ET par le texte associé.
+  // La couleur seule est invisible pour une personne daltonienne.
+  &[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+}
+
+.gu-libelle {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texte-attenue);
+}
+
+.gu-erreur-champ {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--danger);
+}
