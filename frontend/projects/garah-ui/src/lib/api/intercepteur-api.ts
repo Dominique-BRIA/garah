@@ -32,6 +32,20 @@ import { ServiceSession } from './service-session';
  *    et la requête d'origine est rejouée.
  * ═══════════════════════════════════════════════════════════════════════════
  */
+/**
+ * Les routes où un {@code 401} veut dire autre chose qu'« expiré ».
+ *
+ * <p>Ce sont celles qui <b>établissent</b> ou <b>détruisent</b> la session,
+ * jamais celles qui s'en servent. Y tenter un rafraîchissement n'a aucun sens :
+ * il n'y a rien à rafraîchir.</p>
+ */
+const REPONDENT_401_METIER = [
+  '/api/auth/connexion',
+  '/api/auth/inscription',
+  '/api/auth/rafraichir',
+  '/api/auth/deconnexion',
+] as const;
+
 export function intercepteurApi(
   requete: HttpRequest<unknown>,
   suite: HttpHandlerFn,
@@ -52,11 +66,23 @@ export function intercepteurApi(
         return throwError(() => erreur);
       }
 
-      // ⚠️ Un 401 SUR la route de rafraîchissement signifie que la session est
-      // réellement finie. Réessayer produirait une boucle infinie — le piège
-      // classique de ce motif.
-      if (requete.url.includes('/api/auth/rafraichir')) {
-        session.terminer();
+      // ⚠️ SUR CES ROUTES, UN 401 EST UNE RÉPONSE MÉTIER, PAS UN JETON EXPIRÉ.
+      //
+      // « Mauvais mot de passe » se dit 401. Le confondre avec « ton jeton a
+      // expiré » déclenchait un rafraîchissement inutile avant de rendre la
+      // main — jusqu'à une minute au réveil de l'hébergement, pendant laquelle
+      // le bouton restait bloqué sur « Connexion… » sans aucun message.
+      //
+      // Sur /rafraichir, c'est pire encore : réessayer produirait une boucle
+      // infinie.
+      //
+      // 🎯 Un rafraîchissement ne se justifie que là où le jeton était
+      //    RÉELLEMENT le moyen d'authentification. Ces routes n'en portent
+      //    aucun : elles l'établissent, ou le détruisent.
+      if (REPONDENT_401_METIER.some((chemin) => requete.url.includes(chemin))) {
+        if (requete.url.includes('/api/auth/rafraichir')) {
+          session.terminer();
+        }
         return throwError(() => erreur);
       }
 
