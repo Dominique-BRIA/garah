@@ -1,0 +1,68 @@
+<header class="entete-tb">
+  <div>
+    <h1>Tableau de bord</h1>
+    <p class="sous-titre">
+      Bonjour {{ session.utilisateur()?.nom }} — voici l'état de la plateforme.
+    </p>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" />
+      Actualiser
+    </button>
+
+    @if (session.utilisateur(); as u) {
+      <span class="gu-badge gu-badge--info role">{{ u.type }}</span>
+    }
+  </div>
+</header>
+
+<hr class="filet" />
+
+@if (!aDesCartes()) {
+  <!-- Un compte sans aucun droit de consultation. Dire ce qu'il faut FAIRE,
+       et non constater le vide. -->
+  <div class="gu-carte etat">
+    <gu-icone nom="chart-pie" class="etat__icone" />
+    <p class="etat__titre">Aucun indicateur à afficher.</p>
+    <p class="etat__aide">
+      Votre compte n'a pas encore de droits de consultation.
+      Demandez-les à un administrateur.
+    </p>
+  </div>
+} @else {
+  <div class="grille-indicateurs">
+    @for (carte of cartes(); track carte.cle) {
+      <article class="indicateur gu-carte">
+        <div class="pastille" [class]="'pastille--' + carte.teinte">
+          <gu-icone [nom]="carte.icone" />
+        </div>
+
+        <div class="indicateur__corps">
+          <span class="indicateur__libelle">{{ carte.libelle }}</span>
+
+          <span class="indicateur__valeur">
+            @if (valeur(carte.cle) === undefined) {
+              <gu-icone nom="circle-notch" tourne class="attente" />
+            } @else if (valeur(carte.cle) === null) {
+              <!-- Un tiret, pas un zéro : « indisponible » et « aucun » sont
+                   deux informations différentes, et les confondre ferait
+                   croire à un catalogue vide alors que l'appel a échoué. -->
+              <span class="indisponible" title="Donnée indisponible">—</span>
+            } @else {
+              {{ valeur(carte.cle) }}
+            }
+          </span>
+
+          @if (carte.lien) {
+            <a [routerLink]="carte.lien" class="indicateur__lien">
+              Voir la liste <gu-icone nom="arrow-right" />
+            </a>
+          }
+        </div>
+      </article>
+    }
+  </div>
+}

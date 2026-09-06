@@ -1,0 +1,122 @@
+.entete-tb {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  h1 { font-size: 1.9rem; letter-spacing: -0.02em; }
+}
+
+.sous-titre {
+  color: var(--texte-attenue);
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+.actions { display: flex; align-items: center; gap: 0.75rem; }
+
+.role { align-self: center; }
+
+.filet {
+  border: none;
+  border-top: 1px solid var(--verre-bordure);
+  margin: 1.5rem 0 2rem;
+}
+
+// --- La grille ---------------------------------------------------------------
+//
+// auto-fit plutot que trois paliers de media queries : la grille se reorganise
+// selon la place REELLE, y compris quand la barre laterale se replie. Des
+// points de rupture fixes ignoreraient ce cas.
+.grille-indicateurs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.25rem;
+}
+
+.indicateur {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease,
+              box-shadow 0.25s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+  }
+
+  &:hover .pastille {
+    transform: scale(1.08) rotate(4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicateur:hover { transform: none; }
+  .indicateur:hover .pastille { transform: none; }
+}
+
+.pastille {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+// Chaque indicateur a sa teinte : l'oeil retrouve une carte par sa couleur
+// avant d'en lire le libelle.
+.pastille--indigo { background: color-mix(in srgb, #6366f1 14%, transparent); color: #6366f1; }
+.pastille--bleu   { background: color-mix(in srgb, #3b82f6 14%, transparent); color: #3b82f6; }
+.pastille--violet { background: color-mix(in srgb, #8b5cf6 14%, transparent); color: #8b5cf6; }
+.pastille--orange { background: color-mix(in srgb, #f59e0b 14%, transparent); color: #f59e0b; }
+.pastille--vert   { background: color-mix(in srgb, #10b981 14%, transparent); color: #10b981; }
+.pastille--rouge  { background: color-mix(in srgb, #ef4444 14%, transparent); color: #ef4444; }
+
+.indicateur__corps {
+  display: flex;
+  flex-direction: column;
+  // Sans cela, un libelle long elargit la carte au lieu de passer a la ligne.
+  min-width: 0;
+  flex: 1;
+}
+
+.indicateur__libelle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.indicateur__valeur {
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--texte);
+  // Les chiffres gardent la meme largeur : le nombre ne « saute » pas
+  // lateralement quand il passe de 9 a 10 pendant un rafraichissement.
+  font-variant-numeric: tabular-nums;
+}
+
+.attente { font-size: 1.1rem; color: var(--texte-attenue); }
+.indisponible { color: var(--texte-attenue); }
+
+.indicateur__lien {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}

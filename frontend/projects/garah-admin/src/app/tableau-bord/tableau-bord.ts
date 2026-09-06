@@ -1,62 +1,165 @@
-import { Component, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ServiceSession } from 'garah-ui';
+import { Icone, Page, ServiceSession } from 'garah-ui';
+import { Observable, catchError, map, of } from 'rxjs';
 
-/**
- * Le tableau de bord.
- *
- * <p>⚠️ <b>Rien de technique n'apparaît à l'écran.</b> Ni la pile employée, ni
- * l'architecture, ni les invariants du modèle. La personne qui ouvre ce
- * back-office gère un commerce ; ces informations ne l'aident pas, et
- * renseignent qui n'a rien à y faire.</p>
- *
- * <p>Les chiffres viendront des statistiques réelles. En attendant, on annonce
- * ce qui est disponible en langage métier plutôt que d'afficher des cases
- * vides.</p>
- */
+/** Un indicateur affiché en carte. */
+interface Indicateur {
+  readonly cle: string;
+  readonly libelle: string;
+  readonly icone: string;
+  /** La teinte de l'icône. Voir les classes `.pastille--*`. */
+  readonly teinte: string;
+  /** Le code de `cas_utilisation` requis. Sans lui, la carte n'est pas affichée. */
+  readonly permission: string;
+  /** Où mène « Voir la liste ». Vide = pas encore d'écran. */
+  readonly lien?: string;
+  /** L'appel qui donne le nombre. */
+  readonly source: () => Observable<number | null>;
+}
+
 @Component({
   selector: 'ga-tableau-bord',
-  imports: [RouterLink],
-  template: `
-    <header class="entete">
-      <h1>Bonjour {{ session.utilisateur()?.nom }}</h1>
-      <p class="sous-titre">Vue d'ensemble de votre activité</p>
-    </header>
-
-    <div class="raccourcis">
-      <a routerLink="/produits" class="gu-carte raccourci">
-        <i class="fa-solid fa-box-open" aria-hidden="true"></i>
-        <span class="raccourci__titre">Catalogue</span>
-        <span class="raccourci__aide">Consulter et publier les produits</span>
-      </a>
-    </div>
-  `,
-  styles: [`
-    .entete { margin-bottom: 1.75rem; }
-    h1 { font-size: 1.5rem; }
-    .sous-titre { color: var(--texte-attenue); font-size: 0.88rem; margin-top: 0.2rem; }
-
-    .raccourcis {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-      gap: 1rem;
-    }
-
-    .raccourci {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      text-decoration: none;
-      color: inherit;
-
-      i { font-size: 1.35rem; color: var(--primary); margin-bottom: 0.4rem; }
-      &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-    }
-
-    .raccourci__titre { font-weight: 700; font-size: 0.98rem; }
-    .raccourci__aide { color: var(--texte-attenue); font-size: 0.82rem; }
-  `],
+  imports: [RouterLink, Icone],
+  templateUrl: './tableau-bord.html',
+  styleUrl: './tableau-bord.scss',
 })
 export class TableauBord {
+  private readonly http = inject(HttpClient);
   protected readonly session = inject(ServiceSession);
+
+  protected readonly chargement = signal(false);
+
+  /** Les valeurs, par clé. `undefined` = pas encore lu, `null` = échec. */
+  private readonly valeurs = signal<Record<string, number | null | undefined>>({});
+
+  /**
+   * Les indicateurs du back-office.
+   *
+   * <p>Les trois premiers décrivent l'<b>état</b> du catalogue ; les trois
+   * suivants, ce qui <b>attend une action</b>. C'est la distinction qui compte
+   * pour quelqu'un qui ouvre son back-office le matin : un nombre de produits
+   * ne demande rien, une réclamation à traiter si.</p>
+   */
+  private readonly definitions: readonly Indicateur[] = [
+    {
+      cle: 'produits',
+      libelle: 'Produits',
+      icone: 'box-open',
+      teinte: 'indigo',
+      permission: 'PRODUIT_CONSULTER',
+      lien: '/produits',
+      source: () => this.compterPage('/api/produits?taille=1'),
+    },
+    {
+      cle: 'marchands',
+      libelle: 'Marchands',
+      icone: 'store',
+      teinte: 'bleu',
+      permission: 'MARCHAND_CONSULTER',
+      lien: '/marchands',
+      source: () => this.compterPage('/api/marchands?taille=1'),
+    },
+    {
+      cle: 'categories',
+      libelle: 'Catégories',
+      icone: 'sitemap',
+      teinte: 'violet',
+      permission: 'CATEGORIE_PRODUIT_GERER',
+      lien: '/categories',
+      source: () => this.compterListe('/api/categories'),
+    },
+    {
+      cle: 'stock',
+      libelle: 'Stock en alerte',
+      icone: 'triangle-exclamation',
+      teinte: 'orange',
+      permission: 'STOCK_CONSULTER',
+      source: () => this.compterListe('/api/stock/alertes'),
+    },
+    {
+      cle: 'conversations',
+      libelle: 'Conversations en attente',
+      icone: 'comments',
+      teinte: 'vert',
+      permission: 'CONVERSATION_CONSULTER',
+      source: () => this.compterListe('/api/conversations/file-attente'),
+    },
+    {
+      cle: 'reclamations',
+      libelle: 'Réclamations à traiter',
+      icone: 'life-ring',
+      teinte: 'rouge',
+      permission: 'RECLAMATION_CONSULTER',
+      source: () => this.compterListe('/api/sav/reclamations/a-traiter'),
+    },
+  ];
+
+  /**
+   * Seulement ce que l'utilisateur a le droit de voir.
+   *
+   * <p>⚠️ Ce filtre n'est pas cosmétique : sans lui, un responsable sans
+   * {@code STOCK_CONSULTER} déclencherait un appel qui répond 403 à chaque
+   * ouverture du tableau de bord. La carte afficherait un tiret, la console
+   * une erreur, et personne ne saurait si c'est une panne ou un droit
+   * manquant.</p>
+   */
+  protected readonly cartes = computed(() =>
+    this.definitions.filter((i) => this.session.peut(i.permission)),
+  );
+
+  protected readonly aDesCartes = computed(() => this.cartes().length > 0);
+
+  constructor() {
+    this.charger();
+  }
+
+  protected charger(): void {
+    this.chargement.set(true);
+    const attendus = this.cartes();
+    let restants = attendus.length;
+
+    if (restants === 0) {
+      this.chargement.set(false);
+      return;
+    }
+
+    for (const indicateur of attendus) {
+      // 🎯 Chaque indicateur est lu INDÉPENDAMMENT.
+      //
+      // La tentation serait un forkJoin : un seul abonnement, un seul état.
+      // Mais forkJoin échoue en bloc — un service momentanément indisponible
+      // viderait le tableau de bord entier, alors que cinq indicateurs sur six
+      // sont parfaitement lisibles.
+      //
+      // Ici, une carte en échec affiche un tiret ; les autres affichent leur
+      // valeur.
+      indicateur.source().subscribe((valeur) => {
+        this.valeurs.update((v) => ({ ...v, [indicateur.cle]: valeur }));
+        if (--restants === 0) {
+          this.chargement.set(false);
+        }
+      });
+    }
+  }
+
+  protected valeur(cle: string): number | null | undefined {
+    return this.valeurs()[cle];
+  }
+
+  /** Le nombre total d'une page Spring, sans en télécharger le contenu. */
+  private compterPage(url: string): Observable<number | null> {
+    return this.http.get<Page<unknown>>(url).pipe(
+      map((page) => page.totalElements),
+      catchError(() => of(null)),
+    );
+  }
+
+  private compterListe(url: string): Observable<number | null> {
+    return this.http.get<unknown[]>(url).pipe(
+      map((liste) => liste.length),
+      catchError(() => of(null)),
+    );
+  }
 }
