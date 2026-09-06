@@ -114,8 +114,31 @@ pas répétées à chaque table.
 |---|---|
 | `utilisateur.type` distingue SUPER_ADMIN / ADMIN / RESPONSABLE / CLIENT | A1 |
 | `responsable_categorie` : plusieurs catégories, dont une principale | D-02 |
-| `adresse` : le client peut être livré quelque part | A17 |
 | `appareil_connu` : détecter un « nouvel appareil » | A17 |
+| La table `adresse` est **supprimée** | D-05 |
+| `client.langue` : la langue d'interface et de notification | D-08 |
+
+> 💡 **Pourquoi il n'y a pas de table `adresse`, ni de point de retrait
+> sur le profil du client.**
+>
+> Le chapitre 02 (A17) réclamait une table `adresse` : sans adresse,
+> impossible de livrer. Mais
+> [D-05](../decisions.md#d-05--retrait-en-point-de-récupération-uniquement)
+> a tranché : **on ne livre pas à domicile**, le client vient retirer.
+>
+> Et le point de retrait n'est pas non plus une préférence du profil :
+> il est **choisi à chaque commande**, parmi les points actifs créés par
+> les Admins. Il vit donc sur `commande`, pas sur `client`.
+>
+> C'est logique : un même client peut commander pour lui à Douala en mars,
+> puis se faire livrer à Bangui en avril. Une préférence sur le profil
+> aurait été fausse une fois sur deux — et surtout, elle aurait été une
+> **référence** là où il faut une **photo** (règle fondatrice n°4).
+>
+> Deux tables disparaissent ainsi. C'est une bonne illustration de la
+> méthode : une anomalie du chapitre 02 se résout parfois non pas en la
+> corrigeant, mais parce qu'une **décision métier** a supprimé le besoin.
+> Toujours vérifier qu'un manque en est vraiment un.
 
 ```mermaid
 erDiagram
@@ -136,6 +159,7 @@ erDiagram
     CLIENT {
         bigint id PK "= utilisateur.id"
         varchar code_client UK
+        char langue "fr|en|sg"
         timestamptz date_inscription
         varchar statut
     }
@@ -184,18 +208,6 @@ erDiagram
         timestamptz date_creation
     }
 
-    ADRESSE {
-        bigint id PK
-        bigint utilisateur_id FK
-        varchar libelle "Domicile, Bureau"
-        varchar pays
-        varchar ville
-        varchar quartier
-        text description "reperes - pas de rue au Cameroun"
-        varchar telephone_contact
-        boolean principale
-    }
-
     APPAREIL_CONNU {
         bigint id PK
         bigint utilisateur_id FK
@@ -208,7 +220,6 @@ erDiagram
 
     UTILISATEUR ||--o| CLIENT : "est"
     UTILISATEUR ||--o| RESPONSABLE : "est"
-    UTILISATEUR ||--o{ ADRESSE : "possede"
     UTILISATEUR ||--o{ APPAREIL_CONNU : "utilise"
 
     RESPONSABLE ||--|{ RESPONSABLE_CATEGORIE : "appartient a"
@@ -263,10 +274,6 @@ WHERE cu.statut = 'ACTIF'
 -- Une seule categorie principale par responsable
 CREATE UNIQUE INDEX responsable_categorie_principale_unique
     ON responsable_categorie (responsable_id) WHERE principale = true;
-
--- Une seule adresse principale par utilisateur
-CREATE UNIQUE INDEX adresse_principale_unique
-    ON adresse (utilisateur_id) WHERE principale = true;
 
 -- Une exception ne peut pas etre a la fois ADD et REMOVE
 -- (garanti par la cle primaire composite responsable_id + cas_utilisation_id)
@@ -570,8 +577,48 @@ WHERE variante_id = :variante AND quantite_disponible >= :n;
 | `panier` historisé, un seul `ACTIF` par client | A8 |
 | `commande.conversation_id` nullable (le bon sens de la relation) | A7 |
 | `ligne_commande` porte le **marchand figé** et la **commission figée** | A13 |
-| `commande` détaille articles / livraison / remise / total | A17 |
+| `commande` détaille articles / frais / remise / total | A17 |
 | `paiement` : type, référence opérateur, échecs | A12 |
+| Pas d'adresse : `point_recuperation_id` est **obligatoire** | D-05 |
+| Pas d'espèces : le paiement précède l'expédition | D-06 |
+
+### La conséquence majeure de D-06 : le paiement conditionne tout
+
+Sans paiement à la récupération, la commande n'est **jamais** préparée avant
+d'être payée. Le cycle devient linéaire, et c'est une excellente nouvelle :
+
+```text
+EN_ATTENTE_PAIEMENT ──paiement confirmé──▶ PAYEE ──▶ EN_PREPARATION
+                                                          │
+                                                          ▼
+        RETIREE ◀── DISPONIBLE ◀── EXPEDIEE ◀────────── PRETE
+             │
+             └──▶ (réclamation / retour possibles)
+
+           ANNULEE   ← accessible depuis EN_ATTENTE_PAIEMENT et PAYEE
+```
+
+**Ce que ça élimine, et qui aurait été très coûteux :**
+
+| Risque évité | Pourquoi il disparaît |
+|---|---|
+| Marchandise acheminée puis jamais retirée ni payée | On ne bouge rien avant d'être payé |
+| Gestion d'un encaissement en espèces dans chaque point de retrait | Il n'y en a pas |
+| Réconciliation de caisse par point de récupération | Sans objet |
+| Client insolvable après expédition | Impossible |
+
+> ⚠️ **Le nouveau risque, en échange :** le paiement mobile money est
+> **asynchrone**. Le client valide sur son téléphone, l'opérateur confirme
+> quelques secondes — ou quelques minutes — plus tard, par un *webhook*.
+>
+> Entre les deux, la commande est en `EN_ATTENTE_PAIEMENT` et le stock doit
+> être **réservé** (`quantite_reservee`), pas encore décrémenté.
+> Si la confirmation n'arrive jamais, un travail périodique libère la
+> réservation et annule la commande.
+>
+> C'est pour ça que `stock` distingue `quantite_disponible` et
+> `quantite_reservee` — la distinction paraissait théorique au §7,
+> elle devient ici indispensable.
 
 ```mermaid
 erDiagram
@@ -596,11 +643,11 @@ erDiagram
         varchar numero UK "CMD-2026-000812"
         bigint client_id FK
         bigint conversation_id FK "null - origine negociee"
-        bigint adresse_livraison_id FK
-        bigint point_recuperation_id FK
-        varchar statut "EN_ATTENTE|CONFIRMEE|EN_PREPARATION|PRETE|EXPEDIEE|LIVREE|ANNULEE"
+        bigint point_recuperation_id FK "OBLIGATOIRE - retrait uniquement"
+        char langue "fr|en|sg - langue des notifications"
+        varchar statut "EN_ATTENTE_PAIEMENT|PAYEE|EN_PREPARATION|PRETE|EXPEDIEE|DISPONIBLE|RETIREE|ANNULEE"
         numeric montant_articles
-        numeric montant_livraison
+        numeric montant_frais "frais de service ou d acheminement"
         numeric montant_remise
         numeric montant_total
         char devise
@@ -628,7 +675,7 @@ erDiagram
         varchar type "ENCAISSEMENT|REMBOURSEMENT"
         numeric montant
         char devise
-        varchar moyen "MTN_MOMO|ORANGE_MONEY|ESPECES|VIREMENT"
+        varchar moyen "MTN_MOMO|ORANGE_MONEY|VIREMENT"
         varchar reference_transaction "id chez l operateur"
         varchar statut "INITIE|EN_ATTENTE|CONFIRME|ECHOUE|ANNULE"
         varchar origine_type "RETOUR|RECLAMATION - si remboursement"
@@ -696,7 +743,7 @@ ALTER TABLE ligne_panier ADD CONSTRAINT ligne_panier_unique
 
 -- Les montants sont coherents
 ALTER TABLE commande ADD CONSTRAINT commande_total_coherent
-    CHECK (montant_total = montant_articles + montant_livraison - montant_remise);
+    CHECK (montant_total = montant_articles + montant_frais - montant_remise);
 ```
 
 Cette dernière contrainte vaut de l'or : elle rend un total faux **impossible
@@ -1344,11 +1391,151 @@ C'est une décision à prendre — voir les questions en fin de chapitre.
 
 ---
 
-## 15. Récapitulatif des 52 tables
+## 15. Domaine 12 — Le multilingue
+
+[D-08](../decisions.md#d-08--trois-langues--français-anglais-sango) impose trois
+langues : **français**, **anglais**, **sango**.
+
+### La notion : deux multilingues très différents
+
+C'est la distinction qu'il ne faut surtout pas rater :
+
+| | Texte d'**interface** | Texte de **contenu** |
+|---|---|---|
+| Exemple | « Ajouter au panier », « Commande confirmée » | « Chemise Oxford », description du produit |
+| Qui l'écrit | Le développeur | Le Responsable, dans le back-office |
+| Où il vit | Des fichiers `fr.json`, `en.json`, `sg.json` | **La base de données** |
+| Quand il change | À chaque livraison de code | À tout moment, sans redéploiement |
+| Impact modèle | ❌ aucun | ✅ des tables de traduction |
+
+Une équipe sur deux ne traite que le premier cas, découvre le second six mois
+plus tard, et doit alors migrer tout son catalogue.
+
+### Les tables de traduction
+
+```mermaid
+erDiagram
+    LANGUE {
+        char code PK "fr|en|sg"
+        varchar libelle
+        boolean actif
+        boolean par_defaut "fr = true"
+        int ordre
+    }
+
+    PRODUIT_TRADUCTION {
+        bigint produit_id PK
+        char langue PK
+        varchar nom
+        text description
+        jsonb caracteristiques
+    }
+
+    CATEGORIE_PRODUIT_TRADUCTION {
+        bigint categorie_id PK
+        char langue PK
+        varchar nom
+    }
+
+    ATTRIBUT_TRADUCTION {
+        bigint attribut_id PK
+        char langue PK
+        varchar nom
+    }
+
+    VALEUR_ATTRIBUT_TRADUCTION {
+        bigint valeur_attribut_id PK
+        char langue PK
+        varchar libelle
+    }
+
+    LANGUE ||--o{ PRODUIT_TRADUCTION : "traduit en"
+    LANGUE ||--o{ CATEGORIE_PRODUIT_TRADUCTION : "traduit en"
+    LANGUE ||--o{ ATTRIBUT_TRADUCTION : "traduit en"
+    LANGUE ||--o{ VALEUR_ATTRIBUT_TRADUCTION : "traduit en"
+```
+
+Les colonnes `nom` et `description` **sortent** de `produit` pour entrer dans
+`produit_traduction`. `produit` ne garde que ce qui ne se traduit pas :
+la référence, le marchand, la catégorie, le statut, les dates.
+
+> ⚠️ **Le piège de la table de traduction générique.**
+> La tentation est forte d'écrire **une seule** table pour tout :
+>
+> ```text
+> TRADUCTION (entite_type, entite_id, champ, langue, valeur)
+>            ('PRODUIT',   42,        'nom', 'en',   'Oxford Shirt')
+> ```
+>
+> C'est séduisant, et c'est un piège. Cette table :
+> - n'a **aucune** clé étrangère possible (`entite_id` pointe vers 6 tables) ;
+> - oblige à une jointure **par champ** au lieu d'une par entité ;
+> - rend impossible une contrainte « tout produit a un nom en français » ;
+> - devient la table la plus volumineuse et la plus lente de la base.
+>
+> Une table de traduction **par entité traduite**. C'est plus de tables,
+> et infiniment plus sain.
+
+### Le repli (fallback)
+
+Le sango est une langue peu outillée. En pratique, beaucoup de produits
+n'auront **pas** de traduction sango.
+
+Il faut donc une règle de repli, écrite une fois, appliquée partout :
+
+```text
+langue demandée : sg
+      │
+      ├── traduction sg existe ?  ──oui──▶ on l'affiche
+      │
+      └── non ──▶ traduction fr (langue par défaut) ──▶ on l'affiche
+```
+
+```sql
+-- Le nom d un produit dans la langue demandee, avec repli sur le francais
+SELECT p.id,
+       COALESCE(t.nom, t_defaut.nom) AS nom
+FROM produit p
+JOIN      produit_traduction t_defaut ON t_defaut.produit_id = p.id
+                                     AND t_defaut.langue = 'fr'
+LEFT JOIN produit_traduction t        ON t.produit_id = p.id
+                                     AND t.langue = :langue
+WHERE p.statut = 'PUBLIE';
+```
+
+> 📌 **La règle : le français est obligatoire, les autres langues sont
+> facultatives.**
+> Une contrainte doit garantir qu'aucun produit ne peut être publié sans
+> sa traduction française — sinon un produit devient invisible pour tout
+> le monde, sans que personne ne s'en aperçoive.
+
+### Ce qui n'est PAS traduit
+
+À décider explicitement, sinon on traduit tout et on n'en finit jamais :
+
+| Élément | Traduit ? | Raison |
+|---|---|---|
+| Nom et description produit | ✅ | Vu par le client |
+| Catégories, attributs, valeurs | ✅ | Vus par le client |
+| Notifications et e-mails | ✅ | D'où `commande.langue`, figée à la commande |
+| Statuts (`PAYEE`, `EXPEDIEE`) | ✅ côté interface | Le code stocke `PAYEE`, l'interface traduit |
+| `cas_utilisation.nom` | ❓ | Back-office uniquement — voir question ouverte |
+| Noms de marchands, de lieux, de villes | ❌ | Ce sont des noms propres |
+| `audit_log`, journaux techniques | ❌ | Lus par des développeurs |
+
+> 💡 **Pourquoi `commande.langue` est figée à la commande.**
+> Le client commande en sango. Six mois plus tard, il passe son compte en
+> français. Sa facture de mars doit-elle changer de langue ?
+> **Non** — c'est un document émis. La langue de l'émission est un fait,
+> donc une photo. Encore la règle fondatrice n°4.
+
+---
+
+## 16. Récapitulatif des 56 tables
 
 | Domaine | Tables |
 |---|---|
-| **1. IAM** | `utilisateur`, `client`, `responsable`, `categorie_responsable`, `responsable_categorie`, `cas_utilisation`, `categorie_cas_utilisation`, `responsable_cas_utilisation`, `adresse`, `appareil_connu` |
+| **1. IAM** | `utilisateur`, `client`, `responsable`, `categorie_responsable`, `responsable_categorie`, `cas_utilisation`, `categorie_cas_utilisation`, `responsable_cas_utilisation`, `appareil_connu` |
 | **2. Marchands** | `marchand`, `gestion_marchand`, `regle_commission` |
 | **3. Catalogue** | `categorie_produit`, `produit`, `attribut`, `valeur_attribut`, `variante`, `variante_attribut`, `media`, `tarification` |
 | **4. Stock** | `stock`, `mouvement_stock` |
@@ -1359,14 +1546,18 @@ C'est une décision à prendre — voir les questions en fin de chapitre.
 | **9. Finance** | `ecriture_marchand`, `reglement_marchand` |
 | **10. Système** | `activite_client`, `evenement_securite`, `score_risque_client`, `alerte_securite`, `audit_log`, `notification`, `piece_jointe` |
 | **11. Mesure** | `vue_produit`, `favori`, `statistique_produit_jour` |
+| **12. Multilingue** | `langue`, `produit_traduction`, `categorie_produit_traduction`, `attribut_traduction`, `valeur_attribut_traduction` |
 
 **Tables supprimées de la spec :** `commission` (→ `regle_commission`),
 `dette_marchand` (→ calculé), `point_transit` et `point_recuperation` (→ `lieu`),
 `media_produit` et `tarification_produit` (→ renommées et déplacées sur la variante).
 
+**Table envisagée puis abandonnée :** `adresse` — rendue inutile par D-05
+(retrait en point uniquement).
+
 ---
 
-## 16. À retenir
+## 17. À retenir
 
 1. **52 tables, 11 domaines.** On ne regarde jamais les 52 d'un coup.
 2. Un domaine est un ensemble de tables qui **changent ensemble**.
@@ -1376,10 +1567,12 @@ C'est une décision à prendre — voir les questions en fin de chapitre.
 6. **Ne demande pas, agis** : `UPDATE ... WHERE quantite >= n` plutôt que `SELECT` puis `UPDATE`.
 7. Une contrainte qui **empêche d'enregistrer la réalité** est une mauvaise contrainte.
 8. **Écriture détaillée, lecture agrégée** pour tout ce qui se compte en millions.
+9. **Texte d'interface ≠ texte de contenu.** Le premier vit dans des fichiers, le second en base.
+10. Une **décision métier** peut supprimer un besoin plutôt que de le corriger : `adresse` a disparu.
 
 ---
 
-## 17. Exercices
+## 18. Exercices
 
 **Exercice 1.**
 Écris la requête qui donne, pour la commande `CMD-2026-000812`, le montant dû
@@ -1407,18 +1600,21 @@ sur `PRIX_MODIFIER`. A-t-il le droit ? Justifie avec la requête du §4.
 
 ---
 
-## 18. Questions ouvertes à trancher
+## 19. Questions ouvertes à trancher
 
 Elles n'empêchent pas d'avancer, mais il faudra y répondre :
 
-| # | Question | Impact |
-|---|---|---|
-| Q1 | Moyens de paiement en v1 : MTN MoMo, Orange Money, espèces à la récupération, virement ? | Domaine 5 |
-| Q2 | Livraison à domicile, ou **uniquement** retrait en point de récupération ? | Domaines 5 et 7 |
-| Q3 | Y a-t-il de la TVA ou des taxes sur les commandes ? | `commande`, facturation |
-| Q4 | Multi-langue de l'interface (français seul, ou français + anglais) ? | Les 3 frontends |
-| Q5 | Durée de conservation de `vue_produit` avant purge ? | Domaine 11 |
-| Q6 | Un client peut-il commander sans compte (achat invité) ? | Domaines 1 et 5 |
+| # | Question | Impact | Réponse |
+|---|---|---|---|
+| Q1 | Moyens de paiement en v1 ? | Domaine 5 | ✅ MTN MoMo, Orange Money, virement — **pas d'espèces** ([D-06](../decisions.md#d-06--moyens-de-paiement--sans-espèces)) |
+| Q2 | Livraison à domicile ou retrait ? | Domaines 5 et 7 | ✅ Retrait en point **uniquement**, choisi à la commande ([D-05](../decisions.md#d-05--retrait-en-point-de-récupération-uniquement)) |
+| Q4 | Interfaces multilingues ? | Les 3 frontends + catalogue | ✅ Français, anglais, **sango** ([D-08](../decisions.md#d-08--trois-langues--français-anglais-sango)) |
+| Q6 | Achat sans compte ? | Domaines 1 et 5 | ✅ Non, **compte obligatoire** ([D-07](../decisions.md#d-07--compte-obligatoire-pas-dachat-invité)) |
+| Q3 | Y a-t-il de la TVA ou des taxes sur les commandes ? | `commande`, facturation | ⏳ ouverte |
+| Q5 | Durée de conservation de `vue_produit` avant purge ? | Domaine 11 | ⏳ ouverte |
+| Q7 | Le contenu du **catalogue** est-il réellement saisi en 3 langues, ou seulement l'interface ? | Domaine 12 | ⏳ ouverte |
+| Q8 | Le **back-office** est-il multilingue, ou français seulement ? | `garah-admin` | ⏳ ouverte |
+| Q9 | Y a-t-il des **frais** facturés au client (service, acheminement) ? | `commande.montant_frais` | ⏳ ouverte |
 
 ---
 

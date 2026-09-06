@@ -177,3 +177,157 @@ Négligeable à cette échelle.
 > lui-même un dépôt git (branche `test-clean`). C'est un accident.
 > Toujours travailler depuis `Documents\Dev\garah`, et ne **jamais** committer
 > depuis la racine du profil.
+
+**Dépôt distant :** `https://github.com/Dominique-BRIA/garah`
+
+---
+
+## D-05 — Retrait en point de récupération uniquement
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** GARAH ne livre **pas** à domicile. Le client vient retirer sa
+marchandise dans un **point de récupération**, qu'il **choisit au moment de
+la commande** parmi les points actifs créés par les Admins.
+
+**Conséquences sur le modèle.**
+
+```text
+commande.point_recuperation_id     OBLIGATOIRE, choisi au checkout
+                                   → c'est une PHOTO : il ne bouge plus après
+
+table adresse                      SUPPRIMÉE (elle n'a plus d'objet)
+client.point_recuperation_prefere  NON RETENU
+```
+
+**Pourquoi pas de point de retrait « préféré » sur le profil du client ?**
+Parce qu'un même client peut commander pour lui à Douala en mars, puis se
+faire livrer à Bangui en avril. Une préférence stockée sur le profil serait
+fausse une fois sur deux — et surtout ce serait une **référence** là où il
+faut un **fait**.
+
+**Ce que ça coûte.** Le client doit choisir un point à chaque commande.
+L'interface doit donc bien présenter la liste (par ville, avec les horaires).
+
+**Ce que ça évite.** Toute la gestion d'adresses, de zones de livraison, de
+frais au kilomètre et de livreurs. C'est un pan entier du métier qui disparaît.
+
+---
+
+## D-06 — Moyens de paiement : sans espèces
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** Trois moyens en v1 : **MTN Mobile Money**, **Orange Money**,
+**virement bancaire**. **Pas d'espèces**, ni à la commande ni au retrait.
+
+**La conséquence la plus importante :** la marchandise n'est **jamais**
+acheminée avant d'être payée.
+
+```text
+EN_ATTENTE_PAIEMENT ──▶ PAYEE ──▶ EN_PREPARATION ──▶ PRETE
+                                                        │
+              RETIREE ◀── DISPONIBLE ◀── EXPEDIEE ◀─────┘
+```
+
+**Ce que ça évite.**
+
+- Une marchandise acheminée jusqu'à Bangui, puis jamais retirée ni payée.
+- Un encaissement en espèces dans chaque point de retrait, avec la
+  réconciliation de caisse et les risques que ça implique.
+
+**Ce que ça coûte — et c'est le vrai sujet technique.**
+Le paiement mobile money est **asynchrone** : le client valide sur son
+téléphone, et l'opérateur confirme par un *webhook*, quelques secondes ou
+quelques minutes plus tard.
+
+Il faut donc :
+
+- réserver le stock (`quantite_reservee`) dès la commande, sans le décrémenter ;
+- un travail périodique qui libère les réservations non confirmées et annule
+  la commande ;
+- stocker la `reference_transaction` de l'opérateur, sans laquelle aucun
+  litige n'est arbitrable ;
+- conserver les **échecs** (`tentative_paiement`), qui alimentent le score de
+  risque.
+
+> Ce point justifie à lui seul la distinction
+> `quantite_disponible` / `quantite_reservee` du domaine Stock.
+
+---
+
+## D-07 — Compte obligatoire, pas d'achat invité
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** Impossible de commander sans créer un compte.
+
+**Ce que ça coûte.** Un frein à la conversion : une partie des visiteurs
+abandonne devant le formulaire d'inscription. C'est mesurable et réel.
+
+**Ce que ça apporte.**
+
+- Tout le module de **surveillance** fonctionne (activité, score de risque,
+  appareils connus) — il n'aurait aucun sens sur des acheteurs anonymes.
+- Le **suivi de commande** et le **code de retrait** ont un destinataire fiable.
+- Les **statistiques clients** (fidélisation, panier moyen, clients actifs)
+  de la §20 de la spec deviennent calculables.
+- La **négociation** suppose une relation identifiée dans la durée.
+
+**Cohérence.** C'est le bon choix ici : GARAH n'est pas une boutique d'achat
+impulsif, c'est une plateforme avec négociation, acheminement long et
+récupération en point. La relation client est le cœur du métier.
+
+---
+
+## D-08 — Trois langues : français, anglais, sango
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** Les interfaces sont disponibles en **français**, **anglais** et
+**sango** (langue nationale de la République centrafricaine — cohérent avec
+l'axe logistique Douala → Bangui).
+
+**Le point qu'il ne faut pas rater :** il y a **deux** multilingues.
+
+| | Texte d'**interface** | Texte de **contenu** |
+|---|---|---|
+| Exemple | « Ajouter au panier » | « Chemise Oxford », sa description |
+| Écrit par | Le développeur | Le Responsable, dans le back-office |
+| Vit dans | `fr.json`, `en.json`, `sg.json` | **La base de données** |
+| Impact modèle | aucun | des tables de traduction |
+
+**Conséquences sur le modèle** (domaine 12, chapitre 03) :
+
+```text
+langue                          référentiel des 3 langues, fr = par défaut
+produit_traduction              (produit_id, langue) → nom, description
+categorie_produit_traduction
+attribut_traduction
+valeur_attribut_traduction
+
+client.langue                   préférence d'affichage
+commande.langue                 PHOTO : la langue d'émission du document
+```
+
+**Règles retenues.**
+
+- **Une table de traduction par entité**, jamais une table générique
+  `(entite_type, entite_id, champ, langue, valeur)` — elle interdit toute clé
+  étrangère et devient la table la plus lente de la base.
+- Le **français est obligatoire**, les autres langues facultatives, avec un
+  **repli** systématique vers le français (`COALESCE`).
+- `commande.langue` est **figée** : une facture émise en sango reste en sango,
+  même si le client change de langue plus tard.
+
+**Ce que ça coûte.** Chaque écran de création de produit a trois onglets de
+saisie. Et il faudra des traducteurs — le sango est une langue peu outillée,
+sans traduction automatique fiable.
+
+**Questions restées ouvertes** (voir chapitre 03, §19) : le catalogue est-il
+réellement saisi dans les trois langues, ou seulement l'interface ?
+Et le back-office est-il multilingue, ou français seulement ?
