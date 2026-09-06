@@ -223,3 +223,23 @@ nav a {
 
   .contenu { padding: 1.25rem; overflow: visible; }
 }
+
+// --- Le bouton de deconnexion ------------------------------------------------
+//
+// Il vire au rouge au survol. C'est une action DESTRUCTRICE au sens de
+// l'utilisateur : elle met fin a sa session, revoque ses jetons cote serveur,
+// et il devra ressaisir son mot de passe.
+//
+// Le rouge n'arrive qu'au SURVOL, pas au repos : un bouton rouge en
+// permanence dans une barre laterale attire l'oeil en continu et finit par
+// etre clique par inadvertance. On signale le danger au moment ou la main est
+// deja dessus.
+.gu-btn--secondaire.plein:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+.gu-btn--secondaire.plein:focus-visible {
+  outline-color: var(--danger);
+}

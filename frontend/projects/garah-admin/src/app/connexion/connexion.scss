@@ -54,19 +54,11 @@
   margin-bottom: 2.5rem;
 }
 
-.embleme {
-  width: 4.5rem;
-  height: 4.5rem;
+.embleme-logo {
+  display: block;
   margin: 0 auto 1.5rem;
-  display: grid;
-  place-items: center;
   border-radius: 1.25rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  color: #fff;
-  font-size: 1.6rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 35%, transparent);
+  overflow: hidden;
 }
 
 .titre {

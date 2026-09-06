@@ -56,9 +56,15 @@
               {
                 "glob": "**/*",
                 "input": "projects/garah-admin/public"
+              },
+              {
+                "glob": "**/*",
+                "input": "dist/garah-ui/assets",
+                "output": "assets"
               }
             ],
-            "styles": [              "projects/garah-admin/src/styles.scss"
+            "styles": [
+              "projects/garah-admin/src/styles.scss"
             ]
           },
           "configurations": {
@@ -115,7 +121,8 @@
                 "input": "projects/garah-admin/public"
               }
             ],
-            "styles": [              "projects/garah-admin/src/styles.scss"
+            "styles": [
+              "projects/garah-admin/src/styles.scss"
             ]
           }
         }

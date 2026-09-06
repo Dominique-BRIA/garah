@@ -3,7 +3,7 @@
   <header class="barre-mobile">
     <button type="button" class="bouton-menu" (click)="menuOuvert.set(!menuOuvert())"
             [attr.aria-expanded]="menuOuvert()" aria-label="Ouvrir le menu"><gu-icone nom="bars" /></button>
-    <span class="marque__mot">GARAH</span>
+    <gu-logo hauteur="1.9rem" />
   </header>
 
   @if (menuOuvert()) {
@@ -15,7 +15,7 @@
   <aside class="barre-laterale" [class.barre-laterale--ouverte]="menuOuvert()">
     <div class="barre-laterale__defilant">
       <div class="marque">
-        <span class="marque__mot">GARAH</span>
+        <gu-logo hauteur="2.4rem" />
         <span class="marque__role">Administration</span>
       </div>
 
