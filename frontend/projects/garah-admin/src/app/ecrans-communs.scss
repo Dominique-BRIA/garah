@@ -1,0 +1,153 @@
+// =============================================================================
+// Ce que TOUS les ecrans de gestion partagent
+// =============================================================================
+// Entete, etats vides, panneau lateral. Ce fichier existe parce que ces trois
+// motifs revenaient a l'identique sur chaque ecran : les dupliquer garantit
+// qu'ils divergeront au troisieme.
+//
+// Ils ne sont PAS dans garah-ui : ce sont des motifs de back-office, et la
+// vitrine n'en veut aucun. La librairie ne porte que ce que les trois
+// applications partagent reellement.
+// =============================================================================
+
+.entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+
+  h1 { font-size: 1.5rem; }
+}
+
+.sous-titre {
+  color: var(--texte-attenue);
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.champ-recherche {
+  position: relative;
+
+  .loupe {
+    position: absolute;
+    left: 0.7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--texte-attenue);
+    font-size: 0.8rem;
+    pointer-events: none;   // sinon la loupe vole le clic destine au champ
+  }
+
+  input { padding-left: 2.1rem; min-width: 15rem; }
+}
+
+// --- Etats : erreur, chargement, vide ----------------------------------------
+.etat {
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.etat__icone {
+  font-size: 1.8rem;
+  color: var(--texte-attenue);
+  margin-bottom: 0.75rem;
+}
+
+.etat__icone--alerte { color: var(--danger); }
+
+.etat__titre { font-weight: 600; margin-bottom: 0.75rem; }
+
+.etat__aide {
+  color: var(--texte-attenue);
+  font-size: 0.85rem;
+  max-width: 34rem;
+  margin: 0 auto 1rem;
+  line-height: 1.6;
+}
+
+// --- Le panneau lateral ------------------------------------------------------
+.voile {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.panneau {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  width: min(26rem, 100vw);
+  padding: 1.75rem;
+  background: var(--surface);
+  border-left: 1px solid var(--verre-bordure);
+  box-shadow: var(--ombre-large);
+
+  // Le panneau defile DANS lui-meme : un formulaire long ne doit pas faire
+  // defiler la page en dessous.
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  h2 { font-size: 1.15rem; margin-bottom: 1.25rem; }
+
+  form { display: flex; flex-direction: column; }
+  .gu-libelle:not(:first-of-type) { margin-top: 1rem; }
+}
+
+.aide {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--texte-attenue);
+}
+
+.alerte {
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+.boutons {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 1.75rem;
+}
+
+// --- Cellules de tableau -----------------------------------------------------
+.droite { text-align: right; }
+.nom { font-weight: 600; }
+.attenue { color: var(--texte-attenue); }
+
+.petit { padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.82rem;
+}
+
+code {
+  font-family: var(--police-mono);
+  font-size: 0.8rem;
+  color: var(--texte-attenue);
+}
+
+.arbre { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+.chevron { font-size: 0.65rem; color: var(--texte-attenue); }

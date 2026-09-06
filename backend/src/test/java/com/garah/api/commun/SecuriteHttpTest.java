@@ -348,4 +348,69 @@ class SecuriteHttpTest {
                 .andExpect(status().isBadRequest());
     }
 
+
+    // -------------------------------------------------------------------------
+    // Le catalogue : marchands, categories, variantes
+    // -------------------------------------------------------------------------
+
+    /**
+     * L'arbre des categories est PUBLIC : la vitrine en a besoin pour son menu.
+     *
+     * <p>Il ne l'etait pas au premier deploiement — le controleur ne portait
+     * aucune permission, mais la route manquait dans la liste des chemins
+     * ouverts. Elle repondait donc 401, et le menu du site public serait reste
+     * vide.</p>
+     *
+     * <p>C'est le pendant du piege du chapitre 08 : la regle « tout est ferme
+     * par defaut » protege, et elle oblige a penser a chaque ouverture.</p>
+     */
+    @Test
+    @DisplayName("l'arbre des categories est public")
+    void lArbreDesCategoriesEstPublic() throws Exception {
+        http.perform(get("/api/categories"))
+                .andExpect(status().isOk());
+    }
+
+    /**
+     * ⚠️ Ouvrir le GET n'ouvre PAS le POST.
+     *
+     * <p>Sans preciser la methode, la meme regle aurait permis a n'importe qui
+     * de creer une categorie.</p>
+     */
+    @Test
+    @DisplayName("creer une categorie exige un jeton")
+    void creerUneCategorieExigeUnJeton() throws Exception {
+        http.perform(post("/api/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nom\":\"Test\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("les marchands ne sont pas publics")
+    void lesMarchandsSontProteges() throws Exception {
+        http.perform(get("/api/marchands"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("un jeton sans MARCHAND_CONSULTER recoit 403")
+    void marchandsSansPermission() throws Exception {
+        http.perform(get("/api/marchands")
+                        .with(jwt().jwt(j -> j.subject("1"))
+                                .authorities(new org.springframework.security.core.authority
+                                        .SimpleGrantedAuthority("PRODUIT_CONSULTER"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("avec MARCHAND_CONSULTER, la liste est atteinte")
+    void marchandsAvecPermission() throws Exception {
+        http.perform(get("/api/marchands")
+                        .with(jwt().jwt(j -> j.subject("1"))
+                                .authorities(new org.springframework.security.core.authority
+                                        .SimpleGrantedAuthority("MARCHAND_CONSULTER"))))
+                .andExpect(status().isOk());
+    }
+
 }

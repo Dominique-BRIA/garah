@@ -36,6 +36,8 @@ export class Coque {
   protected readonly entrees: readonly Entree[] = [
     { libelle: 'Tableau de bord', chemin: '/', icone: 'chart-pie' },
     { libelle: 'Produits', chemin: '/produits', icone: 'box-open', permission: 'PRODUIT_CONSULTER' },
+    { libelle: 'Marchands', chemin: '/marchands', icone: 'store', permission: 'MARCHAND_CONSULTER' },
+    { libelle: 'Categories', chemin: '/categories', icone: 'sitemap', permission: 'CATEGORIE_PRODUIT_GERER' },
   ];
 
   protected visibles(): readonly Entree[] {

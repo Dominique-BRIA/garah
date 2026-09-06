@@ -15,6 +15,9 @@ export * from './lib/api/service-session';
 export * from './lib/modeles/authentification';
 export * from './lib/modeles/page';
 export * from './lib/modeles/catalogue';
+export * from './lib/modeles/marchand';
+export * from './lib/modeles/categorie';
+export * from './lib/modeles/variante';
 
 // --- Les icones ---
 export * from './lib/icones/icone';

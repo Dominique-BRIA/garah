@@ -1,0 +1,126 @@
+<header class="entete">
+  <div>
+    <h1>Catégories</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… } @else { {{ lignes().length }} catégorie(s) }
+    </p>
+  </div>
+
+  @if (session.peut('CATEGORIE_PRODUIT_GERER')) {
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirFormulaire(null)">
+      Nouvelle catégorie
+    </button>
+  }
+</header>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (lignes().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="sitemap" class="etat__icone" />
+    <p class="etat__titre">Aucune catégorie.</p>
+    <p class="etat__aide">
+      Chaque produit doit appartenir à une catégorie. Créez-en une pour commencer.
+    </p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Identifiant public</th>
+          <th>Statut</th>
+          <th class="droite">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (ligne of lignes(); track ligne.categorie.id) {
+          <tr>
+            <td>
+              <!-- L'indentation porte la hiérarchie. Le chevron n'apparaît que
+                   sur les enfants : sur une racine il n'indiquerait rien. -->
+              <span class="arbre" [style.padding-left]="decalage(ligne.niveau)">
+                @if (ligne.niveau > 0) {
+                  <gu-icone nom="chevron-right" class="chevron" />
+                }
+                <span class="nom">{{ ligne.categorie.nom }}</span>
+              </span>
+            </td>
+            <td><code>{{ ligne.categorie.slug }}</code></td>
+            <td>
+              <span class="gu-badge"
+                    [class]="ligne.categorie.statut === 'ACTIVE' ? 'gu-badge--succes' : 'gu-badge--neutre'">
+                {{ ligne.categorie.statut }}
+              </span>
+            </td>
+            <td class="droite">
+              @if (session.peut('CATEGORIE_PRODUIT_GERER')) {
+                @if (ligne.niveau < 2) {
+                  <button type="button" class="gu-btn gu-btn--secondaire petit"
+                          (click)="ouvrirFormulaire(ligne.categorie.id)">
+                    Sous-catégorie
+                  </button>
+                }
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="basculerActivation(ligne.categorie)">
+                  @if (ligne.categorie.statut === 'ACTIVE') { Désactiver } @else { Activer }
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (formulaireOuvert()) {
+  <div class="voile" (click)="formulaireOuvert.set(false)" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true" aria-label="Nouvelle catégorie">
+    <h2>Nouvelle catégorie</h2>
+
+    <form (ngSubmit)="enregistrer()" novalidate>
+      <label class="gu-libelle" for="nom">Nom</label>
+      <input id="nom" name="nom" class="gu-champ" required maxlength="150"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+
+      <label class="gu-libelle" for="parent">Catégorie parente</label>
+      <select id="parent" name="parent" class="gu-champ"
+              [ngModel]="parentId()" (ngModelChange)="parentId.set($event)">
+        <option [ngValue]="null">Aucune (catégorie principale)</option>
+        @for (ligne of parentsPossibles(); track ligne.categorie.id) {
+          <option [ngValue]="ligne.categorie.id">
+            {{ '— '.repeat(ligne.niveau) }}{{ ligne.categorie.nom }}
+          </option>
+        }
+      </select>
+      <p class="aide">Trois niveaux au maximum.</p>
+
+      @if (erreurFormulaire(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="formulaireOuvert.set(false)">Annuler</button>
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="enregistrement() || !nom()">
+          @if (enregistrement()) {
+            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else { Créer }
+        </button>
+      </div>
+    </form>
+  </aside>
+}

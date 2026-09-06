@@ -1,0 +1,144 @@
+<header class="entete">
+  <div>
+    <h1>Marchands</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… } @else { {{ total() }} marchand(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <div class="champ-recherche">
+      <gu-icone nom="magnifying-glass" class="loupe" />
+      <input type="search" class="gu-champ" placeholder="Nom ou code"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             (keyup.enter)="charger()" aria-label="Rechercher un marchand" />
+    </div>
+
+    @if (session.peut('MARCHAND_CREER')) {
+      <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirFormulaire()">
+        Nouveau marchand
+      </button>
+    }
+  </div>
+</header>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="box-open" class="etat__icone" />
+    <p class="etat__titre">Aucun marchand.</p>
+    <p class="etat__aide">
+      Créez-en un pour pouvoir enregistrer des produits à son nom.
+    </p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Nom</th>
+          <th>Type</th>
+          <th>Contact</th>
+          <th>Statut</th>
+          <th class="droite">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of liste(); track m.id) {
+          <tr>
+            <td><code>{{ m.code }}</code></td>
+            <td class="nom">{{ m.nom }}</td>
+            <td>
+              <span class="gu-badge"
+                    [class]="m.type === 'INTERNE' ? 'gu-badge--info' : 'gu-badge--neutre'">
+                {{ m.type }}
+              </span>
+            </td>
+            <td class="contact">
+              @if (m.telephone) { <span>{{ m.telephone }}</span> }
+              @if (m.email) { <span class="attenue">{{ m.email }}</span> }
+              @if (!m.telephone && !m.email) { <span class="attenue">—</span> }
+            </td>
+            <td>
+              <span class="gu-badge"
+                    [class]="m.statut === 'ACTIF' ? 'gu-badge--succes' : 'gu-badge--neutre'">
+                {{ m.statut }}
+              </span>
+            </td>
+            <td class="droite">
+              @if (session.peut('MARCHAND_DESACTIVER')) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="basculerActivation(m)">
+                  @if (m.statut === 'ACTIF') { Désactiver } @else { Activer }
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<!-- Le formulaire de création, en panneau latéral -->
+@if (formulaireOuvert()) {
+  <div class="voile" (click)="formulaireOuvert.set(false)" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true" aria-label="Nouveau marchand">
+    <h2>Nouveau marchand</h2>
+
+    <form (ngSubmit)="enregistrer()" novalidate>
+      <label class="gu-libelle" for="code">Code</label>
+      <input id="code" name="code" class="gu-champ" required maxlength="20"
+             [ngModel]="code()" (ngModelChange)="code.set($event)" />
+      <!-- Dire ce qui est figé AVANT la saisie, pas après l'erreur. -->
+      <p class="aide">Ne pourra plus être modifié ensuite.</p>
+
+      <label class="gu-libelle" for="nom">Nom</label>
+      <input id="nom" name="nom" class="gu-champ" required maxlength="150"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+
+      <label class="gu-libelle" for="type">Type</label>
+      <select id="type" name="type" class="gu-champ"
+              [ngModel]="type()" (ngModelChange)="type.set($event)">
+        <option value="EXTERNE">Partenaire</option>
+        <option value="INTERNE">GARAH</option>
+      </select>
+      <p class="aide">Détermine la commission. Ne pourra plus être modifié.</p>
+
+      <label class="gu-libelle" for="tel">Téléphone</label>
+      <input id="tel" name="telephone" class="gu-champ" maxlength="30"
+             [ngModel]="telephone()" (ngModelChange)="telephone.set($event)" />
+
+      <label class="gu-libelle" for="mail">Adresse e-mail</label>
+      <input id="mail" name="email" type="email" class="gu-champ" maxlength="255"
+             [ngModel]="email()" (ngModelChange)="email.set($event)" />
+
+      @if (erreurFormulaire(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="formulaireOuvert.set(false)">Annuler</button>
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="enregistrement() || !code() || !nom()">
+          @if (enregistrement()) {
+            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else { Créer }
+        </button>
+      </div>
+    </form>
+  </aside>
+}

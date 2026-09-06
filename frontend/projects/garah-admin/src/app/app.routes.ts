@@ -14,6 +14,8 @@ export const routes: Routes = [
     loadComponent: () => import('./coque/coque').then((m) => m.Coque),
     children: [
       { path: '', loadComponent: () => import('./tableau-bord/tableau-bord').then((m) => m.TableauBord) },
+      { path: 'marchands', loadComponent: () => import('./marchands/marchands').then((m) => m.Marchands) },
+      { path: 'categories', loadComponent: () => import('./categories/categories').then((m) => m.Categories) },
       { path: 'produits', loadComponent: () => import('./produits/produits').then((m) => m.Produits) },
     ],
   },

@@ -131,6 +131,15 @@ public class ConfigurationSecurite {
                         // plus que ce qu'on avait en tête.
                         .requestMatchers("/api/sante").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/configuration").permitAll()
+
+                        // L'arbre des catégories : la vitrine en a besoin pour
+                        // son menu, et rien n'y est confidentiel — c'est du
+                        // contenu destiné à être vu.
+                        //
+                        // GET seulement : le POST qui crée une catégorie reste
+                        // protégé par CATEGORIE_PRODUIT_GERER. Ouvrir la route
+                        // sans préciser la méthode aurait ouvert la création.
+                        .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/connexion").permitAll()
 
                         // La porte d'entrée : sans elle, aucun client ne peut
