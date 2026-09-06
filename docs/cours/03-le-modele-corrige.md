@@ -581,6 +581,46 @@ WHERE variante_id = :variante AND quantite_disponible >= :n;
 | `paiement` : type, référence opérateur, échecs | A12 |
 | Pas d'adresse : `point_recuperation_id` est **obligatoire** | D-05 |
 | Pas d'espèces : le paiement précède l'expédition | D-06 |
+| `montant_frais` = frais d'acheminement du point choisi | D-10 |
+| Pas de TVA en v1, mais des montants séparés | D-11 |
+
+### Les frais d'acheminement
+
+Le client paie un supplément qui dépend du **point de récupération choisi** :
+
+```text
+lieu                          frais_acheminement
+─────────────────────────────────────────────────
+Douala — Akwa                        1 000 FCFA
+Bertoua — Centre                     3 500 FCFA
+Bangui — PK5                         8 000 FCFA
+```
+
+Au moment de la commande, ce montant est **copié** dans `commande.montant_frais`.
+
+> 🎯 **Encore la règle de la photographie — et cette fois tu peux prédire
+> pourquoi.**
+> Le tarif Bangui passera de 8 000 à 9 500 FCFA. Si `commande` ne stockait
+> qu'un lien vers `lieu`, toutes les commandes passées afficheraient
+> rétroactivement 9 500 — et le total ne correspondrait plus à ce que le
+> client a réellement payé. La contrainte
+> `montant_total = articles + frais − remise` sauterait sur **toutes** les
+> anciennes commandes.
+>
+> Une contrainte qui casse quand une donnée de référence change est le
+> meilleur détecteur de référence-au-lieu-de-copie qui soit.
+
+> 💡 **Pourquoi le tarif est une simple colonne sur `lieu`, et pas une table
+> datée comme `regle_commission` ?**
+> Parce que la commande **fige** le montant. Le tarif n'a donc pas besoin
+> d'être historisé pour reconstituer le passé : le passé est déjà dans les
+> commandes.
+>
+> `regle_commission`, elle, est datée parce qu'on doit pouvoir **recalculer**
+> une commission a posteriori en cas de litige avec un marchand.
+>
+> **La règle : on historise une donnée de référence uniquement quand on doit
+> pouvoir rejouer un calcul. Sinon, la photo dans la transaction suffit.**
 
 ### La conséquence majeure de D-06 : le paiement conditionne tout
 
@@ -882,6 +922,9 @@ erDiagram
         varchar pays
         varchar ville
         text adresse
+        varchar telephone
+        varchar horaires
+        numeric frais_acheminement "facture au client - D-10"
         numeric latitude
         numeric longitude
         varchar statut
@@ -1411,115 +1454,97 @@ C'est la distinction qu'il ne faut surtout pas rater :
 Une équipe sur deux ne traite que le premier cas, découvre le second six mois
 plus tard, et doit alors migrer tout son catalogue.
 
-### Les tables de traduction
+### La décision retenue : l'interface seulement
+
+[D-09](../decisions.md#d-09--multilingue--linterface-seulement) tranche :
+**seule l'interface est traduite**, dans les trois applications, back-office
+compris. Le **contenu du catalogue reste en français**.
+
+Conséquence directe sur le modèle : **il n'y a aucune table de traduction**.
+Le domaine 12 se réduit à une seule table de référence.
 
 ```mermaid
 erDiagram
     LANGUE {
         char code PK "fr|en|sg"
-        varchar libelle
+        varchar libelle "Francais|English|Sango"
         boolean actif
         boolean par_defaut "fr = true"
         int ordre
     }
-
-    PRODUIT_TRADUCTION {
-        bigint produit_id PK
-        char langue PK
-        varchar nom
-        text description
-        jsonb caracteristiques
-    }
-
-    CATEGORIE_PRODUIT_TRADUCTION {
-        bigint categorie_id PK
-        char langue PK
-        varchar nom
-    }
-
-    ATTRIBUT_TRADUCTION {
-        bigint attribut_id PK
-        char langue PK
-        varchar nom
-    }
-
-    VALEUR_ATTRIBUT_TRADUCTION {
-        bigint valeur_attribut_id PK
-        char langue PK
-        varchar libelle
-    }
-
-    LANGUE ||--o{ PRODUIT_TRADUCTION : "traduit en"
-    LANGUE ||--o{ CATEGORIE_PRODUIT_TRADUCTION : "traduit en"
-    LANGUE ||--o{ ATTRIBUT_TRADUCTION : "traduit en"
-    LANGUE ||--o{ VALEUR_ATTRIBUT_TRADUCTION : "traduit en"
 ```
 
-Les colonnes `nom` et `description` **sortent** de `produit` pour entrer dans
-`produit_traduction`. `produit` ne garde que ce qui ne se traduit pas :
-la référence, le marchand, la catégorie, le statut, les dates.
-
-> ⚠️ **Le piège de la table de traduction générique.**
-> La tentation est forte d'écrire **une seule** table pour tout :
->
-> ```text
-> TRADUCTION (entite_type, entite_id, champ, langue, valeur)
->            ('PRODUIT',   42,        'nom', 'en',   'Oxford Shirt')
-> ```
->
-> C'est séduisant, et c'est un piège. Cette table :
-> - n'a **aucune** clé étrangère possible (`entite_id` pointe vers 6 tables) ;
-> - oblige à une jointure **par champ** au lieu d'une par entité ;
-> - rend impossible une contrainte « tout produit a un nom en français » ;
-> - devient la table la plus volumineuse et la plus lente de la base.
->
-> Une table de traduction **par entité traduite**. C'est plus de tables,
-> et infiniment plus sain.
-
-### Le repli (fallback)
-
-Le sango est une langue peu outillée. En pratique, beaucoup de produits
-n'auront **pas** de traduction sango.
-
-Il faut donc une règle de repli, écrite une fois, appliquée partout :
+Et deux colonnes ailleurs :
 
 ```text
-langue demandée : sg
-      │
-      ├── traduction sg existe ?  ──oui──▶ on l'affiche
-      │
-      └── non ──▶ traduction fr (langue par défaut) ──▶ on l'affiche
+client.langue       la préférence d'affichage du client
+commande.langue     PHOTO : la langue d'émission du document
 ```
 
-```sql
--- Le nom d un produit dans la langue demandee, avec repli sur le francais
-SELECT p.id,
-       COALESCE(t.nom, t_defaut.nom) AS nom
-FROM produit p
-JOIN      produit_traduction t_defaut ON t_defaut.produit_id = p.id
-                                     AND t_defaut.langue = 'fr'
-LEFT JOIN produit_traduction t        ON t.produit_id = p.id
-                                     AND t.langue = :langue
-WHERE p.statut = 'PUBLIE';
+> 💡 **Pourquoi garder une table `langue` alors que trois codes en dur
+> suffiraient ?**
+> Pour pouvoir **désactiver** une langue sans redéployer. Le jour où le
+> sango n'est plus maintenu, un Admin décoche `actif` et la langue disparaît
+> du sélecteur — sans toucher au code, et sans casser les comptes des
+> clients qui l'avaient choisie (le repli joue).
+>
+> Une table de trois lignes qui évite un déploiement est une bonne table.
+
+### Le problème du back-office trilingue
+
+Il y a un piège, et il faut le voir maintenant.
+
+Le back-office est en trois langues. Or il affiche des libellés qui viennent
+de la **base de données** :
+
+```text
+CAS_UTILISATION
+  code         PRODUIT_PUBLIER      ← technique, stable, jamais renommé
+  nom          « Publier un produit »   ← affiché à l'écran
+  description  « Permet de publier… »   ← affiché à l'écran
 ```
 
-> 📌 **La règle : le français est obligatoire, les autres langues sont
-> facultatives.**
-> Une contrainte doit garantir qu'aucun produit ne peut être publié sans
-> sa traduction française — sinon un produit devient invisible pour tout
-> le monde, sans que personne ne s'en aperçoive.
+Ces ~180 libellés sont du **contenu**, pas de l'interface. Si on suit la règle
+« le contenu n'est pas traduit », l'écran de gestion des permissions reste en
+français alors que le reste du back-office est traduit. Incohérent.
 
-### Ce qui n'est PAS traduit
+**La solution, et c'est une jolie astuce :** le `code` sert de clé de traduction.
 
-À décider explicitement, sinon on traduit tout et on n'en finit jamais :
+```text
+Base de données                 Fichiers d'interface
+─────────────────────           ──────────────────────────────────────────
+cas_utilisation                 fr.json  "perm.PRODUIT_PUBLIER":
+  code PRODUIT_PUBLIER                     "Publier un produit"
+  nom  « Publier un produit »   en.json  "perm.PRODUIT_PUBLIER":
+       (repli si pas de clé)              "Publish a product"
+                                sg.json  "perm.PRODUIT_PUBLIER":
+                                           "Sïgïgî na produit"
+```
 
-| Élément | Traduit ? | Raison |
+L'interface cherche d'abord `perm.{code}` dans ses fichiers de langue.
+Si la clé n'existe pas, elle affiche `cas_utilisation.nom` (donc le français).
+
+> 🎯 **Pourquoi ça marche ici et pas ailleurs :**
+> parce que le `code` est **stable et fini**. Il y a ~180 permissions, créées
+> par le SuperAdmin, qui ne changent presque jamais.
+>
+> Ça ne marcherait **pas** pour les produits : ils sont des milliers, créés
+> tous les jours par des Responsables, et il faudrait redéployer l'application
+> à chaque nouveau produit.
+>
+> **La règle générale :** un contenu *fini et stable* peut être traité comme
+> de l'interface. Un contenu *ouvert et vivant* doit être traduit en base.
+
+### Ce qui est traduit, et ce qui ne l'est pas
+
+| Élément | Traduit ? | Où |
 |---|---|---|
-| Nom et description produit | ✅ | Vu par le client |
-| Catégories, attributs, valeurs | ✅ | Vus par le client |
-| Notifications et e-mails | ✅ | D'où `commande.langue`, figée à la commande |
-| Statuts (`PAYEE`, `EXPEDIEE`) | ✅ côté interface | Le code stocke `PAYEE`, l'interface traduit |
-| `cas_utilisation.nom` | ❓ | Back-office uniquement — voir question ouverte |
+| Boutons, menus, messages, erreurs | ✅ 3 langues | `fr.json` / `en.json` / `sg.json` |
+| Statuts (`PAYEE`, `EXPEDIEE`) | ✅ 3 langues | Le code stocke `PAYEE`, l'interface traduit |
+| Libellés des permissions | ✅ 3 langues | Via le `code` comme clé (astuce ci-dessus) |
+| Notifications et e-mails | ✅ 3 langues | Gabarits par langue, choisis via `commande.langue` |
+| **Nom et description produit** | ❌ français | Saisis une fois, dans le back-office |
+| Catégories, attributs, valeurs | ❌ français | Idem |
 | Noms de marchands, de lieux, de villes | ❌ | Ce sont des noms propres |
 | `audit_log`, journaux techniques | ❌ | Lus par des développeurs |
 
@@ -1529,9 +1554,38 @@ WHERE p.statut = 'PUBLIE';
 > **Non** — c'est un document émis. La langue de l'émission est un fait,
 > donc une photo. Encore la règle fondatrice n°4.
 
+### Si un jour il faut traduire le catalogue
+
+C'est possible, et le modèle actuel ne s'y oppose pas. La migration serait :
+
+```text
+1. créer produit_traduction (produit_id, langue, nom, description)
+2. y recopier le contenu français existant, avec langue = 'fr'
+3. supprimer produit.nom et produit.description
+4. adapter les lectures avec un repli :
+      COALESCE(traduction_demandée, traduction_fr)
+```
+
+> ⚠️ **Le piège à éviter ce jour-là : la table de traduction générique.**
+> La tentation sera d'écrire **une seule** table pour tout :
+>
+> ```text
+> TRADUCTION (entite_type, entite_id, champ, langue, valeur)
+>            ('PRODUIT',   42,        'nom', 'en',   'Oxford Shirt')
+> ```
+>
+> C'est séduisant, et c'est un piège. Cette table n'a **aucune** clé étrangère
+> possible (`entite_id` pointe vers six tables), oblige à une jointure **par
+> champ** au lieu d'une par entité, rend impossible une contrainte
+> « tout produit a un nom en français », et devient la table la plus
+> volumineuse et la plus lente de la base.
+>
+> **Une table de traduction par entité traduite.** Plus de tables,
+> infiniment plus sain.
+
 ---
 
-## 16. Récapitulatif des 56 tables
+## 16. Récapitulatif des 52 tables
 
 | Domaine | Tables |
 |---|---|
@@ -1546,14 +1600,20 @@ WHERE p.statut = 'PUBLIE';
 | **9. Finance** | `ecriture_marchand`, `reglement_marchand` |
 | **10. Système** | `activite_client`, `evenement_securite`, `score_risque_client`, `alerte_securite`, `audit_log`, `notification`, `piece_jointe` |
 | **11. Mesure** | `vue_produit`, `favori`, `statistique_produit_jour` |
-| **12. Multilingue** | `langue`, `produit_traduction`, `categorie_produit_traduction`, `attribut_traduction`, `valeur_attribut_traduction` |
+| **12. Multilingue** | `langue` |
 
 **Tables supprimées de la spec :** `commission` (→ `regle_commission`),
 `dette_marchand` (→ calculé), `point_transit` et `point_recuperation` (→ `lieu`),
 `media_produit` et `tarification_produit` (→ renommées et déplacées sur la variante).
 
-**Table envisagée puis abandonnée :** `adresse` — rendue inutile par D-05
-(retrait en point uniquement).
+**Tables envisagées puis abandonnées :**
+
+- `adresse` — rendue inutile par D-05 (retrait en point uniquement) ;
+- `produit_traduction` et les 3 autres tables de traduction — rendues inutiles
+  par D-09 (seule l'interface est traduite).
+
+Cinq tables évitées grâce à deux décisions métier. C'est la meilleure façon
+de réduire un modèle : **supprimer le besoin**, pas la rigueur.
 
 ---
 
@@ -1610,11 +1670,13 @@ Elles n'empêchent pas d'avancer, mais il faudra y répondre :
 | Q2 | Livraison à domicile ou retrait ? | Domaines 5 et 7 | ✅ Retrait en point **uniquement**, choisi à la commande ([D-05](../decisions.md#d-05--retrait-en-point-de-récupération-uniquement)) |
 | Q4 | Interfaces multilingues ? | Les 3 frontends + catalogue | ✅ Français, anglais, **sango** ([D-08](../decisions.md#d-08--trois-langues--français-anglais-sango)) |
 | Q6 | Achat sans compte ? | Domaines 1 et 5 | ✅ Non, **compte obligatoire** ([D-07](../decisions.md#d-07--compte-obligatoire-pas-dachat-invité)) |
-| Q3 | Y a-t-il de la TVA ou des taxes sur les commandes ? | `commande`, facturation | ⏳ ouverte |
+| Q7 | Le **catalogue** est-il saisi en 3 langues ? | Domaine 12 | ✅ Non, **interface seule** ([D-09](../decisions.md#d-09--multilingue--linterface-seulement)) |
+| Q8 | Le **back-office** est-il multilingue ? | `garah-admin` | ✅ Oui, les **3 langues** ([D-09](../decisions.md#d-09--multilingue--linterface-seulement)) |
+| Q9 | Des **frais** facturés au client ? | `commande.montant_frais` | ✅ Oui, **par point de récupération** ([D-10](../decisions.md#d-10--frais-dacheminement-par-point-de-récupération)) |
+| Q3 | TVA ou taxes ? | `commande`, facturation | ⚠️ **Reportée** — dette assumée ([D-11](../decisions.md#d-11--pas-de-tva-en-v1--dette-assumée)) |
 | Q5 | Durée de conservation de `vue_produit` avant purge ? | Domaine 11 | ⏳ ouverte |
-| Q7 | Le contenu du **catalogue** est-il réellement saisi en 3 langues, ou seulement l'interface ? | Domaine 12 | ⏳ ouverte |
-| Q8 | Le **back-office** est-il multilingue, ou français seulement ? | `garah-admin` | ⏳ ouverte |
-| Q9 | Y a-t-il des **frais** facturés au client (service, acheminement) ? | `commande.montant_frais` | ⏳ ouverte |
+| Q10 | Les frais d'acheminement dépendent-ils du **poids** ou du **nombre de colis** ? | `lieu`, `commande` | ⏳ ouverte |
+| Q11 | Un client peut-il **annuler** une commande déjà payée, et est-il remboursé ? | Domaines 5 et 8 | ⏳ ouverte |
 
 ---
 

@@ -328,6 +328,134 @@ commande.langue                 PHOTO : la langue d'émission du document
 saisie. Et il faudra des traducteurs — le sango est une langue peu outillée,
 sans traduction automatique fiable.
 
-**Questions restées ouvertes** (voir chapitre 03, §19) : le catalogue est-il
-réellement saisi dans les trois langues, ou seulement l'interface ?
-Et le back-office est-il multilingue, ou français seulement ?
+**Précisé par [D-09](#d-09--multilingue--linterface-seulement)** : seule
+l'interface est traduite.
+
+---
+
+## D-09 — Multilingue : l'interface seulement
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — précise D-08
+
+**Choix.** Les **trois applications**, back-office compris, sont traduites en
+français, anglais et sango. Mais **seuls les textes d'interface** sont traduits.
+Le **contenu du catalogue reste en français**.
+
+**Conséquence sur le modèle : quatre tables disparaissent.**
+
+```text
+❌ produit_traduction
+❌ categorie_produit_traduction
+❌ attribut_traduction
+❌ valeur_attribut_traduction
+
+✅ langue            (3 lignes, permet de désactiver une langue sans déployer)
+✅ client.langue     préférence d'affichage
+✅ commande.langue   PHOTO, la langue d'émission du document
+```
+
+**Le problème que ça crée, et sa solution.**
+Le back-office affiche les ~180 libellés de `cas_utilisation`, qui sont du
+**contenu en base**. Traduire l'interface mais pas ces libellés donnerait un
+écran de permissions en français au milieu d'une interface en sango.
+
+La solution retenue : **le `code` sert de clé de traduction**.
+
+```text
+cas_utilisation.code = PRODUIT_PUBLIER
+                            │
+                            ▼
+        fr.json  "perm.PRODUIT_PUBLIER": "Publier un produit"
+        en.json  "perm.PRODUIT_PUBLIER": "Publish a product"
+        sg.json  "perm.PRODUIT_PUBLIER": "Sïgïgî na produit"
+                            │
+        clé absente ────────┴───▶ repli sur cas_utilisation.nom (français)
+```
+
+> 🎯 **La règle générale que ça donne :**
+> un contenu **fini et stable** (180 permissions, créées par le SuperAdmin,
+> qui ne changent presque jamais) peut être traité comme de l'interface.
+> Un contenu **ouvert et vivant** (des milliers de produits, créés chaque jour)
+> doit être traduit en base — sinon il faudrait redéployer à chaque produit.
+
+**Ce que ça coûte.** Un client anglophone ou centrafricain voit une interface
+dans sa langue mais un catalogue en français. C'est un compromis assumé.
+
+**Ce que ça évite.** Trois onglets de saisie sur chaque écran produit, et la
+recherche de traducteurs sango pour des milliers de fiches — sachant qu'il
+n'existe pas de traduction automatique fiable pour cette langue.
+
+**Réversible ?** Oui. Le chapitre 03 (§15) décrit la migration à faire le jour
+où le catalogue devra être traduit, et le piège à éviter ce jour-là
+(la table de traduction générique).
+
+---
+
+## D-10 — Frais d'acheminement par point de récupération
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** Le client paie des frais d'acheminement **qui dépendent du point de
+récupération choisi**. Plus le point est loin, plus les frais sont élevés.
+
+```text
+lieu.frais_acheminement       le tarif courant du point
+        │
+        │ copié à la commande
+        ▼
+commande.montant_frais        FIGÉ — ne bougera plus jamais
+```
+
+**Pourquoi une simple colonne sur `lieu`, et pas une table datée comme
+`regle_commission` ?**
+
+Parce que la commande **fige** le montant. Le tarif n'a donc pas besoin d'être
+historisé pour reconstituer le passé : le passé est déjà dans les commandes.
+
+`regle_commission` est datée, elle, parce qu'on doit pouvoir **recalculer** une
+commission a posteriori en cas de litige avec un marchand.
+
+> 📌 **La règle qui en sort :**
+> on historise une donnée de référence uniquement quand on doit pouvoir
+> **rejouer** un calcul. Sinon, la photo dans la transaction suffit.
+
+**Question laissée ouverte.** Les frais dépendent-ils aussi du **poids** ou du
+**nombre de colis** ? Pour l'instant : un montant fixe par point.
+
+---
+
+## D-11 — Pas de TVA en v1 — dette assumée
+
+**Date :** 06/09/2026
+**Statut :** ⚠️ décision **provisoire**, à revoir
+
+**Choix.** Aucune gestion de TVA ni de taxes en v1. Le prix affiché est le prix
+payé.
+
+```text
+commande
+  montant_articles   150 000
+  montant_frais        8 000
+  montant_remise           0
+  montant_total      158 000
+```
+
+**Ce qui a été fait pour limiter la dette.** Les montants sont **déjà séparés**
+(articles / frais / remise / total) plutôt que fondus dans un seul total.
+Ajouter `montant_ht` et `montant_tva` plus tard sera une migration additive,
+sans réécriture du calcul.
+
+> ⚠️ **Ce que cette dette coûtera réellement.**
+> Ce n'est pas la migration du schéma qui fait mal — c'est que les commandes
+> **déjà passées** n'auront aucune TVA calculable rétroactivement. Si
+> l'administration fiscale la réclame un jour sur l'exercice écoulé, il
+> faudra la recalculer à la main, commande par commande.
+>
+> Il faut donc trancher cette question **avant la mise en production**,
+> pas avant la fin du développement.
+
+**À vérifier auprès du métier :** GARAH est-elle assujettie à la TVA au
+Cameroun ? Y a-t-il un régime particulier pour les ventes vers la République
+centrafricaine (export) ? Ces deux réponses changent le modèle.
