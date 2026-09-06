@@ -15,13 +15,13 @@ métier**, en intégrant :
 - la décision [D-01](../decisions.md#d-01--produits-avec-variantes) : les variantes ;
 - la décision [D-02](../decisions.md#d-02--un-responsable-peut-avoir-plusieurs-catégories) : les catégories multiples.
 
-Le modèle passe de **~40 à 52 tables**, réparties en **11 domaines**.
+Le modèle passe de **~40 à 58 tables**, réparties en **12 domaines**.
 
 ---
 
 ## 2. La notion : découper un modèle en domaines
 
-52 tables sur un seul schéma, c'est illisible. Personne ne peut le tenir en tête.
+58 tables sur un seul schéma, c'est illisible. Personne ne peut le tenir en tête.
 
 La solution n'est pas de simplifier — le métier est réellement complexe — mais
 de **découper**.
@@ -1647,7 +1647,7 @@ C'est possible, et le modèle actuel ne s'y oppose pas. La migration serait :
 
 ---
 
-## 16. Récapitulatif des 52 tables
+## 16. Récapitulatif des 58 tables
 
 | Domaine | Tables |
 |---|---|
@@ -1681,7 +1681,7 @@ de réduire un modèle : **supprimer le besoin**, pas la rigueur.
 
 ## 17. À retenir
 
-1. **52 tables, 11 domaines.** On ne regarde jamais les 52 d'un coup.
+1. **58 tables, 12 domaines.** On ne regarde jamais les 58 d'un coup.
 2. Un domaine est un ensemble de tables qui **changent ensemble**.
 3. **Photographier, pas référencer** : `ligne_commande` copie 5 champs, et c'est volontaire.
 4. **Un solde ne se stocke pas** : `ecriture_marchand` est la seule vérité financière.

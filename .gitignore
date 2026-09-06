@@ -7,6 +7,10 @@ build/
 *.class
 .mvn/wrapper/maven-wrapper.jar
 
+# Chemin du dépôt Maven local : propre à chaque poste (ici D:/Dev/.m2 parce
+# que le disque C: est saturé). Ne doit pas être imposé aux autres machines.
+.mvn/maven.config
+
 # Node / Angular
 node_modules/
 dist/

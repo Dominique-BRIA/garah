@@ -578,3 +578,41 @@ une photo : le mode de calcul peut changer sans invalider les commandes passées
 (`produits/42/photo-1.jpg`). L'URL est reconstruite à l'affichage à partir
 d'une variable d'environnement. Sinon, changer d'hébergeur de fichiers
 obligerait à réécrire toutes les lignes de la table.
+
+---
+
+## D-15 — Vues de produits : détail 90 jours, agrégat pour toujours
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** `vue_produit` enregistre une ligne par consultation de fiche produit.
+Ces lignes sont **purgées au bout de 90 jours**, après avoir été agrégées
+chaque nuit dans `statistique_produit_jour`, conservée **indéfiniment**.
+
+```text
+vue_produit                détail, ~1 ligne par consultation   → purgé à 90 jours
+statistique_produit_jour   1 ligne par produit et par jour     → gardé toujours
+```
+
+**Ce qu'on garde pour toujours.** Toutes les statistiques : nombre de vues par
+jour, vues uniques, taux de mise au panier, produits tendance.
+
+**Ce qu'on perd au-delà de 3 mois.** « Qui a vu quoi, à quelle heure, depuis
+quelle adresse IP. » C'est-à-dire le détail nominatif — celui qui sert à
+l'analyse de comportement individuel et au score de risque.
+
+**Pourquoi ce compromis est le bon ici.**
+
+| | |
+|---|---|
+| Volume | Une table de détail grossit sans limite ; l'agrégat fait une ligne par produit et par jour, c'est minuscule |
+| Utilité | Personne n'analyse le parcours détaillé d'un client sur un an |
+| Données personnelles | Garder des IP nominatives indéfiniment sans usage est une mauvaise pratique |
+
+> ⚠️ **La purge doit être écrite en même temps que la collecte**, pas « plus
+> tard ». Une table de détail sans purge est une bombe à retardement : on la
+> découvre le jour où elle fait 40 Go et où la base ralentit.
+>
+> L'index `vue_produit_purge_idx` sur `date_heure` existe précisément pour que
+> la purge soit rapide.
