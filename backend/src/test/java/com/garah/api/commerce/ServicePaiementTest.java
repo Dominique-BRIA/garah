@@ -62,6 +62,7 @@ class ServicePaiementTest {
         transactions.executeWithoutResult(statut -> {
             Utilisateur u = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.CLIENT, "Fotso", EMAIL, "empreinte"));
+            u.marquerEmailVerifie();
             clientId = clients.save(new Client(u, "CLI-PAY-1")).getId();
 
             Long marchandId = jdbc.queryForObject("""

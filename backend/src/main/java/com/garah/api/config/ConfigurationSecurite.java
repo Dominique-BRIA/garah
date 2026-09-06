@@ -156,6 +156,15 @@ public class ConfigurationSecurite {
                         .requestMatchers(HttpMethod.POST, "/api/auth/rafraichir").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/deconnexion").permitAll()
 
+                        // Le lien de confirmation reçu par e-mail. PUBLIQUE, et
+                        // elle doit l'être : celui qui clique vient d'ouvrir sa
+                        // boîte mail, souvent sur un autre appareil, et n'a aucun
+                        // jeton. Ce qui protège cette route n'est pas
+                        // l'authentification mais le JETON lui-même — 256 bits
+                        // tirés au sort, usage unique, 48 heures (D-23).
+                        .requestMatchers(HttpMethod.GET, "/api/auth/verification").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/verification").permitAll()
+
                         // 🎯 Le webhook de l'opérateur de paiement.
                         //
                         // Publique — elle ne peut pas être autrement : Campay

@@ -49,6 +49,7 @@ public class ServiceInscription {
     private final ClientRepository clients;
     private final PasswordEncoder encodeur;
     private final ServiceAuthentification authentification;
+    private final ServiceVerificationEmail verification;
 
     /**
      * La transaction de création, pilotée à la main.
@@ -64,11 +65,13 @@ public class ServiceInscription {
                               ClientRepository clients,
                               PasswordEncoder encodeur,
                               ServiceAuthentification authentification,
+                              ServiceVerificationEmail verification,
                               PlatformTransactionManager transactions) {
         this.utilisateurs = utilisateurs;
         this.clients = clients;
         this.encodeur = encodeur;
         this.authentification = authentification;
+        this.verification = verification;
         this.transaction = new TransactionTemplate(transactions);
     }
 
@@ -167,7 +170,20 @@ public class ServiceInscription {
             throw new MotDePasseTropFaible();
         }
 
-        creerLeCompte(adresse, motDePasse, nom, prenom, telephone, langue);
+        Long utilisateurId = creerLeCompte(adresse, motDePasse, nom, prenom, telephone, langue);
+
+        // ⚠️ L'e-mail part APRÈS la transaction, jamais dedans (D-23).
+        //
+        // Trois raisons, et la dernière est la plus coûteuse :
+        //   - un SMTP lent tiendrait une connexion PostgreSQL ouverte plusieurs
+        //     secondes, et le pool Neon n'en a que cinq (D-14) ;
+        //   - un SMTP en panne annulerait la création du compte, alors que
+        //     celui-ci est parfaitement valide ;
+        //   - le jeton doit être COMMIS avant d'être envoyé. Envoyé depuis la
+        //     transaction, il arriverait chez le client avant d'exister en
+        //     base — et le premier clic tomberait sur « lien invalide ».
+        String jeton = verification.emettre(utilisateurId, adresse);
+        verification.envoyerLien(adresse, nom.strip(), jeton);
 
         // Aucun événement de sécurité n'est écrit ici : l'appel ci-dessous en
         // produit déjà un (CONNEXION_REUSSIE). En écrire un second donnerait
@@ -191,10 +207,10 @@ public class ServiceInscription {
      * <p>{@code ServiceStatistiques} utilise le même outil, pour une raison
      * voisine : maîtriser explicitement les limites d'une transaction.</p>
      */
-    private void creerLeCompte(String adresse, String motDePasse, String nom,
+    private Long creerLeCompte(String adresse, String motDePasse, String nom,
                                String prenom, String telephone, String langue) {
 
-        transaction.executeWithoutResult(statut -> {
+        return transaction.execute(statut -> {
             // Vérification AVANT l'insertion, pour un message clair. L'index
             // unique sur lower(email) reste la vraie garantie : deux
             // inscriptions simultanées passeraient toutes deux ce test, et la
@@ -216,6 +232,8 @@ public class ServiceInscription {
             // puis échouerait au premier ajout au panier — et le défaut ne se
             // verrait qu'au moment de payer. Les deux naissent ensemble.
             clients.save(new Client(utilisateur, genererCodeClient()));
+
+            return utilisateur.getId();
         });
     }
 

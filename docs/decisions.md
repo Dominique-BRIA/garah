@@ -1074,3 +1074,112 @@ et la protection CSRF continue de reposer sur l'en-tête `X-Garah-Client`
 
 **Réversible.** Le fichier `deploiement/proxy-cloudflare.js` ne contient qu'une
 constante à changer le jour de la bascule.
+
+---
+
+## D-23 — Confirmation de l'adresse e-mail, barrière posée à la commande
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Le manque.** L'inscription créait un compte sans aucune vérification :
+n'importe qui pouvait s'inscrire avec l'adresse d'un autre.
+
+**Pourquoi c'est un sujet métier, pas seulement de sécurité.** Le suivi de
+commande, le **code de retrait** et les avis d'acheminement partent tous à
+cette adresse (D-07). Une adresse fausse, et la marchandise arrive à Bangui
+sans que personne ne puisse être prévenu. Le défaut ne se verrait pas à
+l'inscription — il se verrait **devant le point de récupération**.
+
+**Choix.** Un jeton de 256 bits, à usage unique, valable 48 heures, envoyé par
+e-mail. Stocké en **empreinte SHA-256**, comme le jeton de rafraîchissement
+(D-19) et pour la même raison : qui lirait la table pourrait sinon confirmer
+l'adresse de n'importe qui.
+
+**🎯 Où tombe la barrière — et c'est la vraie décision.**
+
+```text
+se connecter, parcourir, remplir un panier   ✅ autorisé
+passer une commande                          ❌ refusé
+```
+
+Bloquer la **connexion** serait plus strict et plus mauvais : le client ne
+pourrait même pas demander un nouveau lien, et le premier e-mail perdu
+fermerait le compte définitivement. On barre au dernier moment utile, celui où
+l'adresse commence réellement à servir.
+
+**⚠️ Trois pièges traités, dont un non évident.**
+
+| | Sans quoi |
+|---|---|
+| L'adresse visée est **figée** à l'émission | je m'inscris, je reçois le lien, je change mon e-mail pour celui d'un autre, je clique — et je « confirme » une adresse que je ne contrôle pas |
+| Émettre un lien **invalide le précédent** | trois renvois laissent trois liens actifs, dont deux dans des boîtes qu'on ne contrôle plus |
+| L'e-mail part **hors transaction** | un SMTP lent tient une connexion Neon ouverte ; un SMTP en panne annule le compte ; et le jeton arriverait avant d'exister en base |
+
+**SMTP, pas l'API d'un fournisseur.** Resend ou SendGrid imposeraient leur SDK
+et leur format dans notre code. SMTP est un protocole : passer de Brevo à
+Mailjet, au VPS ou à Gmail, c'est changer un hôte et des identifiants. C'est la
+réversibilité de D-14 appliquée à l'e-mail.
+
+**Sans SMTP configuré, l'application démarre quand même** et écrit les liens
+dans les journaux. Le bean `JavaMailSender` est optionnel — l'injecter
+directement rendait le SMTP obligatoire et empêchait tout démarrage, ce que les
+tests ont révélé. Comme pour S3 et Campay : l'absence d'une dépendance externe
+dégrade une fonction, elle n'abat pas le service.
+
+> ⚠️ Le repli par les journaux ne doit **jamais** servir en production : un
+> lien de confirmation dans un journal est lisible par qui accède aux journaux.
+
+---
+
+## D-24 — Limitation de débit sur les routes ouvertes
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — en mémoire, donc valable pour une seule instance
+
+**Le manque.** `POST /api/auth/inscription` crée un compte sans vérification
+d'identité et coûte **250 ms de BCrypt** par appel. Un script y crée dix mille
+comptes en une minute — et met au passage l'instance Render gratuite à genoux,
+puisque 250 ms de CPU répétés saturent le seul cœur disponible.
+
+**Choix.** Un compteur par fenêtre, en mémoire, sur les trois seules routes
+qu'un inconnu peut marteler :
+
+| Route | Plafond | Pourquoi |
+|---|---|---|
+| `/api/auth/inscription` | 5 / heure | une personne réelle en fait une |
+| `/api/auth/connexion` | 10 / 5 min | assez pour chercher son mot de passe, pas pour un dictionnaire |
+| `/api/auth/verification/renvoi` | 3 / heure | chaque appel envoie un e-mail, à notre nom et sur notre quota |
+
+Le reste de l'API exige un jeton : en abuser suppose un compte, donc une
+identité, donc la possibilité de le bloquer.
+
+**⚠️ Par adresse IP, avec ce que ça implique.** Derrière un cybercafé de
+Douala ou un opérateur qui masque ses abonnés, **plusieurs personnes partagent
+un compteur**. Les plafonds sont donc larges : gêner un client légitime coûte
+une vente, alors que ralentir un attaquant de 10 à 5 tentatives par minute
+suffit à rendre son attaque inutile.
+
+Ce n'est pas une protection contre un attaquant disposant de milliers
+d'adresses. C'est une protection contre le script trivial — l'écrasante
+majorité de ce qui frappe une API publique.
+
+**Volontairement pas par adresse e-mail** sur la connexion : compter par compte
+permettrait de verrouiller n'importe qui en échouant à sa place. La protection
+deviendrait l'attaque.
+
+**Un second plafond, par compte**, garde les renvois d'e-mail à 3 par heure :
+un attaquant qui change d'IP ne doit pas pouvoir faire pleuvoir des messages
+sur une même victime.
+
+> ⚠️ **Le compteur vit dans le processus.** Avec deux instances, chacune
+> autoriserait le quota complet — la limite serait doublée sans que rien ne le
+> signale. C'est le même avertissement que D-18 pour les traitements
+> périodiques, et il se paie de la même façon : silencieusement. Le jour de la
+> mise à l'échelle, un compteur partagé (Redis, ou une table PostgreSQL
+> puisque la base est là) devient obligatoire.
+
+**Le limiteur est plafonné à 50 000 clés.** Sans cela il deviendrait lui-même
+l'attaque : une requête par IP falsifiée ferait grossir la table jusqu'à
+l'`OutOfMemoryError`. On aurait remplacé un déni de service par un autre, en
+croyant se protéger.

@@ -82,10 +82,12 @@ class ParcoursLogistiqueTest {
         transactions.executeWithoutResult(statut -> {
             Utilisateur u = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.CLIENT, "Owona", EMAIL, "x"));
+            u.marquerEmailVerifie();
             clientId = clients.save(new Client(u, "CLI-LOG-1")).getId();
 
             Utilisateur r = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.RESPONSABLE, "David", "resp.log@garah.cm", "x"));
+            r.marquerEmailVerifie();
             responsableId = responsables.save(new Responsable(r, "M-LOG-R1")).getId();
 
             Long marchandId = jdbc.queryForObject("""

@@ -50,6 +50,7 @@ class ServiceConversationTest {
         transactions.executeWithoutResult(statut -> {
             Utilisateur u = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.CLIENT, "Essomba", EMAIL_CLIENT, "x"));
+            u.marquerEmailVerifie();
             clientId = clients.save(new Client(u, "CLI-CONV-1")).getId();
 
             responsableIds = new java.util.ArrayList<>();
@@ -57,6 +58,7 @@ class ServiceConversationTest {
                 Utilisateur r = utilisateurs.save(new Utilisateur(
                         TypeUtilisateur.RESPONSABLE, "Resp " + i,
                         PREFIXE_RESP + i + "@garah.cm", "x"));
+                r.marquerEmailVerifie();
                 responsableIds.add(responsables.save(new Responsable(r, "M-CONV-" + i)).getId());
             }
         });

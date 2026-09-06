@@ -56,6 +56,7 @@ class ServiceNegociationTest {
     void preparer() {
         Utilisateur u = utilisateurs.save(new Utilisateur(
                 TypeUtilisateur.CLIENT, "Nkolo", "client.nego@garah.cm", "x"));
+        u.marquerEmailVerifie();
         clientId = clients.save(new Client(u, "CLI-NEGO-1")).getId();
 
         // auteur_id est une clé étrangère vers utilisateur. Un identifiant
@@ -68,6 +69,7 @@ class ServiceNegociationTest {
         // SQL ne sait pas imposer — donc qu'on oublie.
         Utilisateur compteResponsable = utilisateurs.save(new Utilisateur(
                 TypeUtilisateur.RESPONSABLE, "Biya", "resp.nego@garah.cm", "x"));
+        compteResponsable.marquerEmailVerifie();
         responsableId = responsables.save(
                 new Responsable(compteResponsable, "M-NEGO-R1")).getId();
 

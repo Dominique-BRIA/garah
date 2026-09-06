@@ -68,6 +68,7 @@ class ServiceAuthentificationTest {
         transactions.executeWithoutResult(statut -> {
             Utilisateur u = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.RESPONSABLE, "Ateba", EMAIL, encodeur.encode(MOT_DE_PASSE)));
+            u.marquerEmailVerifie();
             responsables.save(new Responsable(u, "RESP-AUTH-001"));
         });
 

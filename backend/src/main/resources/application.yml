@@ -15,6 +15,33 @@ spring:
       minimum-idle: 2
       connection-timeout: 20000
 
+  # --- Envoi d'e-mails (D-23) ------------------------------------------------
+  # Le câblage entre nos variables GARAH_MAIL_* et les propriétés attendues par
+  # Spring. Sans ces lignes, renseigner GARAH_MAIL_HOST dans .env n'aurait
+  # AUCUN effet : Spring ne lit que spring.mail.*, et le lien de confirmation
+  # partirait silencieusement dans les journaux.
+  #
+  # C'est exactement le piège du chapitre précédent avec .env — une variable
+  # soigneusement remplie qui ne sert à rien parce que personne ne la lit.
+  mail:
+    host: ${GARAH_MAIL_HOST:}
+    port: ${GARAH_MAIL_PORT:587}
+    username: ${GARAH_MAIL_UTILISATEUR:}
+    password: ${GARAH_MAIL_MOT_DE_PASSE:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          # STARTTLS : la connexion démarre en clair puis passe en chiffré.
+          # Sans cette ligne, les identifiants SMTP voyagent en clair.
+          starttls:
+            enable: true
+            required: true
+        # Sans délai, un SMTP muet bloque le fil d'exécution indéfiniment.
+        connectiontimeout: 10000
+        timeout: 10000
+        writetimeout: 10000
+
   jpa:
     # ddl-auto: none — LE SCHÉMA APPARTIENT À FLYWAY, jamais à Hibernate.
     # Laisser Hibernate créer les tables ferait perdre tous les CHECK, les

@@ -77,6 +77,17 @@ public class Utilisateur {
     private boolean deuxFacteursActif = false;
 
     /**
+     * L'adresse a-t-elle été confirmée par un lien ? (D-23)
+     *
+     * <p>Faux par défaut : tout compte naît non vérifié. Seuls les CLIENT
+     * s'inscrivent eux-mêmes ; les comptes créés par un administrateur sont
+     * marqués vérifiés à la création, puisque quelqu'un a déjà répondu de
+     * leur identité.</p>
+     */
+    @Column(name = "email_verifie", nullable = false)
+    private boolean emailVerifie = false;
+
+    /**
      * Code de la langue préférée. Mappé en {@code String} et non en entité :
      * {@code langue} est un référentiel de trois lignes qu'on ne joint jamais.
      * La clé étrangère reste garantie par la base.
@@ -108,6 +119,20 @@ public class Utilisateur {
     @PreUpdate
     void avantMiseAJour() {
         this.dateModification = Instant.now();
+    }
+
+    public boolean estEmailVerifie() {
+        return emailVerifie;
+    }
+
+    /**
+     * Confirme l'adresse. Il n'y a pas de chemin inverse, et c'est voulu :
+     * « dévérifier » une adresse n'a aucun sens métier. Un changement
+     * d'adresse remettra le drapeau à faux en passant par le constructeur
+     * du changement, jamais par un setter public.
+     */
+    public void marquerEmailVerifie() {
+        this.emailVerifie = true;
     }
 
     public boolean estActif() {

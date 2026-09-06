@@ -187,3 +187,31 @@ services:
       # lisibles sans conversion mentale.
       - key: TZ
         value: UTC
+
+      # --- Envoi d'e-mails (D-23) ------------------------------------------
+      # Sans SMTP, personne ne peut confirmer son adresse — et sans adresse
+      # confirmee, PERSONNE NE PEUT COMMANDER.
+      #
+      # L'application demarre quand meme et ecrit les liens dans les journaux.
+      # /!\ Acceptable en developpement, JAMAIS en production : un lien de
+      #     confirmation dans un journal est lisible par qui accede aux logs.
+      - key: GARAH_MAIL_HOST
+        sync: false
+      - key: GARAH_MAIL_PORT
+        value: "587"
+      - key: GARAH_MAIL_UTILISATEUR
+        sync: false
+      - key: GARAH_MAIL_MOT_DE_PASSE
+        sync: false
+      - key: GARAH_MAIL_EXPEDITEUR
+        sync: false
+      - key: GARAH_MAIL_NOM_EXPEDITEUR
+        value: GARAH
+      - key: GARAH_VERIFICATION_VALIDITE_HEURES
+        value: "48"
+
+      # Ou pointe le lien recu par e-mail. Vide = la page de confirmation
+      # servie par l'API elle-meme, ce qui rend le flux complet SANS frontend.
+      # Le jour venu : https://app.garah.cm/confirmation
+      - key: GARAH_URL_VERIFICATION
+        sync: false

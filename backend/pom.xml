@@ -39,6 +39,21 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Envoi d'e-mails, par SMTP.
+
+             ⚠️ SMTP et NON l'API d'un fournisseur, et c'est un choix (D-23).
+             Une API vendeur (Resend, SendGrid, Mailgun) imposerait son SDK,
+             son format et sa gestion d'erreurs dans notre code. SMTP est un
+             protocole : changer de fournisseur devient un changement d'hote
+             et d'identifiants, pas une reecriture.
+
+             C'est exactement la reversibilite exigee par D-14, appliquee a
+             l'e-mail. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Authentification et autorisation. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

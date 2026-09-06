@@ -2,7 +2,7 @@
 # Integration continue GARAH
 # =============================================================================
 # Ce fichier fait UNE promesse : si la pastille est verte, la branche compile
-# et ses 229 tests passent sur une base PostgreSQL VIERGE.
+# et ses 246 tests passent sur une base PostgreSQL VIERGE.
 #
 # « Sur une base vierge » est le point important. En local, la base de test
 # accumule l historique : une migration cassee peut passer inapercue parce que

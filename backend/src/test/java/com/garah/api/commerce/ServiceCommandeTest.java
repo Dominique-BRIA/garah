@@ -74,6 +74,7 @@ class ServiceCommandeTest {
         transactions.executeWithoutResult(statut -> {
             Utilisateur u = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.CLIENT, "Ngono", EMAIL, "empreinte"));
+            u.marquerEmailVerifie();
             clientId = clients.save(new Client(u, "CLI-CMD-1")).getId();
 
             Long marchandId = jdbc.queryForObject("""

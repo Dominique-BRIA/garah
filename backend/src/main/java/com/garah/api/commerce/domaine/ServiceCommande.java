@@ -8,6 +8,7 @@ import com.garah.api.commerce.infra.PanierRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.iam.domaine.ServiceVerificationEmail;
 import com.garah.api.logistique.domaine.Lieu;
 import com.garah.api.logistique.domaine.TypeLieu;
 import com.garah.api.logistique.infra.LieuRepository;
@@ -65,11 +66,12 @@ public class ServiceCommande {
     private final ServiceCommission commissions;
     private final ServiceStock stock;
     private final LieuRepository lieux;
+    private final ServiceVerificationEmail verification;
 
     public ServiceCommande(CommandeRepository commandes, PanierRepository paniers,
                            VarianteRepository variantes, ServiceTarification tarification,
                            ServiceCommission commissions, ServiceStock stock,
-                           LieuRepository lieux) {
+                           LieuRepository lieux, ServiceVerificationEmail verification) {
         this.commandes = commandes;
         this.paniers = paniers;
         this.variantes = variantes;
@@ -77,6 +79,7 @@ public class ServiceCommande {
         this.commissions = commissions;
         this.stock = stock;
         this.lieux = lieux;
+        this.verification = verification;
     }
 
     /**
@@ -97,6 +100,8 @@ public class ServiceCommande {
      */
     @Transactional
     public DetailCommande passer(Long clientId, Long pointRecuperationId, String langue) {
+        exigerAdresseConfirmee(clientId);
+
         Panier panier = paniers.chargerActifAvecLignes(clientId)
                 .orElseThrow(() -> new RegleMetierViolee("PANIER_VIDE",
                         "Votre panier est vide."));
@@ -188,6 +193,29 @@ public class ServiceCommande {
                     "Ce point de récupération n'accepte plus de commandes.");
         }
         return lieu;
+    }
+
+    /**
+     * Refuse la commande tant que l'adresse e-mail n'est pas confirmée (D-23).
+     *
+     * <p>🎯 <b>C'est ici que la barrière tombe, et pas à la connexion.</b></p>
+     *
+     * <p>Bloquer la connexion serait plus strict et plus mauvais : le client ne
+     * pourrait même pas demander un nouveau lien, et le premier e-mail perdu
+     * fermerait le compte définitivement. On le laisse donc parcourir le
+     * catalogue et remplir son panier — puis on barre au dernier moment utile,
+     * celui où l'adresse commence réellement à servir.</p>
+     *
+     * <p>Car à partir d'ici, tout en dépend : le numéro de commande, le code de
+     * retrait, les avis d'acheminement (D-07). Une adresse fausse, et la
+     * marchandise arrive à Bangui sans que personne ne puisse être prévenu — un
+     * défaut invisible à l'inscription, qui se découvre devant le point de
+     * récupération.</p>
+     */
+    private void exigerAdresseConfirmee(Long clientId) {
+        if (!verification.estConfirme(clientId)) {
+            throw new ServiceVerificationEmail.AdresseNonConfirmee();
+        }
     }
 
     /** {@code CMD-2026-000042}, tiré d'une séquence PostgreSQL (V17). */

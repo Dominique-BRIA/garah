@@ -3,6 +3,7 @@ package com.garah.api.planification;
 import com.garah.api.commerce.domaine.ServiceCommande;
 import com.garah.api.commerce.domaine.ServicePaiementMobile;
 import com.garah.api.iam.domaine.ServiceRafraichissement;
+import com.garah.api.iam.domaine.ServiceVerificationEmail;
 import com.garah.api.mesure.domaine.ServiceStatistiques;
 import com.garah.api.serviceclient.domaine.ServiceNegociation;
 import org.slf4j.Logger;
@@ -73,17 +74,20 @@ public class TachesPeriodiques {
     private final ServiceNegociation negociation;
     private final ServiceStatistiques statistiques;
     private final ServiceRafraichissement sessions;
+    private final ServiceVerificationEmail verification;
 
     public TachesPeriodiques(ServiceCommande commandes,
                              ServicePaiementMobile paiements,
                              ServiceNegociation negociation,
                              ServiceStatistiques statistiques,
-                             ServiceRafraichissement sessions) {
+                             ServiceRafraichissement sessions,
+                             ServiceVerificationEmail verification) {
         this.commandes = commandes;
         this.paiements = paiements;
         this.negociation = negociation;
         this.statistiques = statistiques;
         this.sessions = sessions;
+        this.verification = verification;
     }
 
     /**
@@ -181,6 +185,19 @@ public class TachesPeriodiques {
     @Scheduled(cron = "0 30 2 * * *", zone = FUSEAU)
     public void purgerLesJetonsExpires() {
         executer("purge des jetons de rafraichissement", sessions::purger);
+    }
+
+    /**
+     * Purge les jetons de confirmation d'adresse expirés (D-23).
+     *
+     * <p>Une ligne par inscription et par renvoi. Moins volumineux que les
+     * jetons de rafraîchissement, mais la table ne redescend jamais toute
+     * seule — c'est la leçon de {@code vue_produit} (D-15), et elle vaut pour
+     * toute table qui ne fait que grossir.</p>
+     */
+    @Scheduled(cron = "0 40 2 * * *", zone = FUSEAU)
+    public void purgerLesJetonsDeVerification() {
+        executer("purge des jetons de verification", verification::purger);
     }
 
     /**

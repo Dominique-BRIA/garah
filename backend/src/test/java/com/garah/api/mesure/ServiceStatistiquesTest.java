@@ -50,6 +50,7 @@ class ServiceStatistiquesTest {
         transactions.executeWithoutResult(statut -> {
             Utilisateur u = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.CLIENT, "Tchoumi", EMAIL, "x"));
+            u.marquerEmailVerifie();
             clientId = clients.save(new Client(u, "CLI-STAT-1")).getId();
 
             Long marchandId = jdbc.queryForObject("""
