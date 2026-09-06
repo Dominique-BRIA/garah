@@ -114,8 +114,8 @@ Chapitre 22.
 | 09 | [Catalogue : produits, variantes, médias](09-catalogue.md) | ✅ écrit |
 | 10 | [Prix par palier de quantité](10-prix-par-palier.md) | ✅ écrit |
 | 11 | [Stock et concurrence](11-stock-et-concurrence.md) — chapitre clé | ✅ écrit |
-| 12 | Panier et commande | ⏳ |
-| 13 | Paiement et mobile money | ⏳ |
+| 12 | [Panier et commande](12-panier-et-commande.md) | ✅ écrit |
+| 13 | [Paiement mobile money](13-paiement-mobile-money.md) | ✅ écrit |
 | 14 | Conversations et négociation | ⏳ |
 | 15 | Logistique : expédition, itinéraire, traçabilité | ⏳ |
 | 16 | SAV : réclamations et retours | ⏳ |

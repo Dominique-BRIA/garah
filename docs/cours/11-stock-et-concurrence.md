@@ -373,4 +373,4 @@ compter `disponible` seul, ou `disponible + reservee` ? Argumente en pensant
 
 ---
 
-➡️ **Chapitre suivant :** 12 — Le panier et la commande
+➡️ **Chapitre suivant :** [12 — Le panier et la commande](12-panier-et-commande.md)
