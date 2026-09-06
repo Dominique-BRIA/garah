@@ -616,3 +616,58 @@ l'analyse de comportement individuel et au score de risque.
 >
 > L'index `vue_produit_purge_idx` sur `date_heure` existe précisément pour que
 > la purge soit rapide.
+
+---
+
+## D-16 — Permissions dans le jeton, fraîcheur limitée à 60 minutes
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — à revoir avant la mise en production
+
+**Choix.** Le JWT transporte la liste des permissions de l'utilisateur.
+Autoriser un appel ne demande donc **aucune requête en base**.
+
+```text
+Requête ──▶ signature vérifiée ──▶ permissions lues DANS le jeton ──▶ décision
+                                   (zéro accès base)
+```
+
+**Ce que ça apporte.** Une API réellement sans état. C'est précieux avec Neon,
+dont l'offre gratuite limite fortement le nombre de connexions (D-14) : sans
+ça, chaque appel authentifié en consommerait une.
+
+**Ce que ça coûte — et c'est le point à assumer.**
+
+```text
+10 h 00   Paul se connecte, son jeton contient PRIX_MODIFIER
+10 h 15   un Admin lui retire PRIX_MODIFIER
+10 h 16   Paul modifie un prix                        ✅ accepté
+11 h 00   le jeton expire
+11 h 01   Paul se reconnecte                          ❌ enfin refusé
+```
+
+**Un droit retiré met jusqu'à 60 minutes à s'appliquer.**
+
+Ce qui reste **immédiat**, parce que ça ne dépend pas du jeton : rien. Un
+compte bloqué garde lui aussi son jeton valide jusqu'à expiration.
+
+**Les trois sorties possibles, le jour où ça deviendra gênant.**
+
+| Piste | Effet | Coût |
+|---|---|---|
+| Réduire l'expiration à 15 min + jeton de rafraîchissement | Révocation en ≤ 15 min | Une route de plus, et du travail côté frontend |
+| Relire les permissions en base à chaque appel | Révocation **immédiate** | Une requête par appel — le problème que Neon rend concret |
+| Liste de révocation en mémoire ou Redis | Immédiat et ciblé | Une dépendance de plus, et l'API n'est plus sans état |
+
+**Recommandation retenue pour plus tard :** la première. Elle garde l'API sans
+état et divise le délai par quatre.
+
+> ⚠️ **À trancher avant la mise en production**, en même temps que la question
+> du stockage du jeton côté frontend (`localStorage` contre cookie `HttpOnly`).
+> Les deux décisions sont liées : passer au cookie oblige à réactiver CSRF.
+
+**Amorçage du premier compte.** Le SuperAdmin initial est créé au démarrage à
+partir de `GARAH_SUPERADMIN_EMAIL` et `GARAH_SUPERADMIN_MOT_DE_PASSE`, et
+uniquement s'il n'existe aucun SuperAdmin. Jamais par une migration : un mot de
+passe versionné dans git est un mot de passe public, et la migration serait
+rejouée à l'identique en production.

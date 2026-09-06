@@ -14,6 +14,22 @@ public interface CasUtilisationRepository extends JpaRepository<CasUtilisation, 
 
     List<CasUtilisation> findByModuleOrderByCode(String module);
 
+    /** Tous les codes actifs — les droits d'un SuperAdmin. */
+    @Query("SELECT c.code FROM CasUtilisation c WHERE c.statut = 'ACTIF' ORDER BY c.code")
+    List<String> tousLesCodesActifs();
+
+    /**
+     * Tous les codes actifs sauf ceux d'un module — les droits d'un Admin,
+     * qui gère l'exploitation mais pas le référentiel ni la sécurité globale
+     * (chapitre 01 §3.2).
+     */
+    @Query("""
+            SELECT c.code FROM CasUtilisation c
+             WHERE c.statut = 'ACTIF' AND c.module <> :module
+             ORDER BY c.code
+            """)
+    List<String> codesActifsHorsModule(@Param("module") String module);
+
     /**
      * Les permissions effectives d'un responsable.
      *

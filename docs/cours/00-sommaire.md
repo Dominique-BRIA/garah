@@ -99,7 +99,12 @@ Chapitre 09.
 | 05 | [PostgreSQL et le schéma](05-postgresql-et-le-schema.md) — 14 migrations Flyway appliquées | ✅ écrit |
 | 06 | [Structurer un projet Spring Boot par domaines](06-structurer-spring-boot.md) | ✅ écrit |
 | 07 | [Entités JPA, repositories et transactions](07-entites-jpa-et-transactions.md) — domaine IAM | ✅ écrit |
-| 08 | Authentification, JWT, et le modèle de permissions | ⏳ |
+| 08 | [Authentification, JWT et contrôle des permissions](08-authentification-et-permissions.md) | ✅ écrit |
+
+> ⚠️ **Proposition d'ordre, à valider.** Les chapitres 09 à 14 (Angular) sont
+> écrits ici avant les modules métier. Je suggère de **finir le backend
+> d'abord** : construire trois frontends sur une API incomplète oblige à tout
+> retoucher. Dans ce cas, la Partie III passe avant la fin de la Partie II.
 | 09 | Un workspace Angular, trois applications, une librairie partagée | ⏳ |
 | 10 | Le design system `garah-ui` (thème, composants, accessibilité) | ⏳ |
 | 11 | Faire dialoguer Angular et Spring Boot proprement | ⏳ |
