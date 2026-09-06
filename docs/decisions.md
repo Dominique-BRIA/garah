@@ -671,3 +671,333 @@ partir de `GARAH_SUPERADMIN_EMAIL` et `GARAH_SUPERADMIN_MOT_DE_PASSE`, et
 uniquement s'il n'existe aucun SuperAdmin. Jamais par une migration : un mot de
 passe versionné dans git est un mot de passe public, et la migration serait
 rejouée à l'identique en production.
+
+---
+
+## D-17 — Le webhook de paiement ne croit jamais ce qu'on lui envoie
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée
+
+**Choix.** La route `POST /api/paiements/notifications/campay` ne retient
+**qu'un seul champ** de la notification reçue : la référence de transaction.
+Le statut, le montant et l'opérateur qu'elle annonce sont **ignorés**. L'état
+réel est ensuite **redemandé à Campay**, sur une connexion que nous ouvrons,
+avec nos identifiants.
+
+```text
+ce que la notification apporte   « la transaction ABC a bougé »   ← non fiable
+ce qui décide                    GET /transaction/ABC/ chez Campay ← fiable
+```
+
+**Pourquoi, plutôt qu'une vérification de signature.**
+
+Un webhook est nécessairement **public** : l'opérateur n'a pas de compte chez
+nous et ne portera jamais de jeton. La protection habituelle est une signature
+partagée. Toute la sécurité repose alors sur trois choses : l'exactitude de
+l'algorithme, le secret, et le fait qu'aucun des deux n'a fuité.
+
+Ici, **aucune des trois n'est nécessaire**. Un inconnu qui poste la référence
+de son choix déclenche une question dont il ne contrôle pas la réponse. Il ne
+peut ni déclarer une commande payée, ni en changer le montant.
+
+Un contrôle de cohérence complète le dispositif : un succès annoncé pour un
+montant **inférieur** à celui du paiement le fait échouer, jamais réussir.
+
+**Ce que ça coûte.** Un aller-retour HTTP vers Campay à chaque notification.
+Négligeable comparé au risque.
+
+**Ce que ça évite.** Le pire scénario d'une plateforme de commerce : une
+commande déclarée payée par quelqu'un qui n'a rien payé — avec sortie de stock,
+écriture au grand livre marchand et acheminement vers Bangui à la clé.
+
+> ⚠️ **La signature reste implémentée, mais désactivée par défaut**
+> (`GARAH_CAMPAY_WEBHOOK_STRICT=false`). Son format exact n'est pas documenté
+> publiquement par Campay. L'activer sans l'avoir vérifié transformerait une
+> inconnue en **panne totale et silencieuse** : toutes les notifications
+> rejetées, plus aucune commande payée, et aucune erreur visible côté client.
+>
+> Les journaux disent à chaque notification si elle se vérifie. Passer à `true`
+> uniquement quand ils affichent `signature=ok`.
+
+**La règle générale qui en sort.**
+> Quand une donnée arrive par un canal qu'on ne contrôle pas, ne l'utilise
+> jamais comme **information**. Utilise-la comme **signal** — puis va chercher
+> l'information à la source.
+
+---
+
+## D-18 — Les traitements périodiques supposent une seule instance
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — à revoir avant toute mise à l'échelle
+
+**Choix.** Cinq traitements tournent en tâche de fond, sans verrou partagé :
+
+| Traitement | Rythme | Sans lui |
+|---|---|---|
+| réconciliation des paiements | 2 min | un webhook perdu = un client débité dont la commande n'est jamais payée |
+| libération des commandes impayées | 10 min | le stock disponible fond (D-06) |
+| expiration des propositions de prix | 1 h | un prix négocié il y a six mois reste acceptable |
+| agrégation des statistiques | 1 h du matin | `statistique_produit_jour` reste vide (D-15) |
+| purge du détail des vues | 2 h du matin | `vue_produit` grossit sans fin (D-15) |
+
+**Le point à assumer.** Ces cinq méthodes existaient, écrites et testées, mais
+**aucune n'était appelée** : le projet n'avait ni `@EnableScheduling` ni
+`@Scheduled`. Ce n'était pas une panne visible, c'était pire — un système qui a
+l'air de marcher.
+
+**Ce que ça suppose.** Un seul processus. C'est vrai sur l'offre gratuite de
+Render (D-14). À la seconde instance, deux serveurs agrégeraient les mêmes
+statistiques deux fois.
+
+> ⚠️ **Le verrou partagé est à poser AVANT d'ajouter une instance, pas après.**
+> Le double comptage ne produit aucune erreur, seulement des chiffres faux —
+> et on ne s'en aperçoit qu'en comparant deux rapports.
+>
+> ShedLock sur une table PostgreSQL est le plus simple : la base est déjà là.
+
+**Fuseau horaire.** Les tâches de nuit sont ancrées sur `Africa/Douala`, pas
+sur celui du serveur (`TZ=UTC` sur Render). Sans zone explicite, « 2 h du
+matin » tomberait à 3 h locales.
+
+---
+
+## D-19 — Jeton d'accès court + jeton de rafraîchissement en cookie HttpOnly
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — **remplace la partie « expiration » de [D-16](#d-16--permissions-dans-le-jeton-fraîcheur-limitée-à-60-minutes)**
+
+**Choix.** Deux jetons, aux propriétés opposées et complémentaires.
+
+| | Durée | Transport | Révocable ? |
+|---|---|---|---|
+| **accès** | 15 min | Bearer, **en mémoire JS** | ❌ jamais — c'est la nature d'un JWT |
+| **rafraîchissement** | 14 j | cookie `HttpOnly` | ✅ ligne en base |
+
+**Ce que ça règle.** D-16 assumait deux défauts, écrits noir sur blanc :
+un droit retiré mettait jusqu'à 60 minutes à s'appliquer, et *« un compte
+bloqué garde lui aussi son jeton valide jusqu'à expiration »*.
+
+À chaque rafraîchissement, l'utilisateur et ses permissions sont **relus en
+base**. Le délai tombe donc à 15 minutes au pire — et à **zéro** pour une
+déconnexion, qui révoque la session côté serveur.
+
+```text
+D-16     droit retiré → effectif sous 60 min
+         compte bloqué → effectif sous 60 min
+         déconnexion   → sans effet réel
+
+D-19     droit retiré → effectif sous 15 min
+         compte bloqué → effectif sous 15 min
+         déconnexion   → IMMÉDIATE
+```
+
+**Pourquoi le cookie plutôt que `localStorage`.** Le jeton de rafraîchissement
+vaut quatorze jours d'accès. Dans `localStorage`, il est lisible par n'importe
+quel JavaScript de la page — donc par la moindre faille XSS, y compris dans une
+dépendance npm. En `HttpOnly`, il est hors de portée du JavaScript.
+
+Le jeton d'accès, lui, reste en Bearer et **en mémoire** : 15 minutes, et il
+disparaît au rechargement de l'onglet, où le cookie le régénère.
+
+**Rotation et détection de vol.** Un jeton de rafraîchissement ne sert
+qu'**une fois**. S'il revient après avoir été consommé, il n'y a que deux
+explications, et aucune n'est bénigne : le voleur s'en sert après la victime,
+ou l'inverse. Impossible de savoir lequel appelle — on révoque donc la
+**famille entière**. Les deux sont déconnectés, et le légitime se reconnecte
+avec son mot de passe, que le voleur n'a pas.
+
+> 🎯 C'est la **rotation** qui rend le vol visible. La révocation n'est que la
+> réaction. Sans rotation, un jeton volé reste valable quatorze jours sans que
+> rien ne permette de s'en apercevoir.
+
+**Ce que ça coûte — et c'est le point à assumer.**
+
+- Une lecture en base toutes les 15 minutes par session. C'est exactement ce
+  que D-16 voulait éviter avec Neon… mais **une requête par quart d'heure**,
+  et non une par appel : trois ordres de grandeur en dessous de la piste
+  « relire les permissions à chaque appel » que D-16 écartait.
+- Une table qui grossit vite (un jeton par connexion, plus un par rotation) →
+  purge quotidienne dès le premier jour (D-18).
+- **CSRF réactivé** sur les deux routes à cookie. Voir ci-dessous.
+
+**⚠️ La contrainte que l'hébergement impose : `SameSite=None`.**
+
+```text
+frontends   garah-client.vercel.app
+API         garah-api.onrender.com     ← autre SITE, pas seulement autre origine
+```
+
+Pour le navigateur, `vercel.app` et `onrender.com` sont deux sites différents.
+Avec `SameSite=Strict` ou même `Lax`, le cookie ne serait **jamais** envoyé :
+le rafraîchissement échouerait systématiquement, et le symptôme serait une
+déconnexion toutes les 15 minutes **sans aucune erreur serveur**.
+
+`None` est donc obligatoire ici — et il impose `Secure`. La contrepartie est
+que le cookie part aussi sur les requêtes inter-sites, d'où une protection CSRF
+sur `/api/auth/rafraichir` et `/api/auth/deconnexion`, et **là seulement**.
+
+**⚠️ Correction apportée à la mise en service.** Ce paragraphe annonçait
+d'abord un jeton `XSRF-TOKEN` (le « double-submit cookie » de Spring). **Il est
+inapplicable ici**, et l'essai réel l'a montré : un cookie n'est lisible en
+JavaScript que depuis SON domaine. Angular, servi par Vercel, ne peut pas lire
+un cookie posé par Render — il n'aurait jamais rien à renvoyer, et chaque
+rafraîchissement aurait répondu 403.
+
+La protection retenue est un **en-tête personnalisé** (`X-Garah-Client`,
+`FiltreOrigineCsrf`) :
+
+1. un en-tête non standard force un **préflight** `OPTIONS` ;
+2. ce préflight est arbitré par CORS, qui n'autorise que `GARAH_CORS_ORIGINS` ;
+3. une page tierce échoue au préflight — **sa requête n'est jamais envoyée**.
+
+Un formulaire HTML ne peut poser aucun en-tête : le vecteur CSRF historique est
+fermé d'office. La sécurité repose donc sur **CORS**, pas sur le secret de
+l'en-tête — d'où l'interdiction du joker `*` dans les origines.
+
+> 🎯 **Une raison de plus de prendre un vrai domaine tôt.** Avec
+> `api.garah.cm` et `app.garah.cm`, `SameSite=Lax` redevient possible : la
+> protection CSRF cesse d'être portée par un jeton et devient **structurelle**.
+> C'est réglable par `GARAH_COOKIE_SAMESITE`, sans toucher au code.
+
+**Sur le hachage du jeton en base.** SHA-256, **pas BCrypt** — contre-intuitif
+après le chapitre 08. BCrypt est lent *exprès*, parce qu'un mot de passe humain
+a peu d'entropie et doit résister à un dictionnaire. Ce jeton est 256 bits
+tirés au sort : aucun dictionnaire n'existe. Le ralentir ne protégerait rien et
+coûterait 250 ms à chaque rafraîchissement, toutes les 15 minutes, pour chaque
+utilisateur connecté.
+
+> **La règle :** BCrypt pour ce qu'un *humain* a choisi, hachage rapide pour ce
+> que la *machine* a tiré au sort.
+
+**Ce qui reste ouvert.** Le délai de 15 minutes est un compromis, pas une
+garantie : un droit retiré s'applique toujours avec du retard. Pour une
+révocation strictement immédiate, il faudrait la troisième piste de D-16 (liste
+de révocation en mémoire ou Redis) — et l'API ne serait plus sans état.
+
+---
+
+## D-20 — Stockage des fichiers : le choix est repoussé, pas tranché
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — précise [D-14](#d-14--hébergement--render-vercel-neon-backblaze-b2)
+
+**Le fait découvert.** D-14 retenait Backblaze B2 « en gratuit ». C'est vrai pour
+le stockage, mais **pas pour un bucket public** : Backblaze exige un moyen de
+paiement enregistré (« a small fee that is credited to your account balance »).
+Cloudflare R2 impose la même chose pour activer le service, même dans le palier
+gratuit.
+
+Or **aucun produit ne peut être publié sans photo** (invariant I-12). Le
+stockage n'est donc pas un accessoire : il bloque le catalogue entier.
+
+**Choix.** On ne tranche pas maintenant. Quatre chemins restent ouverts, et le
+code n'en connaît aucun.
+
+| | Carte ? | Gratuit | Egress | Usage |
+|---|---|---|---|---|
+| **MinIO local** | non | — | — | développement |
+| **Supabase** | **non** | 1 Go | 5 Go | première mise en ligne |
+| **Cloudflare R2** | oui | 10 Go | **0 €** | production visée |
+| **Backblaze B2** | oui * | 10 Go | payant | repli |
+
+\* frais recrédités, mais carte exigée pour un bucket public.
+
+**🎯 Le critère qui décidera : l'egress, pas le stockage.** Un catalogue sert
+les mêmes images des milliers de fois — c'est de la bande passante *sortante*.
+R2 la facture zéro, B2 la facture au-delà de 3× le stockage. Un catalogue qui
+marche coûtera en trafic bien avant de coûter en disque. **R2 est donc la cible,
+dès qu'une carte et un domaine sont disponibles.**
+
+**Ce que ça coûte.** Rien, et c'est le point. Tout passe par le SDK S3 avec un
+endpoint configurable : changer de fournisseur, c'est changer cinq variables
+d'environnement et redémarrer. C'est la première fois que la réversibilité
+exigée par D-14 sert concrètement — et elle transforme une décision bloquante
+en décision reportable.
+
+> ⚠️ **Piège R2** : le sous-domaine `r2.dev` est explicitement réservé au
+> développement (*« rate-limited and should only be used for development
+> purposes »*). En production, R2 exige un **domaine personnalisé** hébergé chez
+> Cloudflare — le même domaine qui permettrait `SameSite=Lax` (D-19). Deux
+> raisons convergentes d'en prendre un tôt.
+
+> ⚠️ **Piège commun aux quatre** : `GARAH_S3_ENDPOINT` (écriture, API
+> authentifiée) et `GARAH_MEDIA_BASE_URL` (lecture publique par le navigateur)
+> ne sont **jamais** la même URL. Les confondre donne un catalogue dont toutes
+> les images répondent 401.
+
+---
+
+## D-21 — Bucket privé et URL signées
+
+**Date :** 06/09/2026
+**Statut :** ✅ actée — précise [D-20](#d-20--stockage-des-fichiers--le-choix-est-repoussé-pas-tranché)
+
+**Le fait.** Backblaze exige un moyen de paiement pour créer un bucket
+**public**. Sans carte bancaire, le bucket `garah-medias` reste **privé**.
+
+**Ce que ça casse, et pourquoi c'est invisible.** Un bucket privé accepte
+parfaitement les téléversements : l'API S3 est authentifiée. Le back-office
+fonctionne donc de bout en bout — on téléverse, on voit les miniatures, on
+publie. **Ce n'est qu'au premier visiteur que toutes les images répondent
+401**, et aucun journal serveur ne le signale.
+
+Vérifié pour de vrai, pas déduit :
+
+```text
+INFO  Fichier depose : verification/e12daff4-….png (67 octets)   ✅ dépôt
+[401 sur https://f004.backblazeb2.com/file/garah-medias/…]        ❌ lecture
+```
+
+**Choix.** L'API renvoie des **URL signées** (AWS SigV4), valables sept jours.
+
+**⚠️ La conséquence structurelle, et c'est la vraie.** Le frontend recevait
+jusqu'ici une **clé** (`produits/42/a3f9.jpg`) et la préfixait lui-même avec
+`baseUrlMedias`. **Ce modèle est mort** : construire l'adresse demande une
+signature, donc la clé secrète — qu'un frontend ne doit évidemment jamais
+détenir.
+
+```text
+avant   API → clé          frontend → base + clé = URL
+après   API → URL complète  frontend → affiche, point
+```
+
+`DetailProduit.MediaResume` et `ResumeProduit` portent donc un champ `url` en
+plus de `cleObjet`, et `/api/configuration` annonce `urlsMediasSignees` pour
+que les trois applications sachent à quoi s'en tenir.
+
+**Ce que ça coûte.**
+
+- Une URL de média **expire** au bout de sept jours (maximum imposé par SigV4).
+  Une page HTML archivée plus longtemps affichera des images mortes.
+- Le SEO en pâtit : `garah-web` existe pour le référencement (D-03), et une
+  image dont l'adresse change n'est pas indexée durablement.
+- Aucun CDN ne peut être placé devant efficacement.
+
+**🎯 La mitigation : les URL sont mises en cache et réutilisées.**
+
+Signer produit une chaîne différente à chaque appel. Sans cache, la même photo
+changerait d'adresse à chaque affichage — et le catalogue entier serait
+retéléchargé à chaque visite. On conserve donc la même URL signée tant qu'il
+lui reste plus de 24 h, ce qui garantit qu'une adresse remise à un navigateur
+est **toujours valable au moins une journée**.
+
+> C'est le genre de défaut qu'une relecture ne voit pas : les images
+> s'afficheraient parfaitement. D'où `SignataireS3Test`, dont le test central
+> est « deux appels sur la même clé renvoient la MÊME URL ».
+
+**Réversible en une variable.** Le jour où le bucket devient public — carte
+enregistrée, ou passage à Supabase, ou VPS avec MinIO :
+
+```bash
+GARAH_S3_URLS_SIGNEES=false
+```
+
+Rien d'autre. Le champ `url` reste renseigné, il contient simplement une
+concaténation au lieu d'une signature. Aucun frontend n'a à changer.
+
+> ⚠️ **À faire dès que possible.** Ce n'est pas une architecture cible, c'est
+> un contournement de contrainte financière. Il fonctionne, il est testé
+> (`StockageReelTest` fait un aller-retour réel contre Backblaze), mais le
+> bucket public reste la bonne réponse pour du contenu public.
