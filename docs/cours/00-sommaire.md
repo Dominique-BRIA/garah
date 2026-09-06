@@ -112,8 +112,8 @@ Chapitre 22.
 | # | Chapitre | État |
 |---|---|---|
 | 09 | [Catalogue : produits, variantes, médias](09-catalogue.md) | ✅ écrit |
-| 10 | Prix par palier de quantité | ⏳ |
-| 11 | Stock et concurrence | ⏳ |
+| 10 | [Prix par palier de quantité](10-prix-par-palier.md) | ✅ écrit |
+| 11 | [Stock et concurrence](11-stock-et-concurrence.md) — chapitre clé | ✅ écrit |
 | 12 | Panier et commande | ⏳ |
 | 13 | Paiement et mobile money | ⏳ |
 | 14 | Conversations et négociation | ⏳ |

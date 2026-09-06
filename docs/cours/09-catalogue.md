@@ -368,4 +368,4 @@ contrôleur ? Que faudrait-il faire alors ?
 
 ---
 
-➡️ **Chapitre suivant :** 10 — Le prix par palier de quantité
+➡️ **Chapitre suivant :** [10 — Le prix par palier de quantité](10-prix-par-palier.md)

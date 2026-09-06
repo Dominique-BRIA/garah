@@ -1,0 +1,65 @@
+package com.garah.api.stock.infra;
+
+import com.garah.api.stock.domaine.Stock;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface StockRepository extends JpaRepository<Stock, Long> {
+
+    Optional<Stock> findByVarianteId(Long varianteId);
+
+    /**
+     * Charge le stock en le <b>verrouillant</b> jusqu'à la fin de la transaction.
+     *
+     * <p>Traduit en SQL par un {@code SELECT … FOR UPDATE}. Deux transactions
+     * qui demandent la même variante sont <b>sérialisées</b> : la seconde
+     * attend que la première ait validé ou annulé.</p>
+     *
+     * <p>C'est ce qui rend impossible le scénario du chapitre 05 :</p>
+     * <pre>
+     * Client A          Client B
+     *  lit 1             lit 1          ← les deux voient « il en reste 1 »
+     *  écrit 0           écrit 0        ← l'article est vendu DEUX fois
+     * </pre>
+     *
+     * <p>⚠️ Le verrou porte sur <b>une ligne</b>, donc sur une variante.
+     * Deux commandes de produits différents ne s'attendent pas. C'est ce qui
+     * rend le coût acceptable : on ne sérialise que ce qui est réellement en
+     * concurrence.</p>
+     *
+     * <p>⚠️ Et il impose une discipline : <b>toujours verrouiller les variantes
+     * dans le même ordre</b> quand une commande en contient plusieurs, sinon
+     * deux transactions peuvent s'attendre mutuellement (interblocage).
+     * C'est le rôle de {@link #verrouillerPlusieurs}.</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Stock s WHERE s.varianteId = :varianteId")
+    Optional<Stock> verrouiller(Long varianteId);
+
+    /**
+     * Verrouille plusieurs stocks, <b>toujours dans le même ordre</b>.
+     *
+     * <p>Le {@code ORDER BY} n'est pas cosmétique : il évite l'interblocage.</p>
+     *
+     * <pre>
+     * Sans ordre imposé :
+     *   Transaction A verrouille la variante 7, puis demande la 3
+     *   Transaction B verrouille la variante 3, puis demande la 7
+     *   → chacune attend l'autre, indéfiniment
+     * </pre>
+     *
+     * <p>En verrouillant toujours par identifiant croissant, ce cycle ne peut
+     * pas se former.</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Stock s WHERE s.varianteId IN :varianteIds ORDER BY s.varianteId")
+    List<Stock> verrouillerPlusieurs(List<Long> varianteIds);
+
+    @Query("SELECT s FROM Stock s WHERE s.quantiteDisponible <= s.seuilAlerte")
+    List<Stock> sousLeSeuil();
+}
