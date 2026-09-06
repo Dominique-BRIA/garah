@@ -90,7 +90,7 @@ Chapitre 09.
 | 01 | [Le domaine et les acteurs](01-le-domaine-et-les-acteurs.md) | ✅ écrit |
 | 02 | [Revue critique du modèle initial](02-revue-critique-du-modele.md) | ✅ écrit |
 | 03 | [Le modèle de données corrigé](03-le-modele-corrige.md) — **chapitre de référence** | ✅ écrit |
-| 04 | Les règles métier et les invariants | ⏳ |
+| 04 | [Les règles métier et les invariants](04-regles-metier-et-invariants.md) | ✅ écrit |
 
 ### Partie II — Les fondations techniques
 
