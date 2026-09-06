@@ -1,0 +1,225 @@
+// =============================================================================
+// La coque du back-office
+// =============================================================================
+// Les commentaires marqués ⚠️ viennent du projet de référence : chacun décrit
+// un piège de mise en page qui a coûté une séance de débogage.
+// =============================================================================
+
+.coque {
+  display: flex;
+  width: 100%;
+
+  // ⚠️ Hauteur EXACTE, pas `min-height`. La coque occupe la fenêtre, jamais
+  // plus. `overflow: hidden` interdit à un enfant trop grand d'allonger le
+  // document — c'est ce qui produisait une SECONDE barre de défilement
+  // par-dessus celle du contenu. Chaque zone qui peut déborder gère désormais
+  // la sienne.
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+
+  background:
+    radial-gradient(circle at 0% 0%, var(--aureole-1) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, var(--aureole-2) 0%, transparent 40%);
+}
+
+.barre-laterale {
+  width: 268px;
+  flex-shrink: 0;
+  background: var(--verre-fond);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid var(--verre-bordure);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  // ⚠️ Aucun padding à DROITE : il est reporté sur les enfants. Porté par le
+  // conteneur, il éloignait la barre de défilement du bord et la faisait
+  // flotter au milieu de la barre latérale.
+  padding: 1.5rem 0 1.5rem 1rem;
+}
+
+// ⚠️ `min-height: 0` est INDISPENSABLE.
+//
+// Un élément flexible refuse par défaut de descendre sous la taille de son
+// contenu (`min-height: auto`) : c'est précisément ce qui faisait déborder la
+// barre latérale hors de la fenêtre dès que le menu comptait trop d'entrées.
+// Faire défiler la barre entière aurait emporté le pied avec elle.
+.barre-laterale__defilant {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;   // le défilement ne se propage pas au contenu
+  padding-right: 0.5rem;
+}
+
+// Le pied ne défile pas : il reprend la marge droite pleine pour rester
+// aligné sur le reste plutôt que de s'avancer jusqu'au bord.
+.barre-laterale__pied {
+  padding-right: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--verre-bordure);
+}
+
+.marque {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2rem;
+}
+
+.marque__mot {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.marque__role {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--texte-attenue);
+}
+
+nav { display: flex; flex-direction: column; gap: 0.25rem; }
+
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  color: var(--texte-attenue);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+
+  &:hover { background: var(--surface-douce); color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  &.actif {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+  }
+}
+
+.icone { width: 1.1rem; text-align: center; font-size: 0.95rem; }
+
+.ligne-theme {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--texte-attenue);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover { background: var(--surface-douce); color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.compte {
+  padding: 0.85rem;
+  margin: 0.75rem 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-douce);
+}
+
+.compte__nom {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--texte);
+  // Un nom très long ne doit pas élargir la barre latérale.
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compte__type {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--texte-attenue);
+}
+
+.plein { width: 100%; }
+
+.contenu {
+  flex: 1;
+  // ⚠️ `min-width: 0` sur un enfant flexible : sans lui, un tableau large
+  // pousse le conteneur au lieu de défiler à l'intérieur, et c'est toute la
+  // page qui part en largeur — barre latérale comprise.
+  min-width: 0;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+// --- Mobile ------------------------------------------------------------------
+.barre-mobile { display: none; }
+.voile { display: none; }
+
+@media (max-width: 900px) {
+  .coque {
+    // Sous 900px la page défile normalement sous la barre du haut : on annule
+    // la hauteur fixe, sinon le contenu serait piégé dans une zone de la
+    // hauteur de l'écran avec la barre du haut par-dessus.
+    height: auto;
+    overflow: visible;
+    flex-direction: column;
+  }
+
+  .barre-mobile {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1rem;
+    background: var(--verre-fond);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--verre-bordure);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .bouton-menu {
+    background: transparent;
+    border: none;
+    color: var(--texte);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .barre-laterale {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .barre-laterale--ouverte { transform: translateX(0); }
+
+  .voile {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .contenu { padding: 1.25rem; overflow: visible; }
+}

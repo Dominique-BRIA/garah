@@ -1,0 +1,61 @@
+.entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+h1 { font-size: 1.5rem; }
+
+.sous-titre {
+  color: var(--texte-attenue);
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
+
+.etat { text-align: center; padding: 3rem 1.5rem; }
+.etat__titre { font-weight: 600; margin-bottom: 0.75rem; }
+.etat__aide {
+  color: var(--texte-attenue);
+  font-size: 0.85rem;
+  max-width: 34rem;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.cellule-produit { display: flex; align-items: center; gap: 0.75rem; }
+
+.vignette {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-douce);
+}
+
+.vignette--vide {
+  display: grid;
+  place-items: center;
+  color: var(--texte-attenue);
+}
+
+.nom { font-weight: 600; }
+.droite { text-align: right; }
+
+code {
+  font-family: var(--police-mono);
+  font-size: 0.8rem;
+  color: var(--texte-attenue);
+}
+
+.etat__icone {
+  font-size: 2rem;
+  color: var(--texte-attenue);
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.etat__icone--alerte { color: var(--danger); }

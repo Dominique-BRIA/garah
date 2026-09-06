@@ -1,0 +1,47 @@
+<div class="connexion">
+  <button type="button" class="bascule-theme" (click)="theme.basculer()"
+          [attr.aria-label]="theme.sombreEffectif() ? 'Passer en clair' : 'Passer en sombre'">
+    <i [class]="theme.sombreEffectif() ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"
+       aria-hidden="true"></i>
+  </button>
+
+  <div class="connexion__panneau gu-carte">
+    <div class="marque">
+      <span class="marque__mot">GARAH</span>
+      <span class="marque__role">Administration</span>
+    </div>
+
+    <p class="accroche">
+      Commerce, service client et logistique — de Douala à Bangui.
+    </p>
+
+    <!-- novalidate : on veut NOS messages, pas les bulles du navigateur, qui
+         ne sont ni traduites ni stylables ni lues par tous les lecteurs
+         d'écran de la même façon. -->
+    <form (ngSubmit)="soumettre()" novalidate>
+      <label class="gu-libelle" for="email">Adresse e-mail</label>
+      <input id="email" name="email" type="email" class="gu-champ"
+             autocomplete="username" required
+             [ngModel]="email()" (ngModelChange)="email.set($event)" />
+
+      <label class="gu-libelle" for="mdp">Mot de passe</label>
+      <input id="mdp" name="motDePasse" type="password" class="gu-champ"
+             autocomplete="current-password" required
+             [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)" />
+
+      @if (erreur(); as message) {
+        <!-- role="alert" : le lecteur d'écran annonce l'erreur sans que
+             l'utilisateur ait à la chercher. -->
+        <p class="alerte" role="alert">{{ message }}</p>
+      }
+
+      <button type="submit" class="gu-btn gu-btn--primaire plein"
+              [disabled]="enCours() || !email() || !motDePasse()">
+        @if (enCours()) {
+          <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> Connexion…
+        } @else { Se connecter }
+      </button>
+    </form>
+
+  </div>
+</div>

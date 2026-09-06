@@ -1,0 +1,55 @@
+<div class="coque">
+  <!-- Barre du haut, mobile uniquement -->
+  <header class="barre-mobile">
+    <button type="button" class="bouton-menu" (click)="menuOuvert.set(!menuOuvert())"
+            [attr.aria-expanded]="menuOuvert()" aria-label="Ouvrir le menu"><i class="fa-solid fa-bars"></i></button>
+    <span class="marque__mot">GARAH</span>
+  </header>
+
+  @if (menuOuvert()) {
+    <!-- Le voile ferme le menu au clic. `aria-hidden` : il n'apporte rien au
+         lecteur d'écran, qui dispose déjà du bouton de fermeture. -->
+    <div class="voile" (click)="fermerLeMenu()" aria-hidden="true"></div>
+  }
+
+  <aside class="barre-laterale" [class.barre-laterale--ouverte]="menuOuvert()">
+    <div class="barre-laterale__defilant">
+      <div class="marque">
+        <span class="marque__mot">GARAH</span>
+        <span class="marque__role">Administration</span>
+      </div>
+
+      <nav>
+        @for (entree of visibles(); track entree.chemin) {
+          <a [routerLink]="entree.chemin" routerLinkActive="actif"
+             [routerLinkActiveOptions]="{ exact: entree.chemin === '/' }"
+             (click)="fermerLeMenu()">
+            <i class="icone" [class]="entree.icone" aria-hidden="true"></i>
+            {{ entree.libelle }}
+          </a>
+        }
+      </nav>
+    </div>
+
+    <div class="barre-laterale__pied">
+      <button type="button" class="ligne-theme" (click)="theme.basculer()">
+        <i class="icone" [class]="theme.sombreEffectif() ? 'fa-solid fa-sun' : 'fa-solid fa-moon'" aria-hidden="true"></i>
+        @if (theme.sombreEffectif()) { Thème clair } @else { Thème sombre }
+      </button>
+
+      @if (session.utilisateur(); as u) {
+        <div class="compte">
+          <div class="compte__nom">{{ u.nom }}</div>
+          <div class="compte__type">{{ u.type }}</div>
+        </div>
+      }
+
+      <button type="button" class="gu-btn gu-btn--secondaire plein"
+              (click)="seDeconnecter()">Se déconnecter</button>
+    </div>
+  </aside>
+
+  <main class="contenu">
+    <router-outlet />
+  </main>
+</div>

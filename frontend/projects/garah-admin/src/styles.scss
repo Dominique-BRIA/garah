@@ -1,1 +1,32 @@
-/* You can add global styles to this file, and also import other style files */
+// =============================================================================
+// garah-admin — le back-office
+// =============================================================================
+// La librairie declare les NOMS des jetons, cette application donne les
+// VALEURS (D-03). Ici : dense, tableaux, verre depoli, indigo profond.
+// =============================================================================
+
+@use '../../garah-ui/theme/jetons' as *;
+@use '../../garah-ui/theme/base' as *;
+
+// --- La charte du back-office ------------------------------------------------
+//
+// Ces trois lignes sont TOUTE la personnalisation visuelle de l'application.
+// Le reste vient de garah-ui.
+:root {
+  // Indigo plus profond que le defaut : le back-office est un outil de
+  // travail, pas une vitrine. On assombrit pour reposer l'oeil sur de
+  // longues sessions.
+  --primary: #4f46e5;
+  --primary-light: #6366f1;
+  --primary-dark: #4338ca;
+
+  // Rayons plus serres : la vitrine s'autorise 20px, un back-office dense
+  // parait mou au-dela de 12.
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+}
+
+html, body {
+  height: 100%;
+}

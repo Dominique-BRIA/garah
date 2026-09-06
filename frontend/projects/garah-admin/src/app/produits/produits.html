@@ -1,0 +1,83 @@
+<header class="entete">
+  <div>
+    <h1>Produits</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else { {{ total() }} produit(s) au catalogue }
+    </p>
+  </div>
+  <button type="button" class="gu-btn gu-btn--secondaire"
+          (click)="charger()" [disabled]="chargement()">
+    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Actualiser
+  </button>
+</header>
+
+@if (erreur(); as message) {
+  <div class="gu-carte etat" role="alert">
+    <i class="fa-solid fa-triangle-exclamation etat__icone etat__icone--alerte" aria-hidden="true"></i>
+    <p class="etat__titre">{{ message }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <i class="fa-solid fa-circle-notch fa-spin etat__icone" aria-hidden="true"></i>
+    <p class="etat__titre">Chargement du catalogue…</p>
+  </div>
+} @else if (produits().length === 0) {
+  <!-- L'état vide dit ce qu'il faut FAIRE, en langage metier.
+       « Aucun produit » laisse l'utilisateur devant une impasse ; expliquer
+       le modèle de données ne l'aide pas davantage. -->
+  <div class="gu-carte etat">
+    <i class="fa-solid fa-box-open etat__icone" aria-hidden="true"></i>
+    <p class="etat__titre">Aucun produit au catalogue</p>
+    <p class="etat__aide">
+      Pour vendre, commencez par enregistrer un marchand et une catégorie,
+      puis créez votre premier produit.
+    </p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Produit</th>
+          <th>Référence</th>
+          <th>Marchand</th>
+          <th>Catégorie</th>
+          <th>Statut</th>
+          <th class="droite">Prix</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (produit of produits(); track produit.id) {
+          <tr>
+            <td>
+              <div class="cellule-produit">
+                @if (produit.urlPhotoPrincipale) {
+                  <!-- L'URL vient du backend et EXPIRE (bucket privé, D-21).
+                       Le frontend ne peut pas la fabriquer.
+                       loading="lazy" : une liste de 24 photos ne doit pas
+                       bloquer l'affichage du tableau. -->
+                  <img [src]="produit.urlPhotoPrincipale" [alt]="produit.nom"
+                       class="vignette" loading="lazy" />
+                } @else {
+                  <div class="vignette vignette--vide" aria-hidden="true"><i class="fa-solid fa-image"></i></div>
+                }
+                <span class="nom">{{ produit.nom }}</span>
+              </div>
+            </td>
+            <td><code>{{ produit.reference }}</code></td>
+            <td>{{ produit.marchandNom }}</td>
+            <td>{{ produit.categorieNom }}</td>
+            <td><span class="gu-badge" [class]="badge(produit.statut)">{{ produit.statut }}</span></td>
+            <td class="droite">
+              @if (produit.prixMin !== null) {
+                {{ produit.prixMin | number:'1.0-0' }} FCFA
+              } @else { — }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

@@ -1,0 +1,92 @@
+.connexion {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+
+  // Les auréoles diffuses du fond, reprises de la référence. Elles donnent
+  // sa profondeur au verre dépoli : sans fond coloré dessous, une surface
+  // translucide ne se distingue pas d'une surface opaque.
+  background:
+    radial-gradient(circle at 0% 0%, var(--aureole-1) 0%, transparent 45%),
+    radial-gradient(circle at 100% 100%, var(--aureole-2) 0%, transparent 45%);
+}
+
+.connexion__panneau {
+  width: 100%;
+  max-width: 26rem;
+  padding: 2.25rem;
+}
+
+.marque {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.marque__mot {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  // Le logotype suit le thème et reste net à toute taille — ce qu'une image
+  // matricielle avec fond opaque ne saurait pas faire sur du verre dépoli.
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.marque__role {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--texte-attenue);
+}
+
+.accroche {
+  color: var(--texte-attenue);
+  font-size: 0.86rem;
+  margin-bottom: 1.75rem;
+}
+
+form { display: flex; flex-direction: column; }
+form .gu-libelle:not(:first-child) { margin-top: 1rem; }
+
+.plein { width: 100%; margin-top: 1.5rem; padding: 0.8rem; }
+
+.alerte {
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+.note {
+  margin-top: 1.5rem;
+  font-size: 0.74rem;
+  color: var(--texte-attenue);
+  line-height: 1.5;
+}
+
+.bascule-theme {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--verre-bordure);
+  background: var(--verre-fond);
+  backdrop-filter: blur(12px);
+  color: var(--texte);
+  font-size: 1rem;
+  cursor: pointer;
+
+  &:hover { border-color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}

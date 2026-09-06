@@ -1,0 +1,52 @@
+import { Component, inject, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ServiceSession, ServiceTheme } from 'garah-ui';
+
+interface Entree {
+  readonly libelle: string;
+  readonly chemin: string;
+  readonly icone: string;
+  /** Le code de `cas_utilisation` qui donne accès. Vide = toujours visible. */
+  readonly permission?: string;
+}
+
+@Component({
+  selector: 'ga-coque',
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  templateUrl: './coque.html',
+  styleUrl: './coque.scss',
+})
+export class Coque {
+  private readonly router = inject(Router);
+  protected readonly session = inject(ServiceSession);
+  protected readonly theme = inject(ServiceTheme);
+
+  protected readonly menuOuvert = signal(false);
+
+  /**
+   * Le menu, filtré par permission.
+   *
+   * <p>⚠️ <b>Confort, jamais sécurité.</b> Masquer une entrée empêche le clic,
+   * pas l'appel : quelqu'un qui tape l'URL atteint la route. C'est le backend
+   * qui refuse, avec les mêmes codes de `cas_utilisation`.</p>
+   *
+   * <p>Les cacher reste utile — un back-office qui montre vingt écrans dont
+   * quinze répondent « accès refusé » est illisible.</p>
+   */
+  protected readonly entrees: readonly Entree[] = [
+    { libelle: 'Tableau de bord', chemin: '/', icone: 'fa-solid fa-chart-pie' },
+    { libelle: 'Produits', chemin: '/produits', icone: 'fa-solid fa-box-open', permission: 'PRODUIT_CONSULTER' },
+  ];
+
+  protected visibles(): readonly Entree[] {
+    return this.entrees.filter((e) => !e.permission || this.session.peut(e.permission));
+  }
+
+  protected seDeconnecter(): void {
+    this.session.deconnecter().subscribe(() => this.router.navigate(['/connexion']));
+  }
+
+  protected fermerLeMenu(): void {
+    this.menuOuvert.set(false);
+  }
+}
