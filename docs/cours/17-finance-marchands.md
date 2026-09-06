@@ -301,4 +301,4 @@ Décris ce qui se passe, et dis si une écriture peut être perdue ou doublée.
 
 ---
 
-➡️ **Chapitre suivant :** 18 — Surveillance, score de risque et audit
+➡️ **Chapitre suivant :** [18 — Surveillance, score de risque et audit](18-surveillance-et-audit.md)

@@ -120,8 +120,8 @@ Chapitre 22.
 | 15 | [Logistique : expédition, itinéraire, traçabilité](15-logistique.md) | ✅ écrit |
 | 16 | [SAV : réclamations et retours](16-sav-reclamations-et-retours.md) | ✅ écrit |
 | 17 | [Finance marchands : commissions, écritures, règlements](17-finance-marchands.md) | ✅ écrit |
-| 18 | Surveillance, score de risque, audit | ⏳ |
-| 19 | Statistiques et tableaux de bord | ⏳ |
+| 18 | [Surveillance, score de risque, audit](18-surveillance-et-audit.md) | ✅ écrit |
+| 19 | [Statistiques et tableaux de bord](19-statistiques.md) — **backend terminé** | ✅ écrit |
 
 ### Partie IV — Mettre en ligne
 
