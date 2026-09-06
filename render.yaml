@@ -93,6 +93,21 @@ services:
       - key: GARAH_SUPERADMIN_MOT_DE_PASSE
         sync: false
 
+      # --- Paiement (Campay) ------------------------------------------------
+      # Sandbox tant qu'on teste. Basculer sur https://www.campay.net/api
+      # uniquement quand un vrai encaissement est voulu — se tromper ici
+      # signifie débiter de vrais clients avec du code non éprouvé.
+      - key: GARAH_CAMPAY_BASE_URL
+        value: https://demo.campay.net/api
+      - key: GARAH_CAMPAY_APP_USERNAME
+        sync: false
+      - key: GARAH_CAMPAY_APP_PASSWORD
+        sync: false
+      # La variable la plus sensible du service : sans elle, n'importe qui
+      # peut appeler notre webhook et déclarer une commande payée.
+      - key: GARAH_CAMPAY_WEBHOOK_KEY
+        sync: false
+
       # --- Divers -----------------------------------------------------------
       - key: GARAH_VERSION
         value: "0.1.0"

@@ -9,7 +9,7 @@
 
 Une seule promesse :
 
-> **Si la pastille est verte, la branche compile et ses 158 tests passent sur
+> **Si la pastille est verte, la branche compile et ses 163 tests passent sur
 > une base PostgreSQL vierge.**
 
 Chaque mot compte, et le dernier plus que les autres.
@@ -23,7 +23,7 @@ Voici celle que GARAH a produite **en pratique** :
 
 | Nature | Classes | Tests | Durée | Ce qu'elle protège |
 |---|---|---|---|---|
-| **Unitaire pur** | `SlugTest` | 9 | 0,1 s | Une fonction, exhaustivement |
+| **Unitaire pur** | `SlugTest`, `StockageObjetTest` | 14 | 0,2 s | Deux fonctions, exhaustivement |
 | **Architecture** | `ArchitectureTest` | 4 | 3 s | Les règles du chapitre 06 |
 | **Intégration** | 9 classes | 124 | ~60 s | Le métier, contre une vraie base |
 | **Concurrence** | 2 classes | 6 | 1 s | Ce qui ne casse que sous charge |
@@ -63,19 +63,31 @@ C'est la meilleure façon de juger une suite de tests : **qu'a-t-elle trouvé ?*
 | 21 | Le catalogue public exigeait un jeton | ❌ **bloquant**, invisible hors HTTP |
 | 21 | `MultipleBagFetchException` : fiche cassée à 100 % | ❌ **bloquant**, invisible hors HTTP |
 | 21 | Refus de permission → 500 au lieu de 403 | ❌ silencieux |
+| 21 | Toutes les URL d'images en chemin relatif | ❌ **aucun test** ne pouvait le voir |
 
-**Neuf défauts sur douze étaient invisibles autrement.** Aucune relecture ne les
+**Dix défauts sur treize étaient invisibles autrement.** Aucune relecture ne les
 aurait trouvés : le code était lisible, il compilait, et il avait l'air juste.
 
-> ⚠️ **Les trois derniers ont été ajoutés après coup.** Ils n'ont été trouvés
-> qu'au chapitre 21, en écrivant le **premier test qui passe par HTTP** — après
-> que ce chapitre-ci eut annoncé 150 tests verts. Deux d'entre eux étaient
+> ⚠️ **Les quatre derniers ont été ajoutés après coup**, au chapitre 21 — après
+> que ce chapitre-ci eut annoncé 150 tests verts. Trois d'entre eux étaient
 > bloquants.
 >
-> C'est la limite honnête de cette page : une suite de tests ne protège que ce
-> qu'elle traverse. Ici, aucun test ne traversait la chaîne de filtres de
-> sécurité, donc **rien de ce qui s'y trouvait n'était vérifié** — et la
+> Les trois premiers ont été trouvés en écrivant le **premier test qui passe
+> par HTTP**. C'est la limite honnête de cette page : une suite de tests ne
+> protège que ce qu'elle **traverse**. Aucun test ne traversait la chaîne de
+> filtres de sécurité, donc rien de ce qui s'y trouvait n'était vérifié — et la
 > pastille restait verte.
+>
+> 🎯 **Le quatrième est d'une autre nature, et plus dérangeant : aucun test
+> n'aurait pu le voir.** Il venait d'une ligne vide dans un fichier de
+> configuration, pas du code. Il a fallu **construire le jar et le lancer**.
+>
+> ```text
+> les tests passent   ≠   l'application marche
+> ```
+>
+> Deux commandes, deux minutes, un défaut bloquant. Aucune CI ne remplace ce
+> geste-là.
 
 ---
 
@@ -194,7 +206,7 @@ Avant d'écrire ce chapitre, j'ai simulé ce scénario en local :
 ```bash
 DROP SCHEMA public CASCADE; CREATE SCHEMA public AUTHORIZATION garah_app;
 mvn test
-→ 158 tests, BUILD SUCCESS
+→ 163 tests, BUILD SUCCESS
 ```
 
 Les 19 migrations se rejouent proprement.

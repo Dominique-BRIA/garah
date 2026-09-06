@@ -9,14 +9,19 @@
 ## 1. Ce que le déploiement a révélé
 
 Ce chapitre devait être une formalité : écrire un `Dockerfile`, un
-`render.yaml`, une procédure. Il a trouvé **trois défauts réels**, dont un qui
-rendait le site vitrine impossible.
+`render.yaml`, une procédure. Il a trouvé **quatre défauts réels**, dont deux
+qui rendaient le site vitrine impossible.
 
 | Défaut | Gravité | Pourquoi les 150 tests ne l'ont pas vu |
 |---|---|---|
 | Le catalogue public exigeait un jeton | **bloquant** | Aucun test ne passait par HTTP |
 | La fiche d'administration plantait en 500 | **bloquant** | Idem |
 | Un refus de permission renvoyait 500 au lieu de 403 | grave | `@PreAuthorize` ne s'exécute pas hors HTTP |
+| Toutes les URL d'images étaient des chemins relatifs | **bloquant** | Trouvé en lançant le jar, pas en le testant |
+
+Les trois premiers ont été trouvés en écrivant le premier test HTTP. **Le
+quatrième a été trouvé en lançant le jar** — aucun test ne l'aurait vu, parce
+qu'il venait du fichier de configuration, pas du code.
 
 Une leçon qui vaut pour tout le projet :
 
@@ -337,6 +342,70 @@ C'est la **règle de la photographie du chapitre 03, prise à l'envers** : on
 copie ce qui a une valeur juridique (un prix, un nom de marchand), on référence
 ce qui n'est qu'une adresse technique.
 
+### 7.1 Le quatrième défaut : vide n'est pas absent
+
+Avant d'écrire ce chapitre, j'ai construit le jar et je l'ai lancé — c'est ce
+que fera Render. Tout répondait correctement :
+
+```json
+GET /api/sante           {"tables":58,"versionSchema":19,"permissionsActives":188,"etat":"OK"}
+GET /api/produits        200
+GET /api/auth/moi        401
+```
+
+Sauf ceci :
+
+```json
+GET /api/configuration   {"baseUrlMedias": "", …}
+```
+
+**Vide.** Alors que `GARAH_MEDIA_BASE_URL` figure bien dans le `.env`. La ligne
+existait — mais sans valeur :
+
+```properties
+GARAH_MEDIA_BASE_URL=
+```
+
+Et voici la règle qu'il faut retenir :
+
+> ⚠️ **Spring n'applique la valeur par défaut de `@Value("${CLE:defaut}")` que
+> si la clé est ABSENTE, jamais si elle est VIDE.** Une ligne présente et vide
+> gagne contre le défaut.
+
+Ce que ça produisait :
+
+```text
+attendu   https://f003.backblazeb2.com/file/garah-medias/produits/42.jpg
+obtenu    /produits/42.jpg
+```
+
+Un chemin relatif, résolu contre le domaine de l'API — qui ne sert aucun
+fichier. **Toutes les images du site auraient été cassées, sans la moindre
+erreur nulle part** : pas d'exception, pas de log, pas de 500. Juste des
+vignettes vides sur toutes les pages.
+
+> 🎯 **Un formulaire de configuration à moitié rempli suffisait à provoquer la
+> panne la plus visible du produit.** C'est la forme la plus vicieuse de
+> défaut : celle qui ne casse rien, et qui casse tout.
+
+La correction ne se contente pas de replier — elle **le dit** :
+
+```java
+if (valeur.isBlank()) {
+    log.warn("GARAH_MEDIA_BASE_URL n'est pas renseignee : repli sur {}. "
+            + "En production, TOUTES les images seront introuvables.", DEFAUT);
+    valeur = DEFAUT;
+}
+```
+
+> 📌 **Un repli silencieux est un piège ; un repli bruyant est un filet.**
+> La valeur par défaut est parfaite pour développer et catastrophique en
+> production : elle doit se voir au démarrage.
+
+Et cinq tests unitaires verrouillent le comportement — sans base, sans contexte
+Spring, en quelques millisecondes. C'est la deuxième fonction vraiment pure du
+projet après `Slug`, et elle a droit au même traitement.
+
 ---
 
 ## 8. `/api/configuration` : l'API annonce son propre déploiement
@@ -596,17 +665,30 @@ vide alors que l'API répond `200`, il faut regarder CORS avant tout le reste.
 
 ## 13. Une réserve honnête, la seconde
 
-**Rien de ce chapitre n'a été exécuté.**
+Il faut séparer ce qui a tourné de ce qui n'a jamais tourné.
 
 ```text
-✅ vérifié en local   les 3 corrections, les 158 tests, sur base vierge
-❌ jamais exécuté     le Dockerfile — Docker n'est pas installable ici
-                      (chapitre 05 : disque saturé, virtualisation désactivée)
-❌ jamais exécuté     render.yaml, le déploiement, les migrations sur Neon
-❌ jamais exécuté     le workflow de CI (réserve du chapitre 20 §8)
+✅ exécuté   les 163 tests, sur base vierge
+✅ exécuté   ./mvnw -DskipTests package        → jar de 60 Mo
+✅ exécuté   java -jar sur ce jar              → l'API répond réellement
+             /api/sante        58 tables, versionSchema 19, 188 permissions
+             /api/produits     200 sans jeton
+             /api/auth/moi     401
+             /api/configuration  ← c'est CE lancement qui a trouvé le 4e défaut
+
+❌ jamais    le Dockerfile — Docker n'est pas installable ici
+             (chapitre 05 : disque saturé, virtualisation désactivée)
+❌ jamais    render.yaml, le déploiement, les migrations sur Neon
+❌ jamais    le workflow de CI (réserve du chapitre 20 §8)
 ```
 
-Ce qui est le plus susceptible de demander un ajustement :
+> 🎯 **Lancer le jar est ce qui distingue « les tests passent » de
+> « l'application marche ».** Les deux lignes de commande ont coûté deux
+> minutes et trouvé un défaut bloquant que 158 tests verts ne voyaient pas.
+> Le jar est exactement l'artefact que Render exécutera ; le tester coûte
+> moins cher que de le découvrir en production.
+
+Ce qui reste le plus susceptible de demander un ajustement :
 
 - la disponibilité du tag `eclipse-temurin:24-jre` ;
 - le premier `dependency:go-offline`, qui peut dépasser le temps de
@@ -616,7 +698,7 @@ Ce qui est le plus susceptible de demander un ajustement :
 > 💡 **Le dire est le sujet du chapitre.** Un `Dockerfile` qu'on n'a pas
 > construit et une procédure qu'on n'a pas suivie sont des **hypothèses**, pas
 > des livrables. Les présenter comme acquis serait la seule vraie faute — ce
-> chapitre vient précisément de montrer ce que coûtent trois hypothèses qu'on
+> chapitre vient précisément de montrer ce que coûtent quatre hypothèses qu'on
 > n'avait pas vérifiées.
 
 ---
@@ -627,8 +709,9 @@ Ce qui est le plus susceptible de demander un ajustement :
 11 domaines     IAM, marchand, catalogue, stock, commerce, service client,
                 logistique, SAV, finance, surveillance, mesure
 19 migrations   58 tables, 107 CHECK, 105 clés étrangères, 2 triggers
-158 tests       dont 4 d'architecture, 2 de concurrence, 8 de sécurité HTTP
+163 tests       dont 4 d'architecture, 2 de concurrence, 8 de sécurité HTTP
 3 routes        publiques et testées comme telles
+1 jar           construit et lancé, qui répond réellement
 ```
 
 ---
@@ -645,10 +728,12 @@ Ce qui est le plus susceptible de demander un ajustement :
 8. Un test de sécurité se lit dans les **codes de statut**, pas dans les données. `404` prouve mieux qu'`200`.
 9. Un **avertissement de démarrage est une dette sans facture** — on la paie avant que trois frontends en dépendent.
 10. On stocke une **clé d'objet**, jamais une URL : changer d'hébergeur devient une variable d'environnement.
-11. Dans un `Dockerfile`, on copie **du plus stable au plus changeant**.
-12. La configuration d'un hébergeur **se versionne** ; les secrets, jamais.
-13. Le mot de passe d'amorçage **se supprime après usage**.
-14. **Ce qu'on n'a pas exécuté n'est pas fait** — et il faut le dire.
+11. **Une variable vide n'est pas une variable absente** : `@Value("${CLE:defaut}")` n'applique son défaut que si la clé manque. Et un **repli silencieux est un piège** — il doit prévenir au démarrage.
+12. **Lancer le jar n'est pas la même chose que lancer les tests.** Deux minutes, un défaut bloquant trouvé.
+13. Dans un `Dockerfile`, on copie **du plus stable au plus changeant**.
+14. La configuration d'un hébergeur **se versionne** ; les secrets, jamais.
+15. Le mot de passe d'amorçage **se supprime après usage**.
+16. **Ce qu'on n'a pas exécuté n'est pas fait** — et il faut le dire.
 
 ---
 

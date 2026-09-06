@@ -1,5 +1,7 @@
 package com.garah.api.commun.stockage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -27,18 +29,55 @@ import org.springframework.stereotype.Component;
 @Component
 public class StockageObjet {
 
+    private static final Logger log = LoggerFactory.getLogger(StockageObjet.class);
+
+    /** Ce qu'on utilise quand rien n'est configuré : un stockage local. */
+    private static final String DEFAUT = "http://localhost:9000/garah-medias";
+
     /**
      * Le préfixe public, sans barre oblique finale.
      *
-     * <p>La valeur par défaut vise un stockage local : elle permet de démarrer
+     * <p>La valeur de repli vise un stockage local : elle permet de démarrer
      * l'application sans compte Backblaze, ce qui compte pour quelqu'un qui
      * clone le dépôt pour la première fois.</p>
      */
     private final String baseUrl;
 
-    public StockageObjet(@Value("${GARAH_MEDIA_BASE_URL:http://localhost:9000/garah-medias}")
-                         String baseUrl) {
-        this.baseUrl = sansBarreFinale(baseUrl);
+    /**
+     * ⚠️ <b>Une variable VIDE n'est pas une variable ABSENTE.</b>
+     *
+     * <p>La première version se contentait de
+     * {@code @Value("${GARAH_MEDIA_BASE_URL:" + DEFAUT + "}")}. Or Spring
+     * n'applique la valeur par défaut que si la clé est <b>absente</b> — un
+     * {@code GARAH_MEDIA_BASE_URL=} dans le {@code .env}, ligne présente mais
+     * vide, produit une chaîne vide, pas le défaut.</p>
+     *
+     * <p>Découvert en lançant le jar : {@code /api/configuration} renvoyait
+     * {@code "baseUrlMedias": ""}. Conséquence, si personne ne l'avait vu :</p>
+     *
+     * <pre>
+     * attendu   https://f003.backblazeb2.com/file/garah-medias/produits/42.jpg
+     * obtenu    /produits/42.jpg
+     * </pre>
+     *
+     * <p>Un chemin relatif, résolu contre le domaine de l'API — qui ne sert
+     * aucun fichier. <b>Toutes les images du site auraient été cassées, sans
+     * la moindre erreur nulle part.</b> Un remplissage de formulaire incomplet
+     * suffisait à provoquer la panne la plus visible du produit.</p>
+     *
+     * <p>D'où l'avertissement au démarrage : le repli est correct pour
+     * développer, et catastrophique en production. Il doit se voir.</p>
+     */
+    public StockageObjet(@Value("${GARAH_MEDIA_BASE_URL:}") String baseUrl) {
+        String valeur = sansBarreFinale(baseUrl);
+
+        if (valeur.isBlank()) {
+            log.warn("GARAH_MEDIA_BASE_URL n'est pas renseignee : repli sur {}. "
+                    + "En production, TOUTES les images seront introuvables.", DEFAUT);
+            valeur = DEFAUT;
+        }
+
+        this.baseUrl = valeur;
     }
 
     /**
