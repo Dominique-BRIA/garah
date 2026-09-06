@@ -97,7 +97,7 @@ Chapitre 09.
 | # | Chapitre | État |
 |---|---|---|
 | 05 | [PostgreSQL et le schéma](05-postgresql-et-le-schema.md) — 14 migrations Flyway appliquées | ✅ écrit |
-| 06 | Structurer un projet Spring Boot par domaines | ⏳ |
+| 06 | [Structurer un projet Spring Boot par domaines](06-structurer-spring-boot.md) | ✅ écrit |
 | 07 | Entités JPA, Repositories, transactions | ⏳ |
 | 08 | Authentification, JWT, et le modèle de permissions | ⏳ |
 | 09 | Un workspace Angular, trois applications, une librairie partagée | ⏳ |
