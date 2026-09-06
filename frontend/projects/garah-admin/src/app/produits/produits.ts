@@ -1,11 +1,11 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { DecimalPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { Page, ResumeProduit } from 'garah-ui';
+import { Icone, Page, ResumeProduit } from 'garah-ui';
 
 @Component({
   selector: 'ga-produits',
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, Icone],
   templateUrl: './produits.html',
   styleUrl: './produits.scss',
 })

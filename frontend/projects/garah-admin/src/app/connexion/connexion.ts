@@ -2,11 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ReponseErreur, ServiceSession, ServiceTheme } from 'garah-ui';
+import { Icone, ReponseErreur, ServiceSession, ServiceTheme } from 'garah-ui';
 
 @Component({
   selector: 'ga-connexion',
-  imports: [FormsModule],
+  imports: [FormsModule, Icone],
   templateUrl: './connexion.html',
   styleUrl: './connexion.scss',
 })

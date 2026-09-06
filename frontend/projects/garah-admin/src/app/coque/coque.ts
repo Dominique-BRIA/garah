@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { ServiceSession, ServiceTheme } from 'garah-ui';
+import { Icone, ServiceSession, ServiceTheme } from 'garah-ui';
 
 interface Entree {
   readonly libelle: string;
@@ -12,7 +12,7 @@ interface Entree {
 
 @Component({
   selector: 'ga-coque',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icone],
   templateUrl: './coque.html',
   styleUrl: './coque.scss',
 })
@@ -34,8 +34,8 @@ export class Coque {
    * quinze répondent « accès refusé » est illisible.</p>
    */
   protected readonly entrees: readonly Entree[] = [
-    { libelle: 'Tableau de bord', chemin: '/', icone: 'fa-solid fa-chart-pie' },
-    { libelle: 'Produits', chemin: '/produits', icone: 'fa-solid fa-box-open', permission: 'PRODUIT_CONSULTER' },
+    { libelle: 'Tableau de bord', chemin: '/', icone: 'chart-pie' },
+    { libelle: 'Produits', chemin: '/produits', icone: 'box-open', permission: 'PRODUIT_CONSULTER' },
   ];
 
   protected visibles(): readonly Entree[] {

@@ -16,5 +16,9 @@ export * from './lib/modeles/authentification';
 export * from './lib/modeles/page';
 export * from './lib/modeles/catalogue';
 
+// --- Les icones ---
+export * from './lib/icones/icone';
+export * from './lib/icones/traces';
+
 // --- Le theme ----------------------------------------------------------------
 export * from './lib/theme/service-theme';

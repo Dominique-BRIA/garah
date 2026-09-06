@@ -2,7 +2,7 @@
   <!-- Barre du haut, mobile uniquement -->
   <header class="barre-mobile">
     <button type="button" class="bouton-menu" (click)="menuOuvert.set(!menuOuvert())"
-            [attr.aria-expanded]="menuOuvert()" aria-label="Ouvrir le menu"><i class="fa-solid fa-bars"></i></button>
+            [attr.aria-expanded]="menuOuvert()" aria-label="Ouvrir le menu"><gu-icone nom="bars" /></button>
     <span class="marque__mot">GARAH</span>
   </header>
 
@@ -24,7 +24,7 @@
           <a [routerLink]="entree.chemin" routerLinkActive="actif"
              [routerLinkActiveOptions]="{ exact: entree.chemin === '/' }"
              (click)="fermerLeMenu()">
-            <i class="icone" [class]="entree.icone" aria-hidden="true"></i>
+            <gu-icone class="icone" [nom]="entree.icone" />
             {{ entree.libelle }}
           </a>
         }
@@ -33,7 +33,7 @@
 
     <div class="barre-laterale__pied">
       <button type="button" class="ligne-theme" (click)="theme.basculer()">
-        <i class="icone" [class]="theme.sombreEffectif() ? 'fa-solid fa-sun' : 'fa-solid fa-moon'" aria-hidden="true"></i>
+        <gu-icone class="icone" [nom]="theme.sombreEffectif() ? 'sun' : 'moon'" />
         @if (theme.sombreEffectif()) { Thème clair } @else { Thème sombre }
       </button>
 

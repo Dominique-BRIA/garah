@@ -58,9 +58,7 @@
                 "input": "projects/garah-admin/public"
               }
             ],
-            "styles": [
-              "node_modules/@fortawesome/fontawesome-free/css/all.min.css",
-              "projects/garah-admin/src/styles.scss"
+            "styles": [              "projects/garah-admin/src/styles.scss"
             ]
           },
           "configurations": {
@@ -117,9 +115,7 @@
                 "input": "projects/garah-admin/public"
               }
             ],
-            "styles": [
-              "node_modules/@fortawesome/fontawesome-free/css/all.min.css",
-              "projects/garah-admin/src/styles.scss"
+            "styles": [              "projects/garah-admin/src/styles.scss"
             ]
           }
         }

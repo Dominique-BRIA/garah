@@ -8,19 +8,19 @@
   </div>
   <button type="button" class="gu-btn gu-btn--secondaire"
           (click)="charger()" [disabled]="chargement()">
-    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Actualiser
+    <gu-icone nom="arrows-rotate" /> Actualiser
   </button>
 </header>
 
 @if (erreur(); as message) {
   <div class="gu-carte etat" role="alert">
-    <i class="fa-solid fa-triangle-exclamation etat__icone etat__icone--alerte" aria-hidden="true"></i>
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
     <p class="etat__titre">{{ message }}</p>
     <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
   </div>
 } @else if (chargement()) {
   <div class="gu-carte etat">
-    <i class="fa-solid fa-circle-notch fa-spin etat__icone" aria-hidden="true"></i>
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
     <p class="etat__titre">Chargement du catalogue…</p>
   </div>
 } @else if (produits().length === 0) {
@@ -28,7 +28,7 @@
        « Aucun produit » laisse l'utilisateur devant une impasse ; expliquer
        le modèle de données ne l'aide pas davantage. -->
   <div class="gu-carte etat">
-    <i class="fa-solid fa-box-open etat__icone" aria-hidden="true"></i>
+    <gu-icone nom="box-open" class="etat__icone" />
     <p class="etat__titre">Aucun produit au catalogue</p>
     <p class="etat__aide">
       Pour vendre, commencez par enregistrer un marchand et une catégorie,
@@ -61,7 +61,7 @@
                   <img [src]="produit.urlPhotoPrincipale" [alt]="produit.nom"
                        class="vignette" loading="lazy" />
                 } @else {
-                  <div class="vignette vignette--vide" aria-hidden="true"><i class="fa-solid fa-image"></i></div>
+                  <div class="vignette vignette--vide" aria-hidden="true"><gu-icone nom="image" /></div>
                 }
                 <span class="nom">{{ produit.nom }}</span>
               </div>

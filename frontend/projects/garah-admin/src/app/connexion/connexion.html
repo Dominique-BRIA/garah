@@ -1,8 +1,7 @@
 <div class="connexion">
   <button type="button" class="bascule-theme" (click)="theme.basculer()"
           [attr.aria-label]="theme.sombreEffectif() ? 'Passer en clair' : 'Passer en sombre'">
-    <i [class]="theme.sombreEffectif() ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"
-       aria-hidden="true"></i>
+    <gu-icone [nom]="theme.sombreEffectif() ? 'sun' : 'moon'" />
   </button>
 
   <div class="connexion__panneau gu-carte">
@@ -38,7 +37,7 @@
       <button type="submit" class="gu-btn gu-btn--primaire plein"
               [disabled]="enCours() || !email() || !motDePasse()">
         @if (enCours()) {
-          <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> Connexion…
+          <gu-icone nom="circle-notch" tourne /> Connexion…
         } @else { Se connecter }
       </button>
     </form>
