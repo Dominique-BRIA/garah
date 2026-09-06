@@ -353,4 +353,4 @@ Puis explique pourquoi une contrainte `CHECK` est vérifiée aussi à l'`UPDATE`
 
 ---
 
-➡️ **Chapitre suivant :** 15 — La logistique : expédition, itinéraire, traçabilité
+➡️ **Chapitre suivant :** [15 — La logistique : expédition, itinéraire, traçabilité](15-logistique.md)
