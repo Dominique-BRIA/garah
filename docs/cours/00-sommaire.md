@@ -77,7 +77,7 @@ Règle : **une idée par section**. Si un chapitre devient trop gros, il est cou
 | **Clarté du code** | Pas de `if (isAdmin)` partout dans les composants. |
 
 Le prix à payer : du code commun à factoriser → c'est le rôle de `garah-ui`.
-Chapitre 09.
+Chapitre 22.
 
 ---
 
@@ -101,32 +101,45 @@ Chapitre 09.
 | 07 | [Entités JPA, repositories et transactions](07-entites-jpa-et-transactions.md) — domaine IAM | ✅ écrit |
 | 08 | [Authentification, JWT et contrôle des permissions](08-authentification-et-permissions.md) | ✅ écrit |
 
-> ⚠️ **Proposition d'ordre, à valider.** Les chapitres 09 à 14 (Angular) sont
-> écrits ici avant les modules métier. Je suggère de **finir le backend
-> d'abord** : construire trois frontends sur une API incomplète oblige à tout
-> retoucher. Dans ce cas, la Partie III passe avant la fin de la Partie II.
-| 09 | Un workspace Angular, trois applications, une librairie partagée | ⏳ |
-| 10 | Le design system `garah-ui` (thème, composants, accessibilité) | ⏳ |
-| 11 | Faire dialoguer Angular et Spring Boot proprement | ⏳ |
-| 12 | Le site vitrine : SEO, performance, rendu serveur | ⏳ |
-| 13 | L'espace client : authentification, panier, suivi | ⏳ |
-| 14 | Le back-office : permissions côté interface | ⏳ |
+### Partie III — Les modules métier (backend)
 
-### Partie III — Les modules métier
+> 📌 **Ordre décidé le 06/09/2026 : le backend est terminé AVANT Angular.**
+> Construire trois frontends sur une API incomplète obligerait à tout
+> retoucher — chaque évolution du contrat casserait trois applications.
+> Les chapitres Angular, initialement numérotés 09 à 14, passent donc en
+> Partie V.
 
 | # | Chapitre | État |
 |---|---|---|
-| 15 | Catalogue : produits, médias, catégories | ⏳ |
-| 16 | Prix par palier de quantité | ⏳ |
-| 17 | Stock et mouvements de stock (la concurrence) | ⏳ |
-| 18 | Panier et commande | ⏳ |
-| 19 | Paiement et mobile money | ⏳ |
-| 20 | Conversations et négociation | ⏳ |
-| 21 | Logistique : expédition, itinéraire, traçabilité | ⏳ |
-| 22 | SAV : réclamations et retours | ⏳ |
-| 23 | Finance marchands : commissions, écritures, règlements | ⏳ |
-| 24 | Surveillance, score de risque, audit | ⏳ |
-| 25 | Statistiques et tableaux de bord | ⏳ |
+| 09 | [Catalogue : produits, variantes, médias](09-catalogue.md) | ✅ écrit |
+| 10 | Prix par palier de quantité | ⏳ |
+| 11 | Stock et concurrence | ⏳ |
+| 12 | Panier et commande | ⏳ |
+| 13 | Paiement et mobile money | ⏳ |
+| 14 | Conversations et négociation | ⏳ |
+| 15 | Logistique : expédition, itinéraire, traçabilité | ⏳ |
+| 16 | SAV : réclamations et retours | ⏳ |
+| 17 | Finance marchands : commissions, écritures, règlements | ⏳ |
+| 18 | Surveillance, score de risque, audit | ⏳ |
+| 19 | Statistiques et tableaux de bord | ⏳ |
+
+### Partie IV — Mettre en ligne
+
+| # | Chapitre | État |
+|---|---|---|
+| 20 | Tests automatisés et intégration continue | ⏳ |
+| 21 | Déploiement : Render, Neon, Backblaze B2 | ⏳ |
+
+### Partie V — Les trois frontends Angular
+
+| # | Chapitre | État |
+|---|---|---|
+| 22 | Un workspace, trois applications, une librairie partagée | ⏳ |
+| 23 | Le design system `garah-ui` (thème, composants, accessibilité) | ⏳ |
+| 24 | Faire dialoguer Angular et Spring Boot proprement | ⏳ |
+| 25 | Le site vitrine : SEO et performance | ⏳ |
+| 26 | L'espace client : panier, commande, suivi | ⏳ |
+| 27 | Le back-office : permissions côté interface | ⏳ |
 
 *(Le plan bougera. C'est normal : on écrit le cours pendant qu'on découvre le projet.)*
 
@@ -167,7 +180,7 @@ il ne dépend d'aucun framework. Un design bâti sur des classes Tailwind ou des
 composants React n'aurait pas été transposable.
 
 → Ces variables vivront dans `garah-ui`, importées par les trois applications.
-Chapitre 10.
+Chapitre 23.
 
 ---
 

@@ -469,5 +469,5 @@ qu'il faudrait changer dans la configuration de sécurité.
 
 ---
 
-➡️ **Chapitre suivant :** 15 — Le catalogue : produits, variantes et médias
-*(les chapitres Angular 09 à 14 sont repoussés après le backend — voir le sommaire)*
+➡️ **Chapitre suivant :** [09 — Le catalogue : produits, variantes et médias](09-catalogue.md)
+*(les chapitres Angular passent en Partie V : le backend est terminé d'abord)*
