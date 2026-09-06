@@ -277,4 +277,4 @@ qui fonctionne déjà sans rien changer ? Qu'est-ce qui casse ?
 
 ---
 
-➡️ **Chapitre suivant :** 14 — Les conversations et la négociation
+➡️ **Chapitre suivant :** [14 — Les conversations et la négociation](14-conversations-et-negociation.md)
