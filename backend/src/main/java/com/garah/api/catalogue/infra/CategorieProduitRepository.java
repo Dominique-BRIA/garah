@@ -13,4 +13,8 @@ public interface CategorieProduitRepository extends JpaRepository<CategorieProdu
     List<CategorieProduit> findByParentIsNullOrderByOrdreAsc();
 
     List<CategorieProduit> findByParentIdOrderByOrdreAsc(Long parentId);
+
+    boolean existsBySlug(String slug);
+
+    java.util.List<CategorieProduit> findAllByOrderByOrdreAsc();
 }
