@@ -133,12 +133,49 @@ public class PasserelleEmail {
 
         } catch (MailException | java.io.UnsupportedEncodingException
                  | jakarta.mail.MessagingException e) {
-            // On journalise la CLASSE, pas le message : celui d'une erreur SMTP
-            // contient souvent les identifiants d'authentification.
-            log.error("Envoi impossible a {} ({}) : {}",
-                    masquer(destinataire), sujet, e.getClass().getSimpleName());
+            // ⚠️ On journalise le MESSAGE, pas seulement la classe — et c'est un
+            // revirement.
+            //
+            // La première version ne gardait que le nom de l'exception, par
+            // crainte d'y voir apparaître le mot de passe SMTP. Le premier
+            // échec réel a montré l'erreur de raisonnement : le journal disait
+            // « MailSendException » et rien d'autre, ce qui rendait tout
+            // diagnostic impossible.
+            //
+            // Or JavaMail ne réémet PAS nos identifiants : son message porte la
+            // RÉPONSE DU SERVEUR — « 535-5.7.8 Username and Password not
+            // accepted », « 534 Application-specific password required ». C'est
+            // précisément ce qu'il faut lire, et ce n'est pas un secret.
+            //
+            // 🎯 La leçon : un journal qui cache trop ne protège de rien, il
+            //    empêche seulement de comprendre. Ce qu'il faut taire, ce sont
+            //    NOS secrets — pas ce que le serveur d'en face nous répond.
+            log.error("Envoi impossible a {} ({}) : {} — {}",
+                    masquer(destinataire), sujet, e.getClass().getSimpleName(),
+                    racine(e));
             return false;
         }
+    }
+
+    /**
+     * Le message de la cause la plus profonde.
+     *
+     * <p>Spring enveloppe l'exception JavaMail, qui enveloppe elle-même celle du
+     * transport. Le message utile — la réponse du serveur SMTP — est tout au
+     * fond ; celui du dessus se contente de dire « Mail server connection
+     * failed », ce qui n'apprend rien.</p>
+     *
+     * <p>Même raisonnement que {@code nomDeContrainte} dans le gestionnaire
+     * d'erreurs global, qui remonte la chaîne pour trouver le nom de la
+     * contrainte PostgreSQL.</p>
+     */
+    private static String racine(Throwable e) {
+        Throwable cause = e;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        return message == null ? cause.getClass().getSimpleName() : message.strip();
     }
 
     /**
