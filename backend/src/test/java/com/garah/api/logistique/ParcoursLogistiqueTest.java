@@ -143,6 +143,10 @@ class ParcoursLogistiqueTest {
         jdbc.update("DELETE FROM media WHERE produit_id IN (SELECT p.id FROM produit p JOIN marchand m ON m.id = p.marchand_id WHERE m.code = ?)", CODE_MARCHAND);
         jdbc.update("DELETE FROM variante WHERE produit_id IN (SELECT p.id FROM produit p JOIN marchand m ON m.id = p.marchand_id WHERE m.code = ?)", CODE_MARCHAND);
         jdbc.update("DELETE FROM produit WHERE marchand_id IN (SELECT id FROM marchand WHERE code = ?)", CODE_MARCHAND);
+        // Le grand livre ecrit lors de la confirmation du paiement (chapitre 17).
+        // La cle etrangere a signale l oubli : c est son role.
+        jdbc.update("DELETE FROM ecriture_marchand WHERE marchand_id IN (SELECT id FROM marchand WHERE code = ?)", CODE_MARCHAND);
+        jdbc.update("DELETE FROM reglement_marchand WHERE marchand_id IN (SELECT id FROM marchand WHERE code = ?)", CODE_MARCHAND);
         jdbc.update("DELETE FROM marchand WHERE code = ?", CODE_MARCHAND);
         jdbc.update("DELETE FROM categorie_produit WHERE nom = 'Logistique'");
         jdbc.update("DELETE FROM lieu WHERE nom IN ('Entrepôt Douala', 'Transit Bertoua', 'Bangui PK5')");
@@ -346,6 +350,39 @@ class ParcoursLogistiqueTest {
         // Un seul remboursement pour tout le retour : le client reçoit un
         // virement, pas trois.
         assertThat(remboursements).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("le grand livre marchand suit tout le cycle")
+    void grandLivreDeBoutEnBout() {
+        // Le paiement a déjà été confirmé dans la préparation du test :
+        // 10 × 15 000 = 150 000, sans règle de commission (donc 0 %).
+        BigDecimal apresVente = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(e.montant), 0) FROM ecriture_marchand e
+                  JOIN marchand m ON m.id = e.marchand_id WHERE m.code = ?
+                """, BigDecimal.class, CODE_MARCHAND);
+        assertThat(apresVente).isEqualByComparingTo("150000.00");
+
+        Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
+        Retour retour = retours.demander(commande.id(), clientId, "Erreur", List.of(
+                new ServiceRetour.DemandeLigne(ligneId, 2, EtatArticle.NEUF)));
+        retours.accepter(retour.getId());
+        retours.receptionner(retour.getId());
+        retours.valider(retour.getId(), MoyenPaiement.MTN_MOMO);
+
+        // Le retour annule la vente correspondante : 150 000 − 30 000.
+        BigDecimal apresRetour = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(e.montant), 0) FROM ecriture_marchand e
+                  JOIN marchand m ON m.id = e.marchand_id WHERE m.code = ?
+                """, BigDecimal.class, CODE_MARCHAND);
+        assertThat(apresRetour).isEqualByComparingTo("120000.00");
+
+        // Et le solde est PROUVABLE : chaque ligne pointe vers sa pièce.
+        Long lignes = jdbc.queryForObject("""
+                SELECT count(*) FROM ecriture_marchand e
+                  JOIN marchand m ON m.id = e.marchand_id WHERE m.code = ?
+                """, Long.class, CODE_MARCHAND);
+        assertThat(lignes).isEqualTo(2);   // 1 VENTE + 1 RETOUR
     }
 
     @Test

@@ -267,4 +267,4 @@ marchandise. Quelles écritures faut-il ? Le modèle actuel les permet-il ?
 
 ---
 
-➡️ **Chapitre suivant :** 17 — La finance marchands : commissions, écritures, règlements
+➡️ **Chapitre suivant :** [17 — La finance marchands](17-finance-marchands.md)

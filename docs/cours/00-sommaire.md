@@ -119,7 +119,7 @@ Chapitre 22.
 | 14 | [Conversations et négociation](14-conversations-et-negociation.md) | ✅ écrit |
 | 15 | [Logistique : expédition, itinéraire, traçabilité](15-logistique.md) | ✅ écrit |
 | 16 | [SAV : réclamations et retours](16-sav-reclamations-et-retours.md) | ✅ écrit |
-| 17 | Finance marchands : commissions, écritures, règlements | ⏳ |
+| 17 | [Finance marchands : commissions, écritures, règlements](17-finance-marchands.md) | ✅ écrit |
 | 18 | Surveillance, score de risque, audit | ⏳ |
 | 19 | Statistiques et tableaux de bord | ⏳ |
 

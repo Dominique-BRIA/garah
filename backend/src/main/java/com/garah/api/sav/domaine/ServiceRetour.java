@@ -7,6 +7,7 @@ import com.garah.api.commerce.infra.LigneCommandeRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.finance.domaine.ServiceGrandLivre;
 import com.garah.api.sav.infra.RetourRepository;
 import com.garah.api.stock.domaine.ServiceStock;
 import org.springframework.stereotype.Service;
@@ -42,13 +43,16 @@ public class ServiceRetour {
     private final LigneCommandeRepository lignesCommande;
     private final ServiceStock stock;
     private final ServicePaiement paiements;
+    private final ServiceGrandLivre grandLivre;
 
     public ServiceRetour(RetourRepository retours, LigneCommandeRepository lignesCommande,
-                         ServiceStock stock, ServicePaiement paiements) {
+                         ServiceStock stock, ServicePaiement paiements,
+                         ServiceGrandLivre grandLivre) {
         this.retours = retours;
         this.lignesCommande = lignesCommande;
         this.stock = stock;
         this.paiements = paiements;
+        this.grandLivre = grandLivre;
     }
 
     /**
@@ -133,7 +137,7 @@ public class ServiceRetour {
      *       ABIMÉ → compteur ENDOMMAGEE   (jamais revendu)
      * 3. le montant remboursé est calculé et figé sur chaque ligne
      * 4. un PAIEMENT de type REMBOURSEMENT est créé
-     * 5. les écritures marchand              ← chapitre 17
+     * 5. les ÉCRITURES MARCHAND : la vente ET la commission sont annulées
      * </pre>
      *
      * <p>⚠️ <b>Si l'une échoue, aucune ne doit rester.</b> Un retour à moitié
@@ -167,6 +171,20 @@ public class ServiceRetour {
 
             ligneRetour.definirRemboursement(montant);
             totalARembourser = totalARembourser.add(montant);
+
+            // 5. Le grand livre marchand (chapitre 17).
+            //
+            // Un retour annule DEUX écritures, pas une : on ne doit plus la
+            // vente au marchand, mais on ne garde pas non plus la commission
+            // prélevée dessus. Garder la commission sur une marchandise rendue
+            // est indéfendable devant le partenaire.
+            BigDecimal commissionAnnulee = montant
+                    .multiply(ligneCommande.getTauxCommission())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+            grandLivre.enregistrerRetour(ligneCommande.getMarchandId(), ligneRetour.getId(),
+                    montant, commissionAnnulee,
+                    "Retour " + retour.getNumero() + " — " + ligneCommande.getDesignation());
         }
 
         // 4. Un seul remboursement pour tout le retour : le client reçoit un
@@ -175,9 +193,6 @@ public class ServiceRetour {
             paiements.rembourser(retour.getCommandeId(), totalARembourser, moyen,
                     "RETOUR", retour.getId());
         }
-
-        // TODO chapitre 17 : écritures RETOUR et ANNUL_COMMISSION du grand
-        // livre marchand. Le retour annule la vente ET la commission.
 
         retour.valider();
         return retour;

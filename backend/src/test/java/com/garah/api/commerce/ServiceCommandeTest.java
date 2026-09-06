@@ -135,6 +135,10 @@ class ServiceCommandeTest {
                      WHERE m.code = ?)""", CODE_MARCHAND);
         jdbc.update("DELETE FROM produit WHERE marchand_id IN (SELECT id FROM marchand WHERE code = ?)", CODE_MARCHAND);
         jdbc.update("DELETE FROM regle_commission WHERE marchand_id IN (SELECT id FROM marchand WHERE code = ?)", CODE_MARCHAND);
+        // Le grand livre ecrit lors de la confirmation du paiement (chapitre 17).
+        // La cle etrangere a signale l oubli : c est son role.
+        jdbc.update("DELETE FROM ecriture_marchand WHERE marchand_id IN (SELECT id FROM marchand WHERE code = ?)", CODE_MARCHAND);
+        jdbc.update("DELETE FROM reglement_marchand WHERE marchand_id IN (SELECT id FROM marchand WHERE code = ?)", CODE_MARCHAND);
         jdbc.update("DELETE FROM marchand WHERE code = ?", CODE_MARCHAND);
         jdbc.update("DELETE FROM categorie_produit WHERE nom = 'Commandes'");
         jdbc.update("DELETE FROM lieu WHERE nom IN ('Bangui PK5', 'Entrepôt Douala')");

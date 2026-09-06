@@ -6,6 +6,7 @@ import com.garah.api.commerce.infra.TentativePaiementRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.finance.domaine.ServiceGrandLivre;
 import com.garah.api.stock.domaine.ServiceStock;
 import com.garah.api.surveillance.domaine.GraviteEvenement;
 import com.garah.api.surveillance.domaine.ServiceEvenementsSecurite;
@@ -37,15 +38,18 @@ public class ServicePaiement {
     private final CommandeRepository commandes;
     private final ServiceStock stock;
     private final ServiceEvenementsSecurite securite;
+    private final ServiceGrandLivre grandLivre;
 
     public ServicePaiement(PaiementRepository paiements, TentativePaiementRepository tentatives,
                            CommandeRepository commandes, ServiceStock stock,
-                           ServiceEvenementsSecurite securite) {
+                           ServiceEvenementsSecurite securite,
+                           ServiceGrandLivre grandLivre) {
         this.paiements = paiements;
         this.tentatives = tentatives;
         this.commandes = commandes;
         this.stock = stock;
         this.securite = securite;
+        this.grandLivre = grandLivre;
     }
 
     /**
@@ -125,9 +129,9 @@ public class ServicePaiement {
     /**
      * Fait basculer la commande si elle est entièrement réglée.
      *
-     * <p>Trois écritures dans <b>la même transaction</b> : le statut, la sortie
-     * de stock, et — au chapitre 17 — les écritures marchand. Ce qui doit être
-     * vrai ensemble s'écrit ensemble.</p>
+     * <p>Trois effets dans <b>la même transaction</b> : le statut de la
+     * commande, la sortie de stock, et les écritures du grand livre marchand.
+     * Ce qui doit être vrai ensemble s'écrit ensemble.</p>
      */
     private void encaisserSurLaCommande(Long commandeId) {
         Commande commande = commandes.chargerAvecLignes(commandeId)
@@ -150,8 +154,16 @@ public class ServicePaiement {
                 .sorted(Comparator.comparing(LigneCommande::getVarianteId))
                 .forEach(l -> stock.confirmerSortie(l.getVarianteId(), l.getQuantite(), commandeId));
 
-        // TODO chapitre 17 : écrire ici les écritures VENTE et COMMISSION du
-        // grand livre marchand. C'est le bon moment — le paiement est acquis.
+        // Le grand livre marchand (chapitre 17). C'est le bon moment : le
+        // paiement est acquis, donc la dette envers le marchand est née.
+        //
+        // Le service est idempotent par ligne de commande — indispensable,
+        // puisqu'on est appelé depuis un webhook qui peut être rejoué.
+        commande.getLignes().forEach(ligne ->
+                grandLivre.enregistrerVente(
+                        ligne.getMarchandId(), ligne.getId(),
+                        ligne.getMontantLigne(), ligne.getMontantCommission(),
+                        "Commande " + commande.getNumero() + " — " + ligne.getDesignation()));
     }
 
     /**
