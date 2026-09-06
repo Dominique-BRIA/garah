@@ -58,6 +58,16 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- ArchUnit : teste l'ARCHITECTURE comme on teste un calcul.
+             Une regle d'architecture qu'on ne verifie pas est une regle
+             qu'on viole le jour ou on est presse. -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.4.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
