@@ -31,6 +31,25 @@ export class ServiceSession {
   private readonly http = inject(HttpClient);
   private readonly config = inject(ConfigurationApi);
 
+  /**
+   * Un indice : « une session a ete ouverte sur ce navigateur ».
+   *
+   * ⚠️ CE N EST PAS UN SECRET, et c est ce qui le rend utilisable.
+   *
+   * Le cookie de rafraichissement est HttpOnly : le JavaScript ne peut pas
+   * savoir s il existe. Sans indice, il faut APPELER le serveur pour le
+   * decouvrir — et cet appel prend jusqu a une minute au reveil de
+   * l hebergement.
+   *
+   * Un visiteur qui ne s est jamais connecte payait donc une minute d ecran
+   * vide pour apprendre ce qu on savait deja : il n a pas de session.
+   *
+   * Ce drapeau ne contient aucune donnee sensible. Le falsifier ne donne
+   * aucun acces : il fait tenter un rafraichissement, que le serveur refuse
+   * faute de cookie valide.
+   */
+  private static readonly CLE_INDICE = 'garah.session';
+
   private readonly _jeton = signal<string | null>(null);
   private readonly _utilisateur = signal<UtilisateurConnecte | null>(null);
   private readonly _permissions = signal<ReadonlySet<string>>(new Set());
@@ -139,7 +158,33 @@ export class ServiceSession {
    * session parfaitement valide.</p>
    */
   restaurer(): Observable<boolean> {
+    // Aucune session connue : on repond NON tout de suite, sans reseau.
+    if (!this.indicePose()) {
+      return of(false);
+    }
     return this.rafraichir().pipe(map((jeton) => jeton !== null));
+  }
+
+  private indicePose(): boolean {
+    try {
+      return localStorage.getItem(ServiceSession.CLE_INDICE) === '1';
+    } catch {
+      // Navigation privee, cookies bloques : on tente le rafraichissement.
+      // Mieux vaut une attente qu une deconnexion injustifiee.
+      return true;
+    }
+  }
+
+  private poserIndice(pose: boolean): void {
+    try {
+      if (pose) {
+        localStorage.setItem(ServiceSession.CLE_INDICE, '1');
+      } else {
+        localStorage.removeItem(ServiceSession.CLE_INDICE);
+      }
+    } catch {
+      // Sans consequence : on retombe sur une tentative reseau.
+    }
   }
 
   /**
@@ -170,6 +215,7 @@ export class ServiceSession {
     this._jeton.set(reponse.jeton);
     this._utilisateur.set(reponse.utilisateur);
     this._permissions.set(new Set(reponse.permissions ?? []));
+    this.poserIndice(true);
     return reponse.utilisateur;
   }
 
@@ -178,5 +224,6 @@ export class ServiceSession {
     this._utilisateur.set(null);
     this._permissions.set(new Set());
     this.rafraichissementEnCours = null;
+    this.poserIndice(false);
   }
 }

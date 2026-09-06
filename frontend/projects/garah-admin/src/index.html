@@ -1,13 +1,80 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <title>GARAH — Administration</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!--
+    L'écran d'attente, écrit ICI et pas dans un composant.
+
+    ⚠️ Il doit s'afficher AVANT qu'Angular ne démarre. Un composant Angular ne
+       le pourrait pas : entre le chargement de la page et le premier rendu,
+       il s'écoule le temps de télécharger et d'exécuter le code — puis, si
+       une route attend le réseau, le temps de cette attente.
+
+       Sans ces quelques lignes, la page reste BLANCHE pendant tout ce temps,
+       et l'utilisateur conclut que l'application est cassée.
+
+    Angular remplace le contenu de <ga-root> à son premier rendu : rien à
+    nettoyer, et aucun risque que l'écran d'attente reste affiché.
+
+    Les couleurs sont en dur, et c'est le seul endroit du projet où c'est
+    justifié : les variables de thème vivent dans la feuille de style, qui
+    n'est pas forcément arrivée quand ceci s'affiche.
+  -->
+  <style>
+    .demarrage {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      background: #f8fafc;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .demarrage { background: #0c0c14; }
+    }
+
+    .demarrage__mot {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      background: linear-gradient(135deg, #4f46e5 0%, #aa3bff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .demarrage__anneau {
+      width: 1.75rem;
+      height: 1.75rem;
+      border: 2px solid rgba(128, 128, 128, 0.25);
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: demarrage-rotation 0.9s linear infinite;
+    }
+
+    @keyframes demarrage-rotation { to { transform: rotate(360deg); } }
+
+    /* Le réglage système « réduire les animations » vaut aussi ici. */
+    @media (prefers-reduced-motion: reduce) {
+      .demarrage__anneau { animation: none; }
+    }
+  </style>
 </head>
 <body>
-  <ga-root></ga-root>
+  <ga-root>
+    <div class="demarrage">
+      <span class="demarrage__mot">GARAH</span>
+      <div class="demarrage__anneau"></div>
+    </div>
+  </ga-root>
 </body>
 </html>
