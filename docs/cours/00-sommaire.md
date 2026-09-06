@@ -127,8 +127,8 @@ Chapitre 22.
 
 | # | Chapitre | État |
 |---|---|---|
-| 20 | Tests automatisés et intégration continue | ⏳ |
-| 21 | Déploiement : Render, Neon, Backblaze B2 | ⏳ |
+| 20 | [Tests automatisés et intégration continue](20-tests-et-integration-continue.md) | ✅ écrit |
+| 21 | [Déploiement : Render, Neon, Backblaze B2](21-deploiement.md) — **3 défauts trouvés** | ✅ écrit |
 
 ### Partie V — Les trois frontends Angular
 

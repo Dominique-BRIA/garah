@@ -1,0 +1,81 @@
+# =============================================================================
+# Integration continue GARAH
+# =============================================================================
+# Ce fichier fait UNE promesse : si la pastille est verte, la branche compile
+# et ses 150 tests passent sur une base PostgreSQL VIERGE.
+#
+# « Sur une base vierge » est le point important. En local, la base de test
+# accumule l historique : une migration cassee peut passer inapercue parce que
+# les tables existent deja. Ici, Flyway rejoue les 19 migrations depuis zero a
+# chaque execution — c est le seul endroit ou on verifie vraiment qu elles
+# tiennent debout ensemble.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    name: Compilation et tests
+    runs-on: ubuntu-latest
+
+    services:
+      # Une VRAIE base PostgreSQL, pas H2 (chapitre 07 §10).
+      #
+      # Version 17 alors que le poste de developpement est en 18 : c est
+      # DELIBERE. Neon ne sera pas en 18, et on prefere decouvrir une
+      # incompatibilite ici plutot qu en production.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: garah_app
+          POSTGRES_PASSWORD: motdepasse_ci
+          POSTGRES_DB: garah_test
+        ports:
+          - 5432:5432
+        # Sans ce healthcheck, les tests demarrent avant la base et echouent
+        # de facon intermittente — le pire type d echec en CI.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java 24
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '24'
+          # Met en cache le depot Maven : sans lui, chaque execution
+          # retelecharge Spring Boot en entier.
+          cache: maven
+
+      - name: Compiler
+        working-directory: backend
+        run: mvn -B -ntp compile
+
+      - name: Lancer les tests
+        working-directory: backend
+        env:
+          GARAH_TEST_DB_URL: jdbc:postgresql://localhost:5432/garah_test
+          GARAH_DB_USER: garah_app
+          GARAH_DB_PASSWORD: motdepasse_ci
+        run: mvn -B -ntp test
+
+      - name: Publier les rapports de test
+        # `always()` : on veut les rapports SURTOUT quand ca echoue.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-surefire
+          path: backend/target/surefire-reports/
+          retention-days: 7

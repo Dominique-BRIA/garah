@@ -214,11 +214,23 @@ public class ServiceCatalogue {
         return DetailProduit.de(produit);
     }
 
-    /** La fiche complète, brouillons compris — réservée au back-office. */
+    /**
+     * La fiche complète, brouillons compris — réservée au back-office.
+     *
+     * <p>Deux requêtes, et c'est <b>obligatoire</b> : Hibernate refuse de
+     * charger deux collections de type {@code List} dans une seule requête
+     * (voir {@code ProduitRepository}). Le second appel ne renvoie pas un autre
+     * objet — il complète celui qui est déjà dans la transaction.</p>
+     */
     @Transactional(readOnly = true)
     public DetailProduit ficheAdministration(Long produitId) {
-        return DetailProduit.de(produits.chargerComplet(produitId)
-                .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId)));
+        Produit produit = produits.chargerAvecVariantes(produitId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId));
+
+        // Même instance gérée : cette requête ne fait qu'initialiser `medias`.
+        produits.chargerAvecMedias(produitId);
+
+        return DetailProduit.de(produit);
     }
 
     private void verifierTransition(Produit produit, StatutProduit vers) {

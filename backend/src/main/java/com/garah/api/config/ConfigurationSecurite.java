@@ -107,7 +107,22 @@ public class ConfigurationSecurite {
                         // Un joker dans une règle de sécurité ouvre TOUJOURS
                         // plus que ce qu'on avait en tête.
                         .requestMatchers("/api/sante").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/configuration").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/connexion").permitAll()
+
+                        // La vitrine est ouverte : elle doit lire le catalogue
+                        // sans jeton, sinon aucun visiteur ne voit un produit.
+                        //
+                        // Ces deux lignes manquaient jusqu'au chapitre 21, et
+                        // rien ne le signalait : aucun test ne passait par
+                        // HTTP, et tous les tests métier appellent les services
+                        // directement — là où la sécurité web n'intervient pas.
+                        //
+                        // La MÉTHODE est précisée. Sans HttpMethod.GET, la même
+                        // règle ouvrirait POST /api/produits, c'est-à-dire la
+                        // création de produit.
+                        .requestMatchers(HttpMethod.GET, "/api/produits").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/produits/{slug}").permitAll()
 
                         // Tout le reste exige un jeton valide. On liste ce qui
                         // est ouvert, jamais ce qui est fermé : un oubli laisse

@@ -1,0 +1,103 @@
+# =============================================================================
+# Blueprint Render — l'API GARAH
+# =============================================================================
+# Ce fichier décrit le service. Render le lit à chaque push sur `main` et
+# applique la différence.
+#
+# 📌 Pourquoi un fichier versionné plutôt que des clics dans l'interface :
+#    un service configuré à la main n'existe que dans la tête de celui qui
+#    l'a créé. Ici, la configuration est relue, commentée, et se restaure à
+#    l'identique le jour où l'instance est perdue.
+#
+# ⚠️ Ce blueprint ne décrit QUE l'API. Les trois frontends Angular vont sur
+#    Vercel (D-14), et la base sur Neon — chacun garde sa propre définition.
+# =============================================================================
+
+services:
+  - type: web
+    name: garah-api
+    runtime: docker
+    plan: free
+    region: frankfurt          # le plus proche du Cameroun parmi les régions gratuites
+
+    # Le Dockerfile vit dans backend/, mais le dépôt contient aussi docs/ et,
+    # bientôt, les trois applications Angular. On dit donc explicitement où
+    # regarder — sinon Render enverrait tout le dépôt au démon Docker.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+
+    branch: main
+    autoDeploy: true
+
+    # Render redéploie tant que cette adresse ne répond pas 200. Sans elle, une
+    # instance qui démarre mais dont Flyway a échoué serait annoncée « live ».
+    healthCheckPath: /api/sante
+
+    envVars:
+      # --- Base de données (Neon) ------------------------------------------
+      # sync: false = Render demande la valeur au premier déploiement et la
+      # chiffre. Elle n'apparaît JAMAIS dans ce fichier, donc jamais dans git.
+      - key: GARAH_DB_URL
+        sync: false
+      - key: GARAH_DB_USER
+        sync: false
+      - key: GARAH_DB_PASSWORD
+        sync: false
+
+      # Neon compte les connexions, et l'offre gratuite en accorde peu.
+      # 5 par instance laisse de la marge pour une seconde instance et pour
+      # la console SQL.
+      - key: GARAH_DB_POOL_MAX
+        value: "5"
+
+      # --- Sécurité --------------------------------------------------------
+      # generateValue: true = Render tire une valeur aléatoire et la garde.
+      # C'est mieux qu'un secret choisi par un humain : personne ne le connaît,
+      # donc personne ne peut le divulguer.
+      #
+      # ⚠️ Le changer invalide tous les jetons en circulation : les clients
+      #    connectés sont déconnectés. C'est le comportement voulu.
+      - key: GARAH_JWT_SECRET
+        generateValue: true
+      - key: GARAH_JWT_EXPIRATION_MINUTES
+        value: "60"
+
+      # --- Stockage des fichiers (Backblaze B2) -----------------------------
+      # Seul le préfixe public est en clair : il figure de toute façon dans
+      # chaque URL d'image. Les clés d'accès, elles, sont demandées.
+      - key: GARAH_MEDIA_BASE_URL
+        sync: false
+      - key: GARAH_S3_ENDPOINT
+        sync: false
+      - key: GARAH_S3_BUCKET
+        sync: false
+      - key: GARAH_S3_ACCESS_KEY
+        sync: false
+      - key: GARAH_S3_SECRET_KEY
+        sync: false
+
+      # --- Les trois frontends ---------------------------------------------
+      # À compléter avec les domaines Vercel réels. Tant que c'est faux, l'API
+      # répond correctement et le navigateur refuse de livrer la réponse : le
+      # symptôme est une page vide sans erreur serveur.
+      - key: GARAH_CORS_ORIGINS
+        sync: false
+
+      # --- Amorçage du premier SuperAdmin -----------------------------------
+      # À renseigner pour le PREMIER déploiement, puis à SUPPRIMER de
+      # l'environnement une fois le compte créé et le mot de passe changé.
+      # Laisser un mot de passe d'amorçage en place, c'est laisser une clé
+      # sous le paillasson.
+      - key: GARAH_SUPERADMIN_EMAIL
+        sync: false
+      - key: GARAH_SUPERADMIN_MOT_DE_PASSE
+        sync: false
+
+      # --- Divers -----------------------------------------------------------
+      - key: GARAH_VERSION
+        value: "0.1.0"
+      # Le fuseau du serveur ne doit jamais influencer un calcul : tout est
+      # stocké en UTC (chapitre 05). On le fixe pour que les journaux soient
+      # lisibles sans conversion mentale.
+      - key: TZ
+        value: UTC

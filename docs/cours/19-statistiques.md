@@ -308,4 +308,4 @@ Un responsable veut « les produits les plus vus mais jamais achetés ».
 
 ---
 
-➡️ **Chapitre suivant :** 20 — Tests automatisés et intégration continue
+➡️ **Chapitre suivant :** [20 — Tests automatisés et intégration continue](20-tests-et-integration-continue.md)

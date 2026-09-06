@@ -1,0 +1,11 @@
+# Ce qui ne doit JAMAIS entrer dans l image.
+
+# Le .env contient le mot de passe de la base. Le copier dans une image
+# reviendrait a le publier : une image se pousse, se partage, se telecharge.
+.env
+.env.*
+
+target/
+.mvn/maven.config
+*.iml
+.idea/

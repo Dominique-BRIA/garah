@@ -10,6 +10,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -178,6 +180,48 @@ public class GestionnaireErreursGlobal {
 
         return ResponseEntity.status(statut)
                 .body(ReponseErreur.de(code, message, requete.getRequestURI()));
+    }
+
+    /**
+     * Un jeton valide, mais sans la permission exigée.
+     *
+     * <p>⚠️ <b>Sans ce bloc, le filet {@code Exception.class} attrape le refus
+     * d'accès et le transforme en {@code 500 ERREUR_INTERNE}.</b> C'est
+     * exactement la même erreur que celle du chapitre 06 avec le 404, sous une
+     * autre forme — et elle est restée invisible jusqu'au premier test HTTP,
+     * parce que {@code @PreAuthorize} ne s'exécute pas quand on appelle un
+     * service directement.</p>
+     *
+     * <p>Deux conséquences, et la seconde est la pire :</p>
+     *
+     * <pre>
+     * pour le client    « une erreur interne est survenue » au lieu de
+     *                   « vous n'avez pas la permission » — impossible d'agir
+     *
+     * pour l'équipe     chaque refus d'accès est journalisé en ERROR avec sa
+     *                   pile complète. Un back-office normal en produit des
+     *                   dizaines par jour : le journal des vraies erreurs
+     *                   devient illisible.
+     * </pre>
+     *
+     * <p>🎯 <b>401 et 403 ne disent pas la même chose</b> — et la confusion se
+     * paie en support :</p>
+     *
+     * <pre>
+     * 401   je ne sais pas qui tu es          → reconnecte-toi
+     * 403   je sais qui tu es, mais tu n'as   → demande le droit
+     *       pas le droit                        à un administrateur
+     * </pre>
+     */
+    @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
+    public ResponseEntity<ReponseErreur> accesRefuse(HttpServletRequest requete) {
+        // Volontairement en INFO, pas en ERROR : un refus d'accès est le
+        // fonctionnement NORMAL d'un système de permissions.
+        log.info("Acces refuse sur {}", requete.getRequestURI());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ReponseErreur.de("ACCES_REFUSE",
+                        "Vous n'avez pas la permission nécessaire pour cette action.",
+                        requete.getRequestURI()));
     }
 
     /** Filet de sécurité : aucune trace technique ne doit sortir vers le client. */

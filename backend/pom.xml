@@ -74,6 +74,18 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Permet de tester la chaine de filtres de securite PAR HTTP :
+             fabriquer un jeton porteur des permissions qu'on choisit, puis
+             verifier qu'une route repond 200, 401 ou 403. Sans cela, la
+             configuration de securite n'etait verifiee par AUCUN test — et
+             c'est exactement ainsi que deux routes publiques sont restees
+             fermees jusqu'au chapitre 21. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ArchUnit : teste l'ARCHITECTURE comme on teste un calcul.
              Une regle d'architecture qu'on ne verifie pas est une regle
              qu'on viole le jour ou on est presse. -->
