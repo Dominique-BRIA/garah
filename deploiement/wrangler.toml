@@ -1,0 +1,30 @@
+# =============================================================================
+# Deploiement du proxy Cloudflare (D-22)
+# =============================================================================
+# L editeur du tableau de bord Cloudflare est capricieux : le panneau de code
+# reste blanc une fois sur deux, et le bac a sable d apercu echoue derriere un
+# reseau filtre. Surtout, ce qu on y colle n existe qu a cet endroit.
+#
+# Deployer depuis ici met le proxy sous git, au meme titre que render.yaml :
+# la topologie reseau cesse d etre une manipulation qu on refait de memoire.
+#
+#   cd deploiement
+#   npx wrangler login      (ouvre le navigateur, une seule fois)
+#   npx wrangler deploy
+#
+# L URL obtenue : https://garah-api.<votre-compte>.workers.dev
+# =============================================================================
+
+name = "garah-api"
+main = "proxy-cloudflare.js"
+
+# La date fige le comportement du runtime. Sans elle, une evolution de
+# Cloudflare pourrait changer la semantique de fetch() ou des en-tetes sous nos
+# pieds, un matin, sans qu on ait rien deploye.
+compatibility_date = "2026-09-06"
+
+# Les journaux du Worker, consultables dans Observability.
+# Indispensable ici : c est le seul endroit ou l on verra si une requete
+# n atteint pas Render, ou si l amont met trois minutes a se reveiller.
+[observability]
+enabled = true
