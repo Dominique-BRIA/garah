@@ -54,23 +54,19 @@
   margin-bottom: 2.5rem;
 }
 
-.embleme-logo {
+// La banniere : l'image porte deja le nom, elle remplace titre et embleme.
+//
+// ⚠️ Une largeur MAXIMALE, pas fixe. L'image fait 1408px de large : sans
+//    plafond elle deborderait sur un telephone, et sans max-width: 100% elle
+//    forcerait un defilement horizontal de toute la page.
+.banniere {
   display: block;
-  margin: 0 auto 1.5rem;
-  border-radius: 1.25rem;
+  width: 100%;
+  max-width: 30rem;
+  margin: 0 auto 1.75rem;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-}
-
-.titre {
-  font-size: 3.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  margin-bottom: 1rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  box-shadow: var(--ombre-large);
 }
 
 .accroche {
@@ -133,7 +129,6 @@ form .gu-libelle:not(:first-child) { margin-top: 1rem; }
 @media (max-width: 640px) {
   // 3,25rem tiendrait sur deux ou trois lignes et mangerait l'écran d'un
   // téléphone. La hiérarchie tient sans cette taille-là.
-  .titre { font-size: 2.25rem; }
   .accroche { font-size: 0.95rem; }
   .entete-marque { margin-bottom: 2rem; }
 }
