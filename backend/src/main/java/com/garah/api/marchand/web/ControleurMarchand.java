@@ -66,7 +66,7 @@ public class ControleurMarchand {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('MARCHAND_CREER')")
     public VueMarchand creer(@Valid @RequestBody DemandeMarchand demande) {
-        return marchands.creer(demande.code(), demande.nom(), demande.type(),
+        return marchands.creer(demande.nom(), demande.type(), demande.pays(),
                 demande.telephone(), demande.email());
     }
 
@@ -74,7 +74,8 @@ public class ControleurMarchand {
     @PreAuthorize("hasAuthority('MARCHAND_MODIFIER')")
     public VueMarchand modifier(@PathVariable Long id,
                                 @Valid @RequestBody DemandeModificationMarchand demande) {
-        return marchands.modifier(id, demande.nom(), demande.telephone(), demande.email());
+        return marchands.modifier(id, demande.nom(), demande.pays(),
+                demande.telephone(), demande.email());
     }
 
     /**
@@ -96,20 +97,32 @@ public class ControleurMarchand {
         return marchands.changerStatut(id, StatutMarchand.ACTIF);
     }
 
-    /** Ce qu'on envoie pour creer un marchand. */
+    /**
+     * Ce qu on envoie pour creer un marchand.
+     *
+     * <p>Aucun code : il est ENGENDRE par le serveur. Le laisser saisir
+     * produisait « 202020 » — une valeur qui ne dit rien et quil fallait
+     * inventer a chaque fois.</p>
+     */
     public record DemandeMarchand(
-            @NotBlank(message = "Le code est obligatoire.")
-            @Size(max = 20, message = "Le code ne peut pas depasser 20 caracteres.")
-            @Pattern(regexp = "^[A-Za-z0-9._-]+$",
-                     message = "Le code ne peut contenir que lettres, chiffres, points, tirets et underscores.")
-            String code,
-
             @NotBlank(message = "Le nom est obligatoire.")
             @Size(max = 150, message = "Le nom ne peut pas depasser 150 caracteres.")
             String nom,
 
             @NotNull(message = "Le type est obligatoire.")
             TypeMarchand type,
+
+            /*
+             * Code ISO 3166-1 alpha-2 : CM, CF, TD, GA...
+             *
+             * Un CODE, jamais un nom en clair. « Cameroun », « Cameroon » et
+             * « cameroun » sont trois saisies du meme pays, et rendent faux
+             * tout regroupement. Le libelle est affiche par le frontend.
+             */
+            @NotBlank(message = "Le pays est obligatoire.")
+            @Pattern(regexp = "^[A-Za-z]{2}$",
+                     message = "Le pays doit etre un code a deux lettres.")
+            String pays,
 
             @Size(max = 30, message = "Numero de telephone trop long.")
             @Pattern(regexp = "^$|^[+()0-9 .-]{6,30}$",
@@ -132,6 +145,18 @@ public class ControleurMarchand {
             @NotBlank(message = "Le nom est obligatoire.")
             @Size(max = 150, message = "Le nom ne peut pas depasser 150 caracteres.")
             String nom,
+
+            /*
+             * Code ISO 3166-1 alpha-2 : CM, CF, TD, GA...
+             *
+             * Un CODE, jamais un nom en clair. « Cameroun », « Cameroon » et
+             * « cameroun » sont trois saisies du meme pays, et rendent faux
+             * tout regroupement. Le libelle est affiche par le frontend.
+             */
+            @NotBlank(message = "Le pays est obligatoire.")
+            @Pattern(regexp = "^[A-Za-z]{2}$",
+                     message = "Le pays doit etre un code a deux lettres.")
+            String pays,
 
             @Size(max = 30, message = "Numero de telephone trop long.")
             @Pattern(regexp = "^$|^[+()0-9 .-]{6,30}$",

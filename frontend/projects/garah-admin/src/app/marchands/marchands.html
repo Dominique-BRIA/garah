@@ -1,4 +1,4 @@
-<header class="entete">
+[disabled]="enregistrement() || !nom()"<header class="entete">
   <div>
     <h1>Marchands</h1>
     <p class="sous-titre">
@@ -48,6 +48,7 @@
         <tr>
           <th>Code</th>
           <th>Nom</th>
+          <th>Pays</th>
           <th>Type</th>
           <th>Contact</th>
           <th>Statut</th>
@@ -58,7 +59,13 @@
         @for (m of liste(); track m.id) {
           <tr>
             <td><code>{{ m.code }}</code></td>
-            <td class="nom">{{ m.nom }}</td>
+            <td>
+              <div class="cellule-marchand">
+                <gu-avatar [nom]="m.nom" [url]="m.urlLogo" taille="2.1rem" />
+                <span class="nom">{{ m.nom }}</span>
+              </div>
+            </td>
+            <td>{{ libelle(m.pays) }}</td>
             <td>
               <span class="gu-badge"
                     [class]="m.type === 'INTERNE' ? 'gu-badge--info' : 'gu-badge--neutre'">
@@ -99,12 +106,6 @@
     <h2>Nouveau marchand</h2>
 
     <form (ngSubmit)="enregistrer()" novalidate>
-      <label class="gu-libelle" for="code">Code</label>
-      <input id="code" name="code" class="gu-champ" required maxlength="20"
-             [ngModel]="code()" (ngModelChange)="code.set($event)" />
-      <!-- Dire ce qui est figé AVANT la saisie, pas après l'erreur. -->
-      <p class="aide">Ne pourra plus être modifié ensuite.</p>
-
       <label class="gu-libelle" for="nom">Nom</label>
       <input id="nom" name="nom" class="gu-champ" required maxlength="150"
              [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
@@ -116,6 +117,14 @@
         <option value="INTERNE">GARAH</option>
       </select>
       <p class="aide">Détermine la commission. Ne pourra plus être modifié.</p>
+
+      <label class="gu-libelle" for="pays">Pays</label>
+      <select id="pays" name="pays" class="gu-champ"
+              [ngModel]="pays()" (ngModelChange)="pays.set($event)">
+        @for (p of listePays; track p.code) {
+          <option [value]="p.code">{{ p.libelle }}</option>
+        }
+      </select>
 
       <label class="gu-libelle" for="tel">Téléphone</label>
       <input id="tel" name="telephone" class="gu-champ" maxlength="30"
@@ -133,7 +142,7 @@
         <button type="button" class="gu-btn gu-btn--secondaire"
                 (click)="formulaireOuvert.set(false)">Annuler</button>
         <button type="submit" class="gu-btn gu-btn--primaire"
-                [disabled]="enregistrement() || !code() || !nom()">
+                [disabled]="enregistrement() || !nom()">
           @if (enregistrement()) {
             <gu-icone nom="circle-notch" tourne /> Enregistrement…
           } @else { Créer }

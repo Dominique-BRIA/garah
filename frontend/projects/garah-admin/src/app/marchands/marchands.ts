@@ -1,11 +1,21 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Icone, Marchand, Page, ReponseErreur, ServiceSession, TypeMarchand } from 'garah-ui';
+import {
+  Avatar,
+  Icone,
+  Marchand,
+  PAYS_DESSERVIS,
+  Page,
+  ReponseErreur,
+  ServiceSession,
+  TypeMarchand,
+  libellePays,
+} from 'garah-ui';
 
 @Component({
   selector: 'ga-marchands',
-  imports: [FormsModule, Icone],
+  imports: [FormsModule, Icone, Avatar],
   templateUrl: './marchands.html',
   styleUrl: './marchands.scss',
 })
@@ -19,13 +29,21 @@ export class Marchands {
   protected readonly erreur = signal<string | null>(null);
   protected readonly recherche = signal('');
 
+  /** Les pays proposés à la saisie. */
+  protected readonly listePays = PAYS_DESSERVIS;
+
+  /** Le libellé d'un code pays, pour l'affichage. */
+  protected libelle(code: string): string {
+    return libellePays(code);
+  }
+
   // --- Le formulaire de création ---
   protected readonly formulaireOuvert = signal(false);
   protected readonly enregistrement = signal(false);
   protected readonly erreurFormulaire = signal<string | null>(null);
 
-  protected readonly code = signal('');
   protected readonly nom = signal('');
+  protected readonly pays = signal('CM');
   protected readonly type = signal<TypeMarchand>('EXTERNE');
   protected readonly telephone = signal('');
   protected readonly email = signal('');
@@ -46,7 +64,7 @@ export class Marchands {
     this.http.get<Page<Marchand>>(url).subscribe({
       next: (page) => {
         this.liste.set(page.content);
-        this.total.set(page.totalElements);
+        this.total.set(page.page.totalElements);
         this.chargement.set(false);
       },
       error: (e: unknown) => {
@@ -57,8 +75,8 @@ export class Marchands {
   }
 
   protected ouvrirFormulaire(): void {
-    this.code.set('');
     this.nom.set('');
+    this.pays.set('CM');
     this.type.set('EXTERNE');
     this.telephone.set('');
     this.email.set('');
@@ -75,9 +93,12 @@ export class Marchands {
 
     this.http
       .post<Marchand>('/api/marchands', {
-        code: this.code().trim(),
+        // Aucun code : il est ENGENDRÉ par le serveur (MAR-00042). Le laisser
+        // saisir produisait « 202020 » — une valeur qui ne dit rien et qu'on
+        // devait inventer a chaque fois.
         nom: this.nom().trim(),
         type: this.type(),
+        pays: this.pays(),
         // Chaîne vide plutôt qu'omission : le backend accepte les deux, mais
         // envoyer `undefined` retirerait la clé du JSON et rendrait le contrat
         // implicite. Ce qui est optionnel doit se voir.

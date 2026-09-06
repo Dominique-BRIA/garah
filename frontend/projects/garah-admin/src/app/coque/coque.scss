@@ -131,10 +131,19 @@ nav a {
 }
 
 .compte {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   padding: 0.85rem;
   margin: 0.75rem 0;
   border-radius: var(--radius-sm);
   background: var(--surface-douce);
+}
+
+.compte__texte {
+  // Sans cela, un nom long pousse l'avatar hors de la barre laterale au
+  // lieu d'etre tronque.
+  min-width: 0;
 }
 
 .compte__nom {

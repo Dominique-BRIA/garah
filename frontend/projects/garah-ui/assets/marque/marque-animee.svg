@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48"
+     role="img" aria-label="GARAH">
+  <title>GARAH</title>
+  <!--
+    La calebasse se trace, puis se remplit. Une fois.
+
+    /!\ LES ANIMATIONS CSS FONCTIONNENT DANS UN <img src="...svg">, pas le
+        JavaScript. C'est la raison pour laquelle tout est ici en CSS : ce
+        fichier s'anime aussi bien dans un <img>, un fond CSS ou un onglet
+        ouvert directement.
+
+    Dans l'application, preferer <gu-marque animee="entree" /> : meme geste,
+    mais aux couleurs du theme.
+  -->
+  <defs>
+    <linearGradient id="garah-degrade" gradientUnits="userSpaceOnUse"
+                    x1="7.5" y1="7.5" x2="40" y2="40">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#aa3bff"/>
+    </linearGradient>
+
+    <clipPath id="garah-niveau">
+      <rect id="garah-rect" x="8" y="24" width="34" height="18"/>
+    </clipPath>
+
+    <style>
+      /* 38 = la longueur de l'arc : 145 degres d'un cercle de rayon 15. */
+      #garah-anse {
+        stroke-dasharray: 38;
+        animation: garah-tracer .62s cubic-bezier(.65, 0, .35, 1) both;
+      }
+
+      /* Le remplissage demarre AVANT la fin du trace : enchaines bout a bout
+         on verrait deux gestes, superposes on en voit un. */
+      #garah-rect {
+        animation: garah-remplir .68s .34s cubic-bezier(.22, 1, .36, 1) both;
+      }
+
+      @keyframes garah-tracer {
+        from { stroke-dashoffset: 38; }
+        to   { stroke-dashoffset: 0; }
+      }
+
+      @keyframes garah-remplir {
+        from { transform: translateY(17px); }
+        to   { transform: none; }
+      }
+
+      /* Le mouvement rend une partie des utilisateurs malades. La marque
+         doit alors apparaitre ENTIERE, jamais figee a mi-remplissage. */
+      @media (prefers-reduced-motion: reduce) {
+        #garah-anse { animation: none; stroke-dashoffset: 0; }
+        #garah-rect { animation: none; transform: none; }
+      }
+    </style>
+  </defs>
+
+  <path id="garah-anse" d="M10 25A15 15 0 0 1 37.29 16.4" fill="none"
+        stroke="url(#garah-degrade)" stroke-width="5" stroke-linecap="butt"/>
+  <path d="M10 25A15 15 0 0 0 40 25Z" fill="url(#garah-degrade)"
+        clip-path="url(#garah-niveau)"/>
+</svg>

@@ -1,6 +1,5 @@
 package com.garah.api.marchand.domaine;
 
-import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.marchand.infra.MarchandRepository;
@@ -26,21 +25,20 @@ public class ServiceMarchand {
         this.marchands = marchands;
     }
 
+    /**
+     * Crée un marchand. Le code est ENGENDRÉ, jamais saisi.
+     *
+     * <p>Il était tapé à la main, et cela produisait « 202020 » : une valeur
+     * qui ne dit rien, impossible à dicter sans se tromper, et qu'il fallait
+     * inventer à chaque création. Une séquence donne MAR-00001, lisible et
+     * sans collision possible.</p>
+     */
     @Transactional
-    public VueMarchand creer(String code, String nom, TypeMarchand type,
+    public VueMarchand creer(String nom, TypeMarchand type, String pays,
                              String telephone, String email) {
 
-        String reference = normaliser(code);
-
-        // Vérification AVANT l'insertion, pour un message clair. La contrainte
-        // UNIQUE reste la vraie garantie : deux créations simultanées
-        // passeraient toutes deux ce test, et la base en refusera une.
-        if (marchands.existsByCodeIgnoreCase(reference)) {
-            throw new ConflitEtat("CODE_MARCHAND_EXISTANT",
-                    "Un marchand porte déjà le code « " + reference + " ».");
-        }
-
-        Marchand marchand = new Marchand(reference, nom.strip(), type);
+        Marchand marchand = new Marchand(genererCode(), nom.strip(), type);
+        marchand.setPays(normaliserPays(pays));
         marchand.setTelephone(vide(telephone) ? null : telephone.strip());
         marchand.setEmail(vide(email) ? null : email.strip());
 
@@ -48,10 +46,12 @@ public class ServiceMarchand {
     }
 
     @Transactional
-    public VueMarchand modifier(Long id, String nom, String telephone, String email) {
+    public VueMarchand modifier(Long id, String nom, String pays,
+                                String telephone, String email) {
         Marchand marchand = charger(id);
 
         marchand.setNom(nom.strip());
+        marchand.setPays(normaliserPays(pays));
         marchand.setTelephone(vide(telephone) ? null : telephone.strip());
         marchand.setEmail(vide(email) ? null : email.strip());
 
@@ -108,18 +108,24 @@ public class ServiceMarchand {
                 .orElseThrow(() -> RessourceIntrouvable.de("Marchand", id));
     }
 
+    /** {@code MAR-00042}, tiré d'une séquence PostgreSQL (V23). */
+    private String genererCode() {
+        return "MAR-%05d".formatted(marchands.prochainCode());
+    }
+
     /**
-     * Le code est mis en majuscules et débarrassé des espaces.
+     * Le pays, en deux lettres majuscules.
      *
-     * <p>Sans cela, « m-042 » et « M-042 » deviendraient deux marchands
-     * distincts — et le second échouerait seulement plus tard, sur une
-     * comparaison insensible à la casse qui, elle, les confondrait.</p>
+     * <p>La base refuse tout ce qui ne correspond pas à deux lettres majuscules.
+     * On normalise ici pour produire un message clair plutôt qu'une erreur
+     * d'intégrité — et parce que « cm » saisi en minuscules est une faute de
+     * frappe, pas une intention.</p>
      */
-    private static String normaliser(String code) {
-        String propre = code == null ? "" : code.strip().toUpperCase(Locale.ROOT);
-        if (propre.isBlank()) {
-            throw new RegleMetierViolee("CODE_MARCHAND_OBLIGATOIRE",
-                    "Le code du marchand est obligatoire.");
+    private static String normaliserPays(String pays) {
+        String propre = pays == null ? "" : pays.strip().toUpperCase(Locale.ROOT);
+        if (!propre.matches("[A-Z]{2}")) {
+            throw new RegleMetierViolee("PAYS_INVALIDE",
+                    "Le pays doit être un code à deux lettres (CM, CF, TD…).");
         }
         return propre;
     }

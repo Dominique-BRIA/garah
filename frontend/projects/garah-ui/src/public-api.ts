@@ -25,6 +25,7 @@ export * from './lib/icones/traces';
 
 // --- La marque ---
 export * from './lib/marque/logo';
+export * from './lib/marque/avatar';
 
 // --- Le theme ----------------------------------------------------------------
 export * from './lib/theme/service-theme';

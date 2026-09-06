@@ -31,7 +31,7 @@ public class Marchand {
      * <p>Unique, et <b>jamais renvoyé à zéro</b> : il sert de référence dans
      * les échanges avec le partenaire, bien après que la ligne a changé.</p>
      */
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, updatable = false)
     private String code;
 
     @Column(nullable = false, length = 150)
@@ -46,6 +46,28 @@ public class Marchand {
 
     @Column(length = 255)
     private String email;
+
+    /**
+     * Code ISO 3166-1 alpha-2.
+     *
+     * <p>GARAH achemine de Douala vers Bangui : le pays d'un marchand n'est pas
+     * décoratif, il détermine si sa marchandise franchit une frontière.</p>
+     *
+     * <p>Un CODE, jamais un nom en clair. « Cameroun », « Cameroon », « CMR »
+     * et « cameroun » sont quatre saisies du même pays, et rendent faux tout
+     * regroupement.</p>
+     */
+    @Column(nullable = false, length = 2)
+    private String pays = "CM";
+
+    /**
+     * La clé d'objet du logo, jamais une URL.
+     *
+     * <p>Le bucket est privé : les URL sont signées et expirent au bout de sept
+     * jours (D-21). Une URL stockée serait morte avant d'avoir servi.</p>
+     */
+    @Column(name = "logo_cle", length = 500)
+    private String logoCle;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -81,6 +103,8 @@ public class Marchand {
     public TypeMarchand getType() { return type; }
     public String getTelephone() { return telephone; }
     public String getEmail() { return email; }
+    public String getPays() { return pays; }
+    public String getLogoCle() { return logoCle; }
     public StatutMarchand getStatut() { return statut; }
     public Instant getDateCreation() { return dateCreation; }
     public Instant getDateModification() { return dateModification; }
@@ -88,6 +112,8 @@ public class Marchand {
     public void setNom(String nom) { this.nom = nom; }
     public void setTelephone(String telephone) { this.telephone = telephone; }
     public void setEmail(String email) { this.email = email; }
+    public void setPays(String pays) { this.pays = pays; }
+    public void setLogoCle(String logoCle) { this.logoCle = logoCle; }
     public void setStatut(StatutMarchand statut) { this.statut = statut; }
 
     /**

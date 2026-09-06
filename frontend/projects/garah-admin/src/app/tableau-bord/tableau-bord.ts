@@ -151,7 +151,7 @@ export class TableauBord {
   /** Le nombre total d'une page Spring, sans en télécharger le contenu. */
   private compterPage(url: string): Observable<number | null> {
     return this.http.get<Page<unknown>>(url).pipe(
-      map((page) => page.totalElements),
+      map((page) => page.page.totalElements),
       catchError(() => of(null)),
     );
   }

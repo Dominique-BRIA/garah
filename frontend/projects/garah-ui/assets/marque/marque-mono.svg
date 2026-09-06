@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48"
+     role="img" aria-label="GARAH">
+  <title>GARAH</title>
+  <!--
+    La marque en UNE seule couleur, heritee du texte environnant.
+
+    C'est la version qui compte le plus a long terme : une marque qui ne
+    survit pas a l'aplat ne survit ni au tampon, ni a la broderie, ni au fax
+    d'un transitaire. Le degrade est un habillage, ceci est la forme.
+
+    fill="currentColor" : posee dans un document HTML, elle prend la couleur
+    du texte. Ouverte seule dans un navigateur, elle est noire.
+  -->
+  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="currentColor"
+        stroke-width="5" stroke-linecap="butt"/>
+  <path d="M10 25A15 15 0 0 0 40 25Z" fill="currentColor"/>
+</svg>

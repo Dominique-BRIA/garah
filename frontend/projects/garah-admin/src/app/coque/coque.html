@@ -39,8 +39,11 @@
 
       @if (session.utilisateur(); as u) {
         <div class="compte">
-          <div class="compte__nom">{{ u.nom }}</div>
-          <div class="compte__type">{{ u.type }}</div>
+          <gu-avatar [nom]="u.nom" taille="2.25rem" />
+          <div class="compte__texte">
+            <div class="compte__nom">{{ u.nom }}</div>
+            <div class="compte__type">{{ u.type }}</div>
+          </div>
         </div>
       }
 

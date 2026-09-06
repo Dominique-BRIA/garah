@@ -28,7 +28,7 @@ export class Produits {
     this.http.get<Page<ResumeProduit>>('/api/produits?page=0&taille=24').subscribe({
       next: (page) => {
         this.produits.set(page.content);
-        this.total.set(page.totalElements);
+        this.total.set(page.page.totalElements);
         this.chargement.set(false);
       },
       error: (e: unknown) => {

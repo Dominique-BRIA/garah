@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48"
+     role="img" aria-label="GARAH">
+  <title>GARAH</title>
+  <!--
+    La marque GARAH : la calebasse, ramenee a sa panse et a son anse.
+
+    /!\ CE FICHIER EST POUR L'EXTERIEUR de l'application : e-mail, README,
+        document imprime, outil tiers. Les couleurs y sont ecrites en dur
+        parce qu'il n'y a aucun theme pour les fournir.
+
+        DANS l'application, utiliser <gu-marque /> : ses arrets de degrade
+        lisent var(--primary) et var(--accent), donc la marque suit le theme
+        de chaque frontend sans un fichier de plus.
+  -->
+  <defs>
+    <!-- userSpaceOnUse : un seul degrade traverse les deux formes. En unites
+         de boite englobante, chacune recevrait sa propre rampe complete. -->
+    <linearGradient id="garah-degrade" gradientUnits="userSpaceOnUse"
+                    x1="7.5" y1="7.5" x2="40" y2="40">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#aa3bff"/>
+    </linearGradient>
+  </defs>
+  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="url(#garah-degrade)"
+        stroke-width="5" stroke-linecap="butt"/>
+  <path d="M10 25A15 15 0 0 0 40 25Z" fill="url(#garah-degrade)"/>
+</svg>
