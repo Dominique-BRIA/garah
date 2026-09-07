@@ -69,6 +69,25 @@ App Service injecte `PORT` de son côté, donc les deux se rejoignent — mais
 sans `WEBSITES_PORT`, App Service devine, et une devinette ratée donne un
 « Application Error » sans rien dans les journaux applicatifs.
 
+### ⚠️ Délai de démarrage du conteneur
+
+**Paramètres → Variables d'environnement** → `WEBSITES_CONTAINER_START_TIME_LIMIT` = `600`
+
+Le défaut d'Azure est de **230 secondes**. Passé ce délai, si le conteneur n'a
+pas ouvert son port, App Service le **tue et le relance** — indéfiniment. Le
+symptôme est un `503` permanent servi par Azure, pas par l'application.
+
+Or ce démarrage a été mesuré à **119,8 s sur Render**, et App Service B1 n'a
+qu'un cœur. Ajoutez le premier tirage de l'image (250 Mo), et les 230 s se
+franchissent sans difficulté.
+
+C'est le piège le plus vicieux de la liste, parce qu'il **imite une panne
+applicative** : le journal montre Spring qui démarre normalement, puis
+s'interrompt sans erreur — Azure a coupé le processus au milieu. On cherche
+alors un bogue dans un code qui n'en a pas.
+
+600 s laisse de la marge sans masquer un vrai blocage.
+
 ### Sonde de santé
 
 **Surveillance → Health check** → `/api/sante`
