@@ -4,6 +4,8 @@ import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.logistique.infra.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -296,5 +298,44 @@ public class ServiceExpedition {
     @Transactional
     public VueLigneColis remplirEtResumer(Long colisId, Long ligneCommandeId, int quantite) {
         return VueLigneColis.de(remplir(colisId, ligneCommandeId, quantite), colisId);
+    }
+
+    /**
+     * La liste du back-office : toutes les expéditions, filtrables.
+     *
+     * <p>Elle répond à « qu'est-ce qui est en route ? » et à « qu'est-ce qui
+     * attend un départ ? ». Sans filtre par statut, ces deux questions
+     * demanderaient de parcourir toutes les pages.</p>
+     *
+     * <p>La requête assemble le numéro de commande et le point de récupération
+     * en <b>une seule passe</b>, jointures comprises — pas une lecture par
+     * ligne.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<ResumeExpedition> administration(StatutExpedition statut, String recherche,
+                                                 Pageable pagination) {
+        String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
+        return expeditions.administration(statut, filtre, pagination);
+    }
+
+    /**
+     * Le parcours complet d'une expédition : chaque colis avec ses événements.
+     *
+     * <p>🎯 C'est ce qui distingue un suivi d'un statut. « EN_TRANSIT » ne dit
+     * pas où ; « réceptionné à Bertoua le 12/03 à 14 h » le dit, et reste vrai
+     * même quand le colis est reparti.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<VueParcoursColis> parcoursComplet(Long expeditionId) {
+        Expedition expedition = expeditions.chargerAvecColis(expeditionId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Expédition", expeditionId));
+
+        return expedition.getColis().stream()
+                .map(c -> new VueParcoursColis(
+                        c.getId(), c.getNumeroSuivi(), c.getPoidsKg(), c.getStatut().name(),
+                        evenements.findByColisIdOrderByDateHeureAsc(c.getId()).stream()
+                                .map(VueEvenement::de)
+                                .toList()))
+                .toList();
     }
 }

@@ -1,6 +1,9 @@
 package com.garah.api.logistique.web;
 
+import com.garah.api.logistique.domaine.ResumeExpedition;
 import com.garah.api.logistique.domaine.ServiceExpedition;
+import com.garah.api.logistique.domaine.StatutExpedition;
+import com.garah.api.logistique.domaine.VueParcoursColis;
 import com.garah.api.logistique.domaine.TypeEvenement;
 import com.garah.api.logistique.domaine.VueEvenement;
 import com.garah.api.logistique.domaine.VueExpedition;
@@ -11,6 +14,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -47,6 +52,42 @@ public class ControleurExpedition {
         return VueExpedition.resume(expeditions.creer(
                 demande.commandeId(), demande.lieuDepartId(),
                 demande.pointRecuperationId(), demande.itineraireId()));
+    }
+
+    /**
+     * La liste du back-office : toutes les expeditions.
+     *
+     * <p>Elle repond a deux questions : « qu'est-ce qui est en route ? » et
+     * « qu'est-ce qui attend un depart ? ». Sans filtre par statut, il
+     * faudrait parcourir toutes les pages pour repondre a la seconde.</p>
+     *
+     * <p>La recherche porte sur le numero d'expedition ET sur le numero de
+     * commande : quand un client appelle, il donne le second, jamais le
+     * premier.</p>
+     */
+    @GetMapping
+    @PreAuthorize("hasAuthority('EXPEDITION_CONSULTER')")
+    public Page<ResumeExpedition> lister(
+            @RequestParam(required = false) StatutExpedition statut,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int taille) {
+
+        return expeditions.administration(statut, recherche,
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, 100)));
+    }
+
+    /**
+     * Le parcours complet : chaque colis avec ses evenements dates.
+     *
+     * <p>🎯 C'est ce qui distingue un SUIVI d'un STATUT. « EN_TRANSIT » ne dit
+     * pas ou ; « receptionne a Bertoua le 12/03 a 14 h » le dit, et reste vrai
+     * meme quand le colis est reparti.</p>
+     */
+    @GetMapping("/{id}/parcours")
+    @PreAuthorize("hasAuthority('EXPEDITION_CONSULTER_HISTORIQUE')")
+    public List<VueParcoursColis> parcoursComplet(@PathVariable Long id) {
+        return expeditions.parcoursComplet(id);
     }
 
     @GetMapping("/{id}")

@@ -25,6 +25,8 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -259,6 +261,62 @@ class ParcoursLogistiqueTest {
         // CONTROLE ne change pas le statut : la projection doit le savoir.
         assertThat(expeditions.projectionCoherente(colis.getId())).isTrue();
         assertThat(expeditions.parcours(colis.getId())).hasSize(3);
+    }
+
+    // -------------------------------------------------------------------------
+    // La liste du back-office
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("la liste joint la commande sans creer de cycle entre domaines")
+    void listeAdministration() {
+        Colis colis = colisPret();
+        Long expeditionId = colis.getExpedition().getId();
+
+        // ⚠️ CE test existe pour UNE raison. La requete fait un
+        // « LEFT JOIN Commande c ON c.id = e.commandeId » — une jointure
+        // ad hoc entre deux entites SANS relation JPA declaree, ecrite ainsi
+        // pour eviter un cycle de paquetages que ArchUnit refuserait.
+        //
+        // Elle compile, elle demarre, et c'est exactement le genre de chose
+        // qui casse a la premiere execution reelle. Le verifier au demarrage
+        // ne suffit pas : il faut l'APPELER.
+        Page<ResumeExpedition> page =
+                expeditions.administration(null, null, PageRequest.of(0, 25));
+
+        assertThat(page.getContent()).isNotEmpty();
+
+        ResumeExpedition trouvee = page.getContent().stream()
+                .filter(e -> e.id().equals(expeditionId))
+                .findFirst()
+                .orElseThrow();
+
+        // Le numero de commande vient de l'autre domaine, par la jointure.
+        assertThat(trouvee.commandeNumero()).isNotBlank();
+        // Le nom du point de recuperation vient de la seconde jointure.
+        assertThat(trouvee.pointNom()).isNotBlank();
+        // La sous-requete de comptage a bien compte le colis.
+        assertThat(trouvee.nombreColis()).isPositive();
+    }
+
+    @Test
+    @DisplayName("la recherche porte sur le numero de commande, pas seulement d'expedition")
+    void listeRecherchee() {
+        Colis colis = colisPret();
+        String numeroCommande = expeditions.administration(null, null, PageRequest.of(0, 25))
+                .getContent().stream()
+                .filter(e -> e.id().equals(colis.getExpedition().getId()))
+                .findFirst()
+                .orElseThrow()
+                .commandeNumero();
+
+        // Quand un client appelle, il donne son numero de COMMANDE — jamais
+        // celui de l'expedition, qu'il n'a jamais vu.
+        assertThat(expeditions.administration(null, numeroCommande, PageRequest.of(0, 25)))
+                .isNotEmpty();
+
+        assertThat(expeditions.administration(null, "INTROUVABLE-XYZ", PageRequest.of(0, 25)))
+                .isEmpty();
     }
 
     // -------------------------------------------------------------------------
