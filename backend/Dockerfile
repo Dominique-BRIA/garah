@@ -55,9 +55,64 @@ WORKDIR /app
 
 COPY --from=construction /build/target/*.jar application.jar
 
+# =============================================================================
+# Memoire : tenir dans les 512 Mio de l offre gratuite
+# =============================================================================
 # MaxRAMPercentage plutot que -Xmx : la JVM lit la limite du CONTENEUR.
-# Ecrire -Xmx512m en dur casserait le jour ou on change de plan Render.
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC"
+# Ecrire -Xmx256m en dur casserait le jour ou on change de plan Render.
+#
+# /!\ CE POURCENTAGE ETAIT A 75, ET LE DEPLOIEMENT MOURAIT AVANT D OUVRIR SON
+#     PORT :
+#
+#         ==> No open ports detected, continuing to scan...
+#         ==> Out of memory (used over 512Mi)
+#
+#     L erreur de raisonnement est de lire « 75 % de 512 » comme un budget
+#     total. Ce pourcentage ne regit que le TAS. Tout le reste s y ajoute :
+#
+#         tas            75 % de 512      384 Mio
+#         metaspace      43 depots JPA, Hibernate, SDK AWS   ~150 Mio
+#         piles          ~50 threads x 1 Mio                  ~50 Mio
+#         cache de code  compilation a quatre niveaux         ~40 Mio
+#         natif          tampons directs, TLS                 ~30 Mio
+#                                                     -----------------
+#                                                            ~654 Mio
+#
+#     Le conteneur etait donc condamne des le demarrage. Render garde alors
+#     l ANCIENNE version en ligne : le service repond, tout a l air normal, et
+#     seul le journal de deploiement dit que rien n a ete livre. C est le mode
+#     de panne le plus couteux — on cherche le defaut dans le code pendant que
+#     le code n est jamais parti.
+#
+# Le budget vise, sur 512 Mio :
+#
+#     tas            40 %                       ~205 Mio
+#     metaspace      plafonne                    144 Mio
+#     piles          ~50 threads x 512 Kio        ~25 Mio
+#     cache de code  un seul niveau de JIT        ~15 Mio
+#     natif                                       ~40 Mio
+#                                          ---------------
+#                                                ~429 Mio, ~80 de marge
+#
+# MaxMetaspaceSize est PLAFONNE volontairement. Sans plafond, le metaspace
+# grandit jusqu a ce que le conteneur soit tue — et le journal ne dit alors
+# rien d autre que « Out of memory », sans designer le coupable. Avec, on
+# obtient une OutOfMemoryError: Metaspace, qui se lit.
+#
+# TieredStopAtLevel=1 : on s arrete au compilateur C1. Ce qu on perd, c est le
+# debit maximal une fois l application chaude ; ce qu on gagne, c est un cache
+# de code trois fois plus petit ET un demarrage bien plus court — decisif ici,
+# ou le processeur est bride et ou chaque reveil de l instance endormie repaie
+# ce demarrage (D-14). A retirer le jour d un plan payant.
+#
+# UseSerialGC : le ramasse-miettes a la plus petite empreinte. Sur un seul
+# coeur, les collecteurs paralleles ne servent a rien et coutent des threads.
+# =============================================================================
+# Sur UNE seule ligne, volontairement : une continuation « \ » dans un ENV se
+# comporte differemment selon les versions de BuildKit, et un reglage memoire
+# qui se transforme en chaine vide ne se voit qu au moment ou le conteneur
+# meurt.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=40 -XX:MaxMetaspaceSize=144m -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
 
 # Render fournit le port dans $PORT. application.yml lit ${PORT:8080}.
 EXPOSE 8080
