@@ -95,7 +95,8 @@ class ServiceCommandeTest {
             catalogue.ajouterMedia(produitId, TypeMedia.PHOTO, "produits/cmd/1.jpg", true);
             catalogue.publier(produitId);
 
-            stock.creerPour(varianteId);
+            // Le stock naît AVEC la déclinaison depuis que `VarianteCreee` est écouté
+            // (I-15). L'appeler ici leverait « cette variante a déjà un stock ».
             stock.entrer(varianteId, 20, null, "Mise en place");
 
             Lieu bangui = new Lieu(TypeLieu.POINT_RECUPERATION, "Bangui PK5", "RCA", "Bangui");

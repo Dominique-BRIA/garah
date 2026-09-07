@@ -6,6 +6,7 @@ import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.marchand.domaine.ServiceMarchand;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -63,13 +64,22 @@ public class ServiceCatalogue {
      */
     private final ServiceMarchand marchands;
 
+    /**
+     * Le canal par lequel le catalogue ANNONCE, sans commander.
+     *
+     * <p>Il n appelle pas le stock : celui-ci depend deja du catalogue pour
+     * designer ce qu il compte, et l appel inverse formerait un cycle.</p>
+     */
+    private final ApplicationEventPublisher evenements;
+
     public ServiceCatalogue(ProduitRepository produits,
                             VarianteRepository variantes,
                             CategorieProduitRepository categories,
                             MediaRepository medias,
                             TarificationRepository tarifications,
                             StockageObjet urlsMedias,
-                            ServiceMarchand marchands) {
+                            ServiceMarchand marchands,
+                            ApplicationEventPublisher evenements) {
         this.produits = produits;
         this.variantes = variantes;
         this.categories = categories;
@@ -77,6 +87,7 @@ public class ServiceCatalogue {
         this.tarifications = tarifications;
         this.urlsMedias = urlsMedias;
         this.marchands = marchands;
+        this.evenements = evenements;
     }
 
     /**
@@ -146,7 +157,7 @@ public class ServiceCatalogue {
 
         // La variante par défaut. Son SKU dérive de la référence : tant qu'il
         // n'y a pas de déclinaison, les deux se confondent naturellement.
-        produit.ajouterVariante(reference, nom, true);
+        annoncerLaNaissance(produit.ajouterVariante(reference, nom, true));
 
         return DetailProduit.de(produit, urlsMedias::urlPublique);
     }
@@ -206,7 +217,21 @@ public class ServiceCatalogue {
 
         Variante variante = produit.ajouterVariante(sku, libelle, false);
         valeurs.forEach(variante::definirPar);
+        annoncerLaNaissance(variante);
         return variante;
+    }
+
+    /**
+     * Annonce qu'une déclinaison est née, pour que son stock naisse avec elle.
+     *
+     * <p>Le {@code saveAndFlush} n'est pas décoratif : tant que la déclinaison
+     * n'est pas écrite, elle n'a <b>pas d'identifiant</b>, et l'événement ne
+     * désignerait rien. La cascade depuis le produit l'aurait écrite plus tard,
+     * à la fin de la transaction — trop tard pour l'écouteur.</p>
+     */
+    private void annoncerLaNaissance(Variante variante) {
+        variantes.saveAndFlush(variante);
+        evenements.publishEvent(new VarianteCreee(variante.getId()));
     }
 
     /**

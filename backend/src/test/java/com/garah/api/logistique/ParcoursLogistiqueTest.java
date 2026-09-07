@@ -104,7 +104,8 @@ class ParcoursLogistiqueTest {
             catalogue.ajouterMedia(produitId, TypeMedia.PHOTO, "produits/log/1.jpg", true);
             catalogue.publier(produitId);
 
-            stock.creerPour(varianteId);
+            // Le stock naît AVEC la déclinaison depuis que `VarianteCreee` est écouté
+            // (I-15). L'appeler ici leverait « cette variante a déjà un stock ».
             stock.entrer(varianteId, 30, null, "Mise en place");
 
             entrepotId = lieux.save(new Lieu(TypeLieu.ENTREPOT, "Entrepôt Douala",

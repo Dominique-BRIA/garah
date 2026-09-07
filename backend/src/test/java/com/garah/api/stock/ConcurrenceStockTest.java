@@ -60,7 +60,8 @@ class ConcurrenceStockTest {
                     "REF-CONC-1", "Article rare", null).id();
 
             Long varianteId = variantes.findByProduitId(produitId).getFirst().getId();
-            stock.creerPour(varianteId);
+            // Le stock naît AVEC la déclinaison depuis que `VarianteCreee` est écouté
+            // (I-15). L'appeler ici leverait « cette variante a déjà un stock ».
             stock.entrer(varianteId, quantite, null, "Mise en place du test");
             return varianteId;
         });

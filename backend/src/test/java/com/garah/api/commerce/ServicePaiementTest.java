@@ -79,7 +79,8 @@ class ServicePaiementTest {
             catalogue.ajouterMedia(produitId, TypeMedia.PHOTO, "produits/pay/1.jpg", true);
             catalogue.publier(produitId);
 
-            stock.creerPour(varianteId);
+            // Le stock naît AVEC la déclinaison depuis que `VarianteCreee` est écouté
+            // (I-15). L'appeler ici leverait « cette variante a déjà un stock ».
             stock.entrer(varianteId, 10, null, "Mise en place");
 
             Lieu lieu = new Lieu(TypeLieu.POINT_RECUPERATION, "Yaoundé Centre", "Cameroun", "Yaoundé");

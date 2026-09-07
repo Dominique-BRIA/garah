@@ -51,7 +51,8 @@ class ServiceStockTest {
         em.flush();
 
         varianteId = variantes.findByProduitId(produitId).getFirst().getId();
-        stock.creerPour(varianteId);
+        // Le stock naît AVEC la déclinaison depuis que `VarianteCreee` est écouté
+        // (I-15). L'appeler ici leverait « cette variante a déjà un stock ».
         stock.entrer(varianteId, 10, null, "Réception initiale");
         em.flush();
     }
