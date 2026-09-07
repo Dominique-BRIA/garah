@@ -93,4 +93,38 @@ public interface ExpeditionRepository extends JpaRepository<Expedition, Long> {
              WHERE e.id = :expeditionId
             """)
     Optional<Long> clientDe(@Param("expeditionId") Long expeditionId);
+
+    /**
+     * Ou le client de cette commande vient-il chercher sa marchandise ?
+     *
+     * <p>🎯 <b>Meme principe que {@link #clientDe} : ca se deduit.</b> Le
+     * client a choisi son point de recuperation en commandant, et les frais
+     * d acheminement de CE point ont ete figes sur la commande. Redemander la
+     * destination a l operateur qui prepare l expedition lui donnerait le
+     * moyen d envoyer la marchandise dans une autre ville que celle payee —
+     * et rien, ensuite, ne rapprocherait les deux.</p>
+     */
+    @Query("SELECT c.pointRecuperationId FROM Commande c WHERE c.id = :commandeId")
+    Optional<Long> destinationDe(@Param("commandeId") Long commandeId);
+
+    /**
+     * Ce qui est deja parti pour une commande.
+     *
+     * <p>Meme projection que {@link #administration}, meme raison d y faire
+     * figurer le point de recuperation : un identifiant nu obligerait a ouvrir
+     * chaque ligne pour savoir de quoi il s agit.</p>
+     */
+    @Query("""
+            SELECT new com.garah.api.logistique.domaine.ResumeExpedition(
+                       e.id, e.numero, e.commandeId, c.numero, e.statut,
+                       l.nom, l.ville,
+                       (SELECT count(k) FROM Colis k WHERE k.expedition.id = e.id),
+                       e.dateCreation, e.dateExpedition)
+              FROM Expedition e
+              LEFT JOIN Commande c ON c.id = e.commandeId
+              LEFT JOIN Lieu l ON l.id = e.pointRecuperationId
+             WHERE e.commandeId = :commandeId
+             ORDER BY e.dateCreation DESC
+            """)
+    List<ResumeExpedition> resumesParCommande(@Param("commandeId") Long commandeId);
 }

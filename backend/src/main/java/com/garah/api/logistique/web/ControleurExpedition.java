@@ -47,13 +47,20 @@ public class ControleurExpedition {
     // Préparer et expédier
     // -------------------------------------------------------------------------
 
+    /**
+     * Crée l'expédition d'une commande.
+     *
+     * <p>La <b>destination n'est pas dans le corps</b> : elle se déduit du
+     * point de récupération choisi par le client en commandant. La faire
+     * ressaisir donnerait le moyen d'expédier ailleurs que là où le client
+     * viendra — et là où il a payé l'acheminement.</p>
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('EXPEDITION_CREER')")
     public VueExpedition creer(@Valid @RequestBody DemandeExpedition demande) {
         return VueExpedition.resume(expeditions.creer(
-                demande.commandeId(), demande.lieuDepartId(),
-                demande.pointRecuperationId(), demande.itineraireId()));
+                demande.commandeId(), demande.lieuDepartId(), demande.itineraireId()));
     }
 
     /**
@@ -96,6 +103,20 @@ public class ControleurExpedition {
     @PreAuthorize("hasAuthority('EXPEDITION_CONSULTER')")
     public VueExpedition detail(@PathVariable Long id) {
         return expeditions.vue(id);
+    }
+
+    /**
+     * Ce qui est déjà parti pour cette commande.
+     *
+     * <p>Il peut y avoir <b>plusieurs</b> expéditions : une commande à deux
+     * marchands part rarement d'un seul entrepôt le même jour. La fiche
+     * commande a besoin de le savoir avant de proposer d'en créer une de plus
+     * — sans quoi l'opérateur expédie deux fois la même marchandise.</p>
+     */
+    @GetMapping("/commandes/{commandeId}")
+    @PreAuthorize("hasAuthority('EXPEDITION_CONSULTER')")
+    public List<ResumeExpedition> parCommande(@PathVariable Long commandeId) {
+        return expeditions.parCommande(commandeId);
     }
 
     @PostMapping("/{id}/colis")
@@ -242,10 +263,16 @@ public class ControleurExpedition {
         return Long.valueOf(jeton.getSubject());
     }
 
+    /**
+     * Ce qu'il reste à saisir : d'où ça part, et par où.
+     *
+     * <p>Pas la destination — voir {@link #creer}. Ce qui se saisit, c'est le
+     * <b>départ</b> : la même commande peut partir de Douala ou d'un stock
+     * déjà consolidé à Bertoua, et ça, seul l'opérateur le sait.</p>
+     */
     public record DemandeExpedition(
             @NotNull(message = "La commande est obligatoire.") Long commandeId,
             @NotNull(message = "Le lieu de départ est obligatoire.") Long lieuDepartId,
-            @NotNull(message = "Le point de récupération est obligatoire.") Long pointRecuperationId,
 
             /* L'itinéraire est facultatif : une expédition directe n'en a pas. */
             Long itineraireId) {

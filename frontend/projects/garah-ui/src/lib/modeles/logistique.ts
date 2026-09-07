@@ -150,6 +150,42 @@ export const TYPES_EVENEMENT: readonly {
   { code: 'REMISE', libelle: 'Remise', explication: 'Le client a récupéré sa marchandise.' },
 ];
 
+/**
+ * Un MODELE de trajet, reutilisable : Douala → Bertoua → Bangui.
+ *
+ * ⚠️ A ne pas confondre avec le trajet REEL du colis, qui vit dans ses
+ * evenements et peut s'en ecarter. L'itineraire est le plan, les evenements
+ * sont les faits.
+ */
+export interface Itineraire {
+  readonly id: number;
+  readonly nom: string;
+  readonly lieuDepartId: number;
+  /** Le NOM du lieu. Nul si le lieu a ete supprime. */
+  readonly lieuDepart: string | null;
+  readonly lieuArriveeId: number;
+  readonly lieuArrivee: string | null;
+  readonly statut: string;
+  /** Nul des qu'une seule etape ignore sa duree : un total partiel ment. */
+  readonly dureeTotaleHeures: number | null;
+  readonly etapes: readonly EtapeItineraire[];
+}
+
+export interface EtapeItineraire {
+  readonly id: number;
+  readonly lieuId: number;
+  readonly lieu: string | null;
+  readonly ville: string | null;
+  readonly ordre: number;
+  readonly dureeEstimeeHeures: number | null;
+}
+
+/** Une etape telle qu'on la SOUMET : sans rang, il est engendre. */
+export interface EtapeSouhaitee {
+  readonly lieuId: number;
+  readonly dureeEstimeeHeures: number | null;
+}
+
 /** Une expedition telle qu'une liste l'affiche : sans ses colis. */
 export interface ResumeExpedition {
   readonly id: number;

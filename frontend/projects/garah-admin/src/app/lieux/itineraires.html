@@ -1,0 +1,221 @@
+<header class="entete">
+  <div>
+    <h1>Itinéraires</h1>
+    <p class="sous-titre">
+      Les trajets types, pour ne pas resaisir le même chemin à chaque
+      expédition et annoncer un délai.
+    </p>
+  </div>
+
+  @if (session.peut('ITINERAIRE_CREER')) {
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirCreation()">
+      Nouveau trajet
+    </button>
+  }
+</header>
+
+@if (erreur(); as m) {
+  <p class="alerte" role="alert">{{ m }}</p>
+}
+
+@if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="truck-fast" class="etat__icone" />
+    <p class="etat__titre">Aucun trajet type</p>
+    <p class="etat__aide">
+      Une expédition peut se passer d’itinéraire. En définir un évite de
+      redécrire le même chemin à chaque envoi.
+    </p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Trajet</th>
+          <th class="droite">Délai estimé</th>
+          <th>Statut</th>
+          <th class="droite">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (i of liste(); track i.id) {
+          <tr [class.inactif]="i.statut !== 'ACTIF'">
+            <td class="nom">{{ i.nom }}</td>
+            <td class="trace">{{ trace(i) }}</td>
+
+            <!-- Un tiret quand une seule étape ignore sa durée : un total
+                 partiel annoncerait un délai que personne ne tiendrait. -->
+            <td class="droite">{{ delai(i.dureeTotaleHeures) }}</td>
+
+            <td>
+              <span class="gu-badge"
+                    [class]="i.statut === 'ACTIF' ? 'gu-badge--succes' : 'gu-badge--neutre'">
+                {{ i.statut }}
+              </span>
+            </td>
+
+            <td class="droite">
+              <div class="cellule-actions">
+                @if (session.peut('ITINERAIRE_MODIFIER')) {
+                  <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                          (click)="ouvrirEdition(i)"
+                          aria-label="Modifier ce trajet" title="Modifier">
+                    <gu-icone nom="pen" />
+                  </button>
+
+                  @if (i.statut === 'ACTIF') {
+                    <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                            (click)="basculerActivation(i)"
+                            aria-label="Retirer ce trajet" title="Retirer">
+                      <gu-icone nom="eye-slash" />
+                    </button>
+                  } @else {
+                    <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+                            (click)="basculerActivation(i)"
+                            aria-label="Remettre ce trajet en service" title="Remettre en service">
+                      <gu-icone nom="eye" />
+                    </button>
+                  }
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (formulaireOuvert()) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true"
+         [attr.aria-label]="enEdition() ? 'Modifier le trajet' : 'Nouveau trajet'">
+    @if (enEdition(); as i) {
+      <h2>Modifier {{ i.nom }}</h2>
+    } @else {
+      <h2>Nouveau trajet</h2>
+    }
+
+    <form (ngSubmit)="enregistrer()" novalidate>
+      <label class="gu-libelle" for="nom">Nom</label>
+      <input id="nom" name="nom" class="gu-champ" required maxlength="150"
+             placeholder="Axe Douala – Bangui"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+
+      <label class="gu-libelle" for="depart">Départ</label>
+      <select id="depart" name="depart" class="gu-champ"
+              [ngModel]="lieuDepartId()" (ngModelChange)="lieuDepartId.set(+$event)">
+        @for (l of departsPossibles(); track l.id) {
+          <option [value]="l.id">{{ l.nom }} · {{ l.ville }}</option>
+        }
+      </select>
+      <p class="aide">Un entrepôt, ou un point de transit où la marchandise est déjà groupée.</p>
+
+      <label class="gu-libelle" for="arrivee">Arrivée</label>
+      <select id="arrivee" name="arrivee" class="gu-champ"
+              [ngModel]="lieuArriveeId()" (ngModelChange)="lieuArriveeId.set(+$event)">
+        @for (l of arriveesPossibles(); track l.id) {
+          <option [value]="l.id">{{ l.nom }} · {{ l.ville }}</option>
+        }
+      </select>
+      <p class="aide">Le point où le client vient chercher sa marchandise.</p>
+
+      <!-- ⚠️ Les étapes se réordonnent LOCALEMENT, et le trajet part en entier
+           à l'enregistrement. Envoyer une requête par déplacement traverserait
+           un état où deux étapes portent le même rang — refusé par la base — et
+           chaque clic réussirait ou échouerait selon l'ordre des précédents. -->
+      <span class="gu-libelle">Points de passage</span>
+
+      @if (etapes().length === 0) {
+        <p class="aide">
+          Aucun. Le trajet est direct — c’est un cas courant, pas une erreur.
+        </p>
+      } @else {
+        <ol class="etapes">
+          @for (e of etapes(); track e.lieuId; let index = $index; let premier = $first;
+                let dernier = $last) {
+            <li class="etape">
+              <span class="etape__rang">{{ index + 1 }}</span>
+
+              <div class="etape__corps">
+                <span class="etape__lieu">{{ nomLieu(e.lieuId) }}</span>
+                @if (e.dureeEstimeeHeures) {
+                  <span class="attenue">{{ e.dureeEstimeeHeures }} h de trajet</span>
+                } @else {
+                  <span class="attenue">Durée non renseignée</span>
+                }
+              </div>
+
+              <div class="etape__actions">
+                <button type="button" class="gu-btn-icone" [disabled]="premier"
+                        (click)="deplacer(index, -1)"
+                        aria-label="Monter cette étape" title="Monter">
+                  <gu-icone nom="chevron-right" class="pivot-haut" />
+                </button>
+                <button type="button" class="gu-btn-icone" [disabled]="dernier"
+                        (click)="deplacer(index, 1)"
+                        aria-label="Descendre cette étape" title="Descendre">
+                  <gu-icone nom="chevron-right" class="pivot-bas" />
+                </button>
+                <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                        (click)="retirerEtape(index)"
+                        aria-label="Retirer cette étape" title="Retirer">
+                  <gu-icone nom="xmark" />
+                </button>
+              </div>
+            </li>
+          }
+        </ol>
+      }
+
+      @if (etapesPossibles().length > 0) {
+        <div class="ajout">
+          <select name="lieuAAjouter" class="gu-champ" aria-label="Lieu de passage"
+                  [ngModel]="lieuAAjouter()"
+                  (ngModelChange)="lieuAAjouter.set($event === '' ? null : +$event)">
+            <option [ngValue]="null">Ajouter un point de passage…</option>
+            @for (l of etapesPossibles(); track l.id) {
+              <option [value]="l.id">{{ l.nom }} · {{ l.ville }}</option>
+            }
+          </select>
+
+          <input name="dureeAAjouter" type="number" min="1" class="gu-champ champ-duree"
+                 placeholder="Heures" aria-label="Durée estimée en heures"
+                 [ngModel]="dureeAAjouter()"
+                 (ngModelChange)="dureeAAjouter.set($event === '' ? null : +$event)" />
+
+          <button type="button" class="gu-btn gu-btn--secondaire"
+                  [disabled]="lieuAAjouter() === null" (click)="ajouterEtape()">
+            Ajouter
+          </button>
+        </div>
+        <p class="aide">
+          La durée est facultative. Un délai inventé est pire qu’un délai absent :
+          il n’est annoncé que si toutes les étapes sont renseignées.
+        </p>
+      }
+
+      @if (erreurFormulaire(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="!trajetValide() || enregistrement()">
+          @if (enregistrement()) { Enregistrement… } @else { Enregistrer }
+        </button>
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">
+          Annuler
+        </button>
+      </div>
+    </form>
+  </aside>
+}

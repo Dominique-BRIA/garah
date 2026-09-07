@@ -141,6 +141,107 @@
       </dl>
     </section>
 
+    <!-- ---------------- L'acheminement ---------------- -->
+    <section class="gu-carte">
+      <header class="section-entete">
+        <div>
+          <h2>Acheminement</h2>
+          <p class="aide sous-section">
+            Ce qui part, et d’où. La destination est celle que le client a
+            choisie en commandant.
+          </p>
+        </div>
+
+        @if (expediable() && session.peut('EXPEDITION_CREER') && !formExpedition()) {
+          <button type="button" class="gu-btn gu-btn--secondaire petit"
+                  (click)="ouvrirExpedition()">
+            Nouvelle expédition
+          </button>
+        }
+      </header>
+
+      @if (!session.peut('EXPEDITION_CONSULTER')) {
+        <p class="vide">Votre compte n’a pas le droit de consulter les expéditions.</p>
+      } @else if (expeditions().length === 0 && !formExpedition()) {
+        <p class="vide">
+          @if (expediable()) {
+            Rien n’est encore parti pour cette commande.
+          } @else {
+            Cette commande n’est pas au stade de l’expédition.
+          }
+        </p>
+      } @else {
+        <ul class="expeditions">
+          @for (e of expeditions(); track e.id) {
+            <li>
+              <a [routerLink]="['/expeditions', e.id]" class="expedition">
+                <div class="expedition__tete">
+                  <span class="expedition__numero">{{ e.numero }}</span>
+                  <span class="gu-badge" [class]="badgeExpedition(e.statut)">
+                    {{ libelleExpedition(e.statut) }}
+                  </span>
+                </div>
+                <p class="expedition__detail">
+                  {{ e.nombreColis }} colis · vers {{ e.pointNom }} ({{ e.pointVille }})
+                </p>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (formExpedition()) {
+        <!-- ⚠️ PAS DE CHAMP « DESTINATION ». Le client a choisi son point de
+             récupération en commandant, et il a payé l'acheminement de CE
+             point. Le faire ressaisir ici donnerait le moyen d'expédier vers
+             une autre ville que celle où il viendra. -->
+        <form class="encart-expedition" (ngSubmit)="creerExpedition()" novalidate>
+          <label class="gu-libelle" for="depart">Départ</label>
+          <select id="depart" name="depart" class="gu-champ"
+                  [ngModel]="lieuDepartId()" (ngModelChange)="lieuDepartId.set(+$event)">
+            @for (l of departsPossibles(); track l.id) {
+              <option [value]="l.id">{{ l.nom }} · {{ l.ville }}</option>
+            }
+          </select>
+          <p class="aide">
+            L’entrepôt, ou le point de transit où la marchandise est déjà groupée.
+          </p>
+
+          @if (itineraires().length > 0) {
+            <label class="gu-libelle" for="itineraire">Trajet prévu</label>
+            <select id="itineraire" name="itineraire" class="gu-champ"
+                    [ngModel]="itineraireId()"
+                    (ngModelChange)="itineraireId.set($event === '' ? null : +$event)">
+              <option [ngValue]="null">Aucun — expédition directe</option>
+              @for (i of itineraires(); track i.id) {
+                <option [value]="i.id">{{ i.nom }}</option>
+              }
+            </select>
+            <!-- Un itinéraire est un MODÈLE : le colis peut s'en écarter, et
+                 rien ne l'en empêchera. Une route coupée, ça arrive. -->
+            <p class="aide">
+              Facultatif. Il annonce un délai ; il n’oblige pas le colis à
+              suivre ce chemin.
+            </p>
+          }
+
+          <div class="boutons">
+            <button type="submit" class="gu-btn gu-btn--primaire"
+                    [disabled]="lieuDepartId() === null || action() !== null">
+              @if (action() === 'expedition') {
+                <gu-icone nom="circle-notch" tourne />
+              }
+              Créer l’expédition
+            </button>
+            <button type="button" class="gu-btn gu-btn--secondaire"
+                    (click)="formExpedition.set(false)">
+              Annuler
+            </button>
+          </div>
+        </form>
+      }
+    </section>
+
     <!-- ---------------- L'argent ---------------- -->
     <section class="gu-carte">
       <header class="section-entete">

@@ -51,6 +51,10 @@ export const routes: Routes = [
       { path: 'retraits', loadComponent: () => import('./expeditions/retraits').then((m) => m.Retraits) },
       { path: 'expeditions/:id', loadComponent: () => import('./expeditions/fiche-expedition').then((m) => m.FicheExpedition) },
       { path: 'lieux', loadComponent: () => import('./lieux/lieux').then((m) => m.Lieux) },
+      // Les itineraires vivent dans le meme dossier que les lieux : un trajet
+      // n'est rien d'autre qu'une suite de lieux, et on ne peut en definir un
+      // qu'apres les avoir crees.
+      { path: 'itineraires', loadComponent: () => import('./lieux/itineraires').then((m) => m.Itineraires) },
       { path: 'attributs', loadComponent: () => import('./attributs/attributs').then((m) => m.Attributs) },
       { path: 'stock', loadComponent: () => import('./stock/stock').then((m) => m.Stock) },
       // Les comptes internes. « equipe » et non « utilisateurs » : les clients

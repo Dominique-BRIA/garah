@@ -52,6 +52,7 @@ export class Coque {
     // back-office qui regarde la chaine.
     { libelle: 'Retraits', chemin: '/retraits', icone: 'check', permission: 'RETRAIT_CONFIRMER' },
     { libelle: 'Lieux', chemin: '/lieux', icone: 'earth-africa', permission: 'POINT_RECUPERATION_CONSULTER' },
+    { libelle: 'Itineraires', chemin: '/itineraires', icone: 'arrow-right', permission: 'ITINERAIRE_CONSULTER' },
     { libelle: 'Stock', chemin: '/stock', icone: 'warehouse', permission: 'STOCK_CONSULTER' },
     { libelle: 'Paiements', chemin: '/paiements', icone: 'money-bill-wave', permission: 'PAIEMENT_CONSULTER' },
     { libelle: 'Equipe', chemin: '/equipe', icone: 'users', permission: 'RESPONSABLE_CONSULTER' },

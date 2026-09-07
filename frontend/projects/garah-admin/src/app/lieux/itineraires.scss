@@ -1,0 +1,84 @@
+// Les trajets types. Motifs communs dans ecrans-communs.scss.
+
+// Le trajet sur une ligne : « Douala → Bertoua → Bangui ». Il peut etre long,
+// on le laisse passer a la ligne plutot que de le tronquer — un trajet coupe
+// au milieu ne se reconnait plus.
+.trace {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  max-width: 32rem;
+}
+
+.inactif { opacity: 0.55; }
+
+// --- Les points de passage, dans le formulaire -------------------------------
+.etapes {
+  list-style: none;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  counter-reset: etape;
+}
+
+.etape {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+}
+
+// Le rang est AFFICHE mais jamais saisi : il se deduit de la position.
+.etape__rang {
+  flex: 0 0 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.etape__corps {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.etape__lieu { font-weight: 600; font-size: 0.9rem; }
+
+.etape__corps .attenue { font-size: 0.78rem; color: var(--texte-attenue); }
+
+.etape__actions {
+  display: flex;
+  gap: 0.15rem;
+
+  .gu-btn-icone:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+}
+
+// Un seul trace de chevron sert aux deux sens : une icone de moins a porter.
+.pivot-haut { transform: rotate(-90deg); }
+.pivot-bas { transform: rotate(90deg); }
+
+// --- La ligne d'ajout --------------------------------------------------------
+.ajout {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+
+  .gu-champ { margin: 0; }
+}
+
+.champ-duree { flex: 0 0 6.5rem; }

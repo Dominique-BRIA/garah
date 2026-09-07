@@ -49,6 +49,35 @@ public class ServiceExpedition {
         this.lieux = lieux;
     }
 
+    /**
+     * Crée l'expédition d'une commande.
+     *
+     * <p>🎯 <b>La destination se déduit de la commande.</b> Le client a choisi
+     * son point de récupération en commandant, et les frais d'acheminement de
+     * <b>ce</b> point ont été figés sur la commande (D-10). Redemander la
+     * destination à l'opérateur lui donnerait le moyen d'envoyer la
+     * marchandise dans une autre ville que celle payée — et rien, ensuite, ne
+     * rapprocherait les deux.</p>
+     *
+     * <p>Ce qui se saisit, c'est le <b>départ</b> : la même commande peut
+     * partir de Douala ou d'un stock déjà consolidé à Bertoua, et ça, seul
+     * l'opérateur le sait.</p>
+     */
+    @Transactional
+    public Expedition creer(Long commandeId, Long lieuDepartId, Long itineraireId) {
+        Long destination = expeditions.destinationDe(commandeId)
+                .orElseThrow(() -> new RegleMetierViolee("COMMANDE_INTROUVABLE",
+                        "Cette commande n'existe pas : impossible de savoir où livrer."));
+        return creer(commandeId, lieuDepartId, destination, itineraireId);
+    }
+
+    /**
+     * Le même geste, avec une destination imposée.
+     *
+     * <p>Réservé aux tests et aux reprises de données. <b>Aucune route web ne
+     * l'expose</b> : côté back-office, la destination se déduit toujours de la
+     * commande.</p>
+     */
     @Transactional
     public Expedition creer(Long commandeId, Long lieuDepartId, Long pointRecuperationId,
                             Long itineraireId) {
@@ -403,6 +432,18 @@ public class ServiceExpedition {
                                                  Pageable pagination) {
         String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
         return expeditions.administration(statut, filtre, pagination);
+    }
+
+    /**
+     * Ce qui est déjà parti pour une commande.
+     *
+     * <p>La fiche commande a besoin de le savoir avant de proposer d'expédier
+     * une fois de plus : sans cette liste, rien n'empêcherait d'envoyer deux
+     * fois la même marchandise.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<ResumeExpedition> parCommande(Long commandeId) {
+        return expeditions.resumesParCommande(commandeId);
     }
 
     /**

@@ -336,6 +336,18 @@ class ParcoursLogistiqueTest {
     }
 
     @Test
+    @DisplayName("la destination de l'expédition se déduit de la commande")
+    void destinationDeduite() {
+        // Personne ne ressaisit la ville d'arrivée : le client l'a choisie en
+        // commandant, et il a payé l'acheminement de CE point-là. Ce test
+        // exécute la requête HQL vers Commande — une @Query cassée n'échouerait
+        // qu'au moment où on l'appelle.
+        Expedition expedition = expeditions.creer(commande.id(), entrepotId, null);
+
+        assertThat(expedition.getPointRecuperationId()).isEqualTo(pointRetraitId);
+    }
+
+    @Test
     @DisplayName("le destinataire du retrait se déduit de la commande")
     void destinataireDeduit() {
         Colis colis = colisPret();
