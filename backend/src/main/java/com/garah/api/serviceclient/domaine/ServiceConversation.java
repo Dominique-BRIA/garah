@@ -3,13 +3,20 @@ package com.garah.api.serviceclient.domaine;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.iam.domaine.NomClient;
+import com.garah.api.iam.domaine.ServiceClient;
 import com.garah.api.serviceclient.infra.AffectationConversationRepository;
 import com.garah.api.serviceclient.infra.ConversationRepository;
 import com.garah.api.serviceclient.infra.EvaluationConversationRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Les conversations entre clients et responsables.
@@ -26,12 +33,17 @@ public class ServiceConversation {
     private final AffectationConversationRepository affectations;
     private final EvaluationConversationRepository evaluations;
 
+    /** Pour NOMMER le client dans les listes, jamais pour le modifier. */
+    private final ServiceClient clients;
+
     public ServiceConversation(ConversationRepository conversations,
                                AffectationConversationRepository affectations,
-                               EvaluationConversationRepository evaluations) {
+                               EvaluationConversationRepository evaluations,
+                               ServiceClient clients) {
         this.conversations = conversations;
         this.affectations = affectations;
         this.evaluations = evaluations;
+        this.clients = clients;
     }
 
     @Transactional
@@ -188,6 +200,50 @@ public class ServiceConversation {
     @Transactional(readOnly = true)
     public List<Conversation> fileDAttente() {
         return conversations.findByStatutOrderByDateCreationAsc(StatutConversation.WAITING);
+    }
+
+    /**
+     * La liste du back-office, clients <b>nommés</b> et messages comptés.
+     *
+     * <p>Trois requêtes en tout, quelle que soit la taille de la page : les
+     * conversations, leurs clients d'un coup, les totaux de leurs messages
+     * d'un coup.</p>
+     *
+     * <p>🎯 Le chiffre qui compte est celui des <b>non lus</b>, pas le total.
+     * La seule question que se pose un agent en ouvrant cette liste est
+     * « laquelle attend ma réponse ? », et un total de messages n'y répond
+     * pas.</p>
+     *
+     * @param responsableId non nul pour ne voir que ses propres dossiers.
+     *                      Sans ce filtre, un agent parcourrait les
+     *                      conversations de toute l'équipe pour retrouver les
+     *                      siennes.
+     */
+    @Transactional(readOnly = true)
+    public Page<ResumeConversation> administration(StatutConversation statut, Long responsableId,
+                                                   Pageable pagination) {
+        Page<Conversation> page = conversations.administration(statut, responsableId, pagination);
+
+        if (page.isEmpty()) {
+            // `IN ()` sur une collection vide est refusé par certains
+            // dialectes : on ne pose pas la question quand il n'y a rien à
+            // demander.
+            return page.map(c -> ResumeConversation.de(c, null, 0, 0, null));
+        }
+
+        Map<Long, NomClient> noms = clients.nomsPar(page.map(Conversation::getClientId).toList());
+
+        Map<Long, Object[]> totaux = conversations.totauxPar(page.map(Conversation::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(ligne -> (Long) ligne[0], ligne -> ligne));
+
+        return page.map(c -> {
+            Object[] total = totaux.get(c.getId());
+            return ResumeConversation.de(c, noms.get(c.getClientId()),
+                    total == null ? 0 : ((Number) total[1]).longValue(),
+                    total == null ? 0 : ((Number) total[2]).longValue(),
+                    total == null ? null : (Instant) total[3]);
+        });
     }
 
     @Transactional(readOnly = true)

@@ -1,14 +1,18 @@
 package com.garah.api.serviceclient.web;
 
+import com.garah.api.serviceclient.domaine.ResumeConversation;
 import com.garah.api.serviceclient.domaine.SensProposition;
 import com.garah.api.serviceclient.domaine.ServiceConversation;
 import com.garah.api.serviceclient.domaine.ServiceNegociation;
+import com.garah.api.serviceclient.domaine.StatutConversation;
 import com.garah.api.serviceclient.domaine.VueConversation;
 import com.garah.api.serviceclient.domaine.VueEvaluation;
 import com.garah.api.serviceclient.domaine.VueMessage;
 import com.garah.api.serviceclient.domaine.VueProposition;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -122,6 +126,31 @@ public class ControleurConversation {
         return conversations.fileDAttente().stream()
                 .map(VueConversation::resume)
                 .toList();
+    }
+
+    /**
+     * La liste du back-office.
+     *
+     * <p>{@code miennes=true} ne renvoie que les dossiers de l'appelant. Le
+     * responsable est lu dans le <b>jeton signé</b>, jamais dans un paramètre :
+     * un {@code ?responsableId=} laisserait n'importe quel agent lire la file
+     * d'un collègue, et le classer comme sien.</p>
+     *
+     * <p>Les plus <b>anciennes</b> d'abord : une conversation qui traîne est
+     * un client qui attend. Même choix que les réclamations.</p>
+     */
+    @GetMapping
+    @PreAuthorize("hasAuthority('CONVERSATION_CONSULTER')")
+    public Page<ResumeConversation> lister(
+            @RequestParam(required = false) StatutConversation statut,
+            @RequestParam(defaultValue = "false") boolean miennes,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int taille,
+            @AuthenticationPrincipal Jwt jeton) {
+
+        return conversations.administration(statut,
+                miennes ? utilisateur(jeton) : null,
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, 100)));
     }
 
     /**

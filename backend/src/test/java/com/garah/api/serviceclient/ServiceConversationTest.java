@@ -10,6 +10,7 @@ import com.garah.api.serviceclient.domaine.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -77,6 +78,69 @@ class ServiceConversationTest {
     }
 
     // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("la liste nomme le client et compte ce qui n'est pas lu")
+    void listeDuBackOffice() {
+        Long convId = conversations.ouvrir(clientId, "Question prix", "Bonjour").getId();
+        conversations.repondre(convId, clientId, "Vous êtes là ?");
+
+        // Ce test exécute réellement les trois requêtes de la liste — dont
+        // l'agrégat sur les messages. Une @Query cassée n'échouerait qu'au
+        // moment où on l'appelle.
+        ResumeConversation vue = conversations
+                .administration(null, null, PageRequest.of(0, 25))
+                .getContent().stream()
+                .filter(c -> c.id().equals(convId))
+                .findFirst()
+                .orElseThrow();
+
+        // « clientId 42 » n'apprend rien à l'agent qui parcourt la file.
+        assertThat(vue.clientNom()).isNotBlank();
+
+        // 🎯 Le chiffre qui compte est celui des NON LUS : c'est lui qui
+        //    répond à « laquelle attend ma réponse ? ».
+        assertThat(vue.nombreMessages()).isEqualTo(2);
+        assertThat(vue.nonLus()).isEqualTo(2);
+        assertThat(vue.dernierMessageLe()).isNotNull();
+
+        // Le filtre par responsable : sans lui, un agent parcourrait les
+        // dossiers de toute l'équipe pour retrouver les siens.
+        Long responsableId = responsableIds.getFirst();
+        assertThat(conversations.administration(null, responsableId, PageRequest.of(0, 25)))
+                .isEmpty();
+
+        conversations.prendre(convId, responsableId);
+
+        assertThat(conversations.administration(null, responsableId, PageRequest.of(0, 25))
+                .getContent().stream().map(ResumeConversation::id))
+                .contains(convId);
+
+        // Prise, elle sort de la file d'attente.
+        assertThat(conversations.administration(StatutConversation.WAITING, null,
+                PageRequest.of(0, 25)).getContent().stream().map(ResumeConversation::id))
+                .doesNotContain(convId);
+    }
+
+    @Test
+    @DisplayName("une conversation sans message ne casse pas la liste")
+    void listeSansMessage() {
+        // Une conversation peut exister sans message : le sujet suffit à
+        // l'ouvrir. L'agrégat ne renvoie alors AUCUNE ligne pour elle, et
+        // c'est le cas que la jointure naïve fait disparaître de la liste.
+        Long convId = conversations.ouvrir(clientId, "Sujet seul", null).getId();
+
+        ResumeConversation vue = conversations
+                .administration(null, null, PageRequest.of(0, 25))
+                .getContent().stream()
+                .filter(c -> c.id().equals(convId))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(vue.nombreMessages()).isZero();
+        assertThat(vue.nonLus()).isZero();
+        assertThat(vue.dernierMessageLe()).isNull();
+    }
 
     @Test
     @DisplayName("une conversation naît en attente, sans responsable")

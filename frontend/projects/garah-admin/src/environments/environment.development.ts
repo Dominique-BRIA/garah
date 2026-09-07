@@ -1,7 +1,7 @@
 /**
  * Configuration de DEVELOPPEMENT.
  *
- * On vise volontairement la MEME API que la production : le Worker Cloudflare.
+ * On vise volontairement la MEME API que la production : Azure App Service.
  *
  * Deux raisons :
  *   - pas besoin de lancer le backend en local pour travailler l'interface ;
@@ -13,8 +13,13 @@
  *    Une suppression depuis le back-office supprime pour de bon. Le jour ou
  *    l'application aura de vrais clients, il faudra une base de recette et
  *    cette ligne devra changer.
+ *
+ * ⚠️ Le backend doit accepter `http://localhost:4200` dans
+ *    GARAH_CORS_ORIGINS. Sans cela, l'API repond correctement et le
+ *    NAVIGATEUR jette la reponse : page vide, aucune erreur serveur — le
+ *    symptome le plus deroutant qui soit.
  */
 export const environnement = {
   production: false,
-  urlApi: 'https://garah-api.d-bria00.workers.dev',
+  urlApi: 'https://garah-api-anfeapebbth7h7an.francecentral-01.azurewebsites.net',
 };

@@ -1007,7 +1007,7 @@ concaténation au lieu d'une signature. Aucun frontend n'a à changer.
 ## D-22 — Un Worker Cloudflare devant l'API, pour contourner le filtrage Orange
 
 **Date :** 06/09/2026
-**Statut :** ✅ actée — contournement, pas architecture cible
+**Statut :** ⛔ remplacée par D-28 — le Worker a été retiré le 08/09/2026
 
 **Le fait, mesuré.** Depuis une connexion Orange Cameroun,
 `garah-api.onrender.com` est inaccessible :
@@ -1383,3 +1383,101 @@ daté. Render restait médiocre mais perpétuel ; Azure est confortable et
 temporaire. Le jour où le crédit s'épuise, il faudra payer, redevenir
 étudiant, ou revenir en arrière — et ce jour-là, `deploiement/azure.md` et
 cette entrée disent où était le point de départ.
+
+---
+
+## D-28 — Le Worker Cloudflare est retiré, l'API se joint en direct
+
+**Date :** 08/09/2026
+**Statut :** ✅ actée — **remplace D-22**
+
+**Choix.** Les frontends appellent directement
+`garah-api-…​.azurewebsites.net`. Le Worker Cloudflare et son `wrangler.toml`
+sont supprimés du dépôt.
+
+**Pourquoi D-22 n'a plus d'objet.** Le Worker existait pour une raison
+précise et mesurée : depuis une connexion Orange Cameroun, la poignée de main
+TLS vers `garah-api.onrender.com` était **coupée net**. Un filtrage par SNI,
+c'est-à-dire sur **ce nom d'hôte-là** — pas sur Render, pas sur une catégorie
+d'hébergeurs. En quittant ce nom d'hôte, on quitte le filtre.
+
+**Ce qui n'est pas prouvé, et qu'il faut dire.** Avoir ouvert `portal.azure.com`
+ne démontre rien sur `*.azurewebsites.net` : ce sont deux domaines distincts,
+et le filtrage porte sur le nom présenté dans le premier paquet TLS. Le seul
+test qui tranche est un appel à l'API **depuis une connexion Orange**. Il n'a
+pas été fait au moment de cette décision.
+
+Le pari est raisonnable — le filtrage visait un nom précis, on en change — et
+il est **réversible en une heure** : le code du Worker vit dans l'historique
+git, et D-22 explique pourquoi il avait été écrit.
+
+**Ce qu'on gagne.**
+
+| | avec le Worker | sans |
+|---|---|---|
+| Sauts réseau | navigateur → Cloudflare → Azure | navigateur → Azure |
+| Pièces à maintenir | 2 déploiements, 2 journaux | 1 |
+| `Set-Cookie` du rafraîchissement | reconstruit par le proxy | direct |
+
+Ce dernier point comptait plus qu'il n'y paraît : le Worker devait recopier la
+réponse **sans toucher aux en-têtes**, sous peine de fusionner plusieurs
+`Set-Cookie` en un seul et de rendre la session impossible à prolonger. Une
+subtilité de moins à ne pas casser.
+
+**Ce qu'on perd.** Le filet. Si Orange filtre aussi `*.azurewebsites.net`,
+l'application marchera chez le développeur et pas chez le client — et le
+symptôme sera une poignée de main TLS coupée, jamais une erreur applicative.
+
+> 🎯 **Le signal à reconnaître** : l'API répond depuis un réseau et pas depuis
+> un autre, sans qu'aucun journal serveur ne montre quoi que ce soit. Dans ce
+> cas, remettre le Worker devant — c'est exactement ce pour quoi il avait été
+> écrit.
+
+**Ce que ça n'était pas.** Une question de coût : le Worker était gratuit et
+le restait. On le retire parce qu'un contournement dont la cause a disparu
+devient une pièce qu'on entretient sans savoir pourquoi.
+
+---
+
+## D-29 — Le service Render doit être SUPPRIMÉ, pas seulement délaissé
+
+**Date :** 08/09/2026
+**Statut :** ✅ actée
+
+**Choix.** `render.yaml` est retiré du dépôt, et le service `garah-api` doit
+être **supprimé dans le tableau de bord Render**. Cesser de s'en servir ne
+suffit pas.
+
+**Pourquoi ce n'est pas du rangement.** `render.yaml` portait
+`autoDeploy: true`. Tant que le service existe, **chaque push sur `main` le
+redéploie** — et il pointe sur la même base Neon qu'Azure.
+
+Deux backends vivants sur une seule base, c'est exactement ce que D-18
+interdit :
+
+```text
+Render  ─┐
+         ├─→  Neon  ←  les mêmes tâches planifiées, deux fois
+Azure   ─┘
+```
+
+**Ce que ça casse, et personne ne le verrait.** `TachesPeriodiques` suppose un
+processus unique. À deux :
+
+| Tâche | Conséquence du doublon |
+|---|---|
+| Agrégation des statistiques | chaque vue comptée **deux fois** — des chiffres faux, jamais une erreur |
+| Réconciliation des paiements | deux instances interrogent Campay pour le même paiement |
+| Libération des impayées | deux traitements libèrent le même stock |
+
+Aucune de ces trois-là ne produit d'exception. Elles produisent des
+**données fausses**, et on ne les découvre qu'en cherchant pourquoi un
+tableau de bord annonce le double de la réalité.
+
+> ⚠️ Le jour d'une vraie mise à l'échelle, la réponse est un verrou partagé
+> (ShedLock sur une table PostgreSQL, D-18) — pas la suppression d'un
+> concurrent. Ici, la seconde instance n'est pas voulue : c'est un reste.
+
+**Ce qu'on perd.** Le repli immédiat. Redéployer sur Render redevient un
+travail de mise en place — mais `render.yaml` reste dans l'historique git, et
+D-14 dit pourquoi il avait été écrit ainsi.
