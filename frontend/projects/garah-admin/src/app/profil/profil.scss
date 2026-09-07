@@ -91,11 +91,43 @@
   margin-top: 0.35rem;
 }
 
-// Aligné à gauche et non étiré : un bouton pleine largeur aurait le poids
-// d'une action principale, alors que retirer sa photo est un geste rare.
-.retirer-photo {
-  align-self: flex-start;
-  margin-top: -0.25rem;
+// Le retrait, en face du bouton d'envoi.
+//
+// Les deux pastilles partagent leur forme et leur position — bas du portrait,
+// une de chaque côté — parce qu'elles agissent sur la même chose. Seule la
+// couleur les sépare : le bleu de la marque pour déposer, le rouge pour
+// retirer.
+.portrait__retirer {
+  position: absolute;
+  left: -2px;
+  bottom: -2px;
+  width: 1.85rem;
+  height: 1.85rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.68rem;
+  cursor: pointer;
+  // Le même liseré que le bouton d'envoi : il détache la pastille du portrait
+  // quelle que soit la photo dessous, y compris une photo sombre.
+  border: 2px solid var(--surface);
+  transition: background 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 80%, #000);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+  }
 }
 
 .petit-badge {

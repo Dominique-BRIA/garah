@@ -42,6 +42,21 @@
             <input type="file" accept="image/jpeg,image/png,image/webp"
                    [disabled]="envoiPhoto()" (change)="choisirPhoto($event)" />
           </label>
+
+          <!-- Le retrait, en face du bouton d'envoi. POSÉ SUR LA PHOTO :
+               c'est ce qui le rend lisible sans libellé, puisqu'il touche
+               visiblement ce qu'il retire. À l'écart, la même icône se lisait
+               « supprimer mon compte ».
+
+               Il garde `aria-label` et `title` : la proximité parle à l'œil,
+               pas au lecteur d'écran, qui n'annoncerait sinon que « bouton ». -->
+          @if (p.urlPhoto) {
+            <button type="button" class="portrait__retirer"
+                    [disabled]="envoiPhoto()" (click)="retirerPhoto()"
+                    aria-label="Retirer la photo de profil" title="Retirer la photo">
+              <gu-icone nom="trash" />
+            </button>
+          }
         </div>
 
         <div class="gu-fiche__identite">
@@ -52,18 +67,6 @@
           <span class="gu-badge gu-badge--info role-pastille">{{ role(p.type) }}</span>
         </div>
       </div>
-
-      <!-- Le retrait est posé JUSTE SOUS la photo, et il est ÉCRIT.
-           Il vivait en pied de carte, en corbeille sans libellé, après un
-           filet : à cette place et sous cette forme, il se lisait
-           « supprimer mon compte ». Un bouton destructeur doit toucher ce
-           qu'il détruit, et dire ce qu'il détruit. -->
-      @if (p.urlPhoto) {
-        <button type="button" class="gu-btn gu-btn--secondaire petit retirer-photo"
-                [disabled]="envoiPhoto()" (click)="retirerPhoto()">
-          <gu-icone nom="trash" /> Retirer la photo
-        </button>
-      }
 
       @if (erreurPhoto(); as m) {
         <p class="alerte" role="alert">{{ m }}</p>
