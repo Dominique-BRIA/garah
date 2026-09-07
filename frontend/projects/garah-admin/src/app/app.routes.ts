@@ -25,6 +25,10 @@ export const routes: Routes = [
       //    « nouveau » et tenterait de charger un produit d'identifiant
       //    « nouveau » — 404 au lieu du formulaire.
       { path: 'produits/:id', loadComponent: () => import('./produits/fiche-produit').then((m) => m.FicheProduit) },
+      // Les comptes internes. « equipe » et non « utilisateurs » : les clients
+      // sont aussi des utilisateurs, et ils ne se gerent pas ici.
+      { path: 'equipe', loadComponent: () => import('./equipe/equipe').then((m) => m.Equipe) },
+      { path: 'profils', loadComponent: () => import('./equipe/profils').then((m) => m.Profils) },
     ],
   },
   { path: '**', redirectTo: '' },

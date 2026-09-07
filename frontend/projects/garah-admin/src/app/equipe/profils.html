@@ -1,0 +1,191 @@
+<a routerLink="/equipe" class="retour">
+  <gu-icone nom="chevron-right" class="retour__fleche" /> L’équipe
+</a>
+
+<header class="entete">
+  <div>
+    <h1>Profils</h1>
+    <p class="sous-titre">
+      Chaque profil est un paquet de droits. On les donne à des responsables
+      plutôt que d’accorder les fonctionnalités une par une.
+    </p>
+  </div>
+
+  @if (session.peut('CATEGORIE_RESPONSABLE_CREER')) {
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirCreation()">
+      Nouveau profil
+    </button>
+  }
+</header>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="box-open" class="etat__icone" />
+    <p class="etat__titre">Aucun profil.</p>
+    <p class="etat__aide">
+      Sans profil, un responsable créé ne pourrait rien faire : il se
+      connecterait sur un écran vide.
+    </p>
+  </div>
+} @else {
+  <div class="grille-profils">
+    @for (p of liste(); track p.id) {
+      <article class="gu-carte carte-profil" [class.carte-profil--inactif]="p.statut !== 'ACTIF'">
+        <header class="carte-profil__entete">
+          <div>
+            <h2>{{ p.nom }}</h2>
+            @if (p.description) { <p class="carte-profil__desc">{{ p.description }}</p> }
+          </div>
+          @if (p.statut !== 'ACTIF') {
+            <span class="gu-badge gu-badge--neutre">INACTIF</span>
+          }
+        </header>
+
+        <dl class="chiffres">
+          <div>
+            <dt>Fonctionnalités</dt>
+            <dd>{{ p.permissions.length }}</dd>
+          </div>
+          <div>
+            <dt>Personnes</dt>
+            <dd>{{ p.nombreMembres }}</dd>
+          </div>
+        </dl>
+
+        <!-- Le nombre de porteurs n'est pas décoratif : il dit ce qu'on
+             change en touchant au profil. -->
+        @if (p.nombreMembres > 0) {
+          <p class="avertissement">
+            Modifier ce profil change les droits de {{ p.nombreMembres }} personne(s).
+          </p>
+        }
+
+        <div class="carte-profil__actions">
+          @if (session.peut('CATEGORIE_RESPONSABLE_MODIFIER')) {
+            <button type="button" class="gu-btn gu-btn--secondaire petit"
+                    (click)="ouvrirEdition(p)">
+              <gu-icone nom="pen" /> Modifier
+            </button>
+            <button type="button" class="gu-btn gu-btn--secondaire petit"
+                    (click)="basculerActivation(p)">
+              @if (p.statut === 'ACTIF') { Désactiver } @else { Réactiver }
+            </button>
+          }
+        </div>
+      </article>
+    }
+  </div>
+}
+
+@if (formulaireOuvert()) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau panneau--large" role="dialog" aria-modal="true"
+         [attr.aria-label]="enEdition() ? 'Modifier le profil' : 'Nouveau profil'">
+    @if (enEdition(); as p) {
+      <h2>Modifier {{ p.nom }}</h2>
+      @if (p.nombreMembres > 0) {
+        <p class="avertissement">
+          {{ p.nombreMembres }} personne(s) portent ce profil. Ce que vous
+          décochez leur sera retiré.
+        </p>
+      }
+    } @else {
+      <h2>Nouveau profil</h2>
+    }
+
+    <form (ngSubmit)="enregistrer()" novalidate>
+      <label class="gu-libelle" for="nom">Nom</label>
+      <input id="nom" name="nom" class="gu-champ" required maxlength="100"
+             placeholder="Gestionnaire de catalogue"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+      <p class="aide">Il sert aussi de titre affiché pour ceux qui le portent.</p>
+
+      <label class="gu-libelle" for="desc">Description</label>
+      <input id="desc" name="description" class="gu-champ" maxlength="255"
+             [ngModel]="description()" (ngModelChange)="description.set($event)" />
+
+      <span class="gu-libelle">
+        Fonctionnalités
+        <span class="compteur">{{ choisies().length }} choisie(s)</span>
+      </span>
+
+      <div class="champ-recherche champ-recherche--pleine">
+        <gu-icone nom="magnifying-glass" class="loupe" />
+        <input type="search" class="gu-champ" placeholder="Filtrer les fonctionnalités"
+               [ngModel]="filtre()" (ngModelChange)="filtre.set($event)"
+               name="filtre" aria-label="Filtrer les fonctionnalités" />
+      </div>
+
+      <div class="modules">
+        @for (g of groupes(); track g.module) {
+          <section class="module">
+            <header class="module__entete">
+              <button type="button" class="module__titre" (click)="deplier(g.module)"
+                      [attr.aria-expanded]="estDeplie(g.module)">
+                <gu-icone nom="chevron-right" class="module__chevron"
+                          [class.module__chevron--ouvert]="estDeplie(g.module)" />
+                {{ g.module }}
+                <span class="module__compte">
+                  {{ compteDansModule(g) }} / {{ g.fonctionnalites.length }}
+                </span>
+              </button>
+
+              <button type="button" class="lien-action" (click)="basculerModule(g)">
+                @if (compteDansModule(g) === g.fonctionnalites.length) { Tout retirer }
+                @else { Tout cocher }
+              </button>
+            </header>
+
+            @if (estDeplie(g.module)) {
+              <ul class="fonctionnalites">
+                @for (f of g.fonctionnalites; track f.code) {
+                  <li>
+                    <label>
+                      <input type="checkbox" [checked]="estChoisie(f.code)"
+                             (change)="basculer(f.code)" />
+                      <span>
+                        <span class="fonctionnalite__nom">{{ f.nom }}</span>
+                        <!-- Le code technique est montré parce que c'est lui
+                             qu'on retrouve dans un refus d'accès. Sans lui, on
+                             ne peut pas relier un droit à une erreur. -->
+                        <code class="fonctionnalite__code">{{ f.code }}</code>
+                      </span>
+                    </label>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        }
+      </div>
+
+      @if (erreurFormulaire(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="enregistrement() || !nom() || choisies().length === 0">
+          @if (enregistrement()) {
+            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else if (enEdition()) {
+            Enregistrer
+          } @else { Créer le profil }
+        </button>
+      </div>
+    </form>
+  </aside>
+}

@@ -1,0 +1,269 @@
+<header class="entete">
+  <div>
+    <h1>Équipe</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… } @else { {{ membres().length }} compte(s) interne(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <a routerLink="/profils" class="gu-btn gu-btn--secondaire">
+      <gu-icone nom="sitemap" /> Profils
+    </a>
+    @if (session.peut('RESPONSABLE_CREER')) {
+      <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirCreation()">
+        Nouveau compte
+      </button>
+    }
+  </div>
+</header>
+
+<!-- La chaîne, dite une fois, en haut de l'écran qui la met en œuvre.
+     Ce n'est pas une règle interne : c'est ce qu'il faut comprendre pour
+     choisir le bon type de compte au moment de le créer. -->
+<div class="gu-carte hierarchie">
+  <div class="maillon">
+    <span class="maillon__titre">Administrateur</span>
+    <span class="maillon__role">décide qui fait quoi</span>
+  </div>
+  <gu-icone nom="chevron-right" class="maillon__fleche" />
+  <div class="maillon">
+    <span class="maillon__titre">Profil</span>
+    <span class="maillon__role">un paquet de droits</span>
+  </div>
+  <gu-icone nom="chevron-right" class="maillon__fleche" />
+  <div class="maillon">
+    <span class="maillon__titre">Responsable</span>
+    <span class="maillon__role">fait le travail</span>
+  </div>
+</div>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Personne</th>
+          <th>Niveau</th>
+          <th>Profils</th>
+          <th>Matricule</th>
+          <th>Statut</th>
+          <th class="droite">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of membres(); track m.id) {
+          <tr [class.inactif]="m.statut !== 'ACTIF'">
+            <td>
+              <div class="cellule-personne">
+                <gu-avatar [nom]="nomComplet(m)" taille="2.1rem" />
+                <div>
+                  <span class="nom">{{ nomComplet(m) }}</span>
+                  <span class="courriel">
+                    {{ m.email }}
+                    @if (!m.emailVerifie) {
+                      <span class="gu-badge gu-badge--alerte petit-badge">non vérifiée</span>
+                    }
+                  </span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="gu-badge" [class]="badgeType(m.type)">{{ libelleType(m.type) }}</span>
+            </td>
+            <td>
+              @if (m.profils.length === 0) {
+                <span class="attenue">
+                  @if (m.type === 'RESPONSABLE') { — } @else { tous les droits }
+                </span>
+              } @else {
+                <div class="profils">
+                  @for (p of m.profils; track p.id) {
+                    <span class="gu-badge"
+                          [class]="p.principale ? 'gu-badge--info' : 'gu-badge--neutre'">
+                      {{ p.nom }}
+                    </span>
+                  }
+                </div>
+              }
+            </td>
+            <td>
+              @if (m.matricule) { <code>{{ m.matricule }}</code> }
+              @else { <span class="attenue">—</span> }
+            </td>
+            <td>
+              <span class="gu-badge"
+                    [class]="m.statut === 'ACTIF' ? 'gu-badge--succes' : 'gu-badge--neutre'">
+                {{ m.statut }}
+              </span>
+            </td>
+            <td class="droite">
+              <div class="cellule-actions">
+                @if (modifiable(m) && session.peut('RESPONSABLE_MODIFIER')) {
+                  <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                          (click)="ouvrirEdition(m)"
+                          aria-label="Modifier ce compte" title="Modifier">
+                    <gu-icone nom="pen" />
+                  </button>
+                }
+                @if (modifiable(m) && m.statut === 'ACTIF'
+                     && session.peut('RESPONSABLE_DESACTIVER')) {
+                  <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                          (click)="basculerActivation(m)"
+                          aria-label="Désactiver ce compte" title="Désactiver">
+                    <gu-icone nom="eye-slash" />
+                  </button>
+                }
+                @if (modifiable(m) && m.statut !== 'ACTIF'
+                     && session.peut('RESPONSABLE_ACTIVER')) {
+                  <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+                          (click)="basculerActivation(m)"
+                          aria-label="Réactiver ce compte" title="Réactiver">
+                    <gu-icone nom="eye" />
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<!-- Le formulaire, en panneau latéral. Le même pour créer et pour modifier. -->
+@if (formulaireOuvert()) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true"
+         [attr.aria-label]="enEdition() ? 'Modifier le compte' : 'Nouveau compte'">
+    @if (enEdition(); as m) {
+      <h2>Modifier {{ nomComplet(m) }}</h2>
+      <p class="aide">
+        {{ m.email }} — l’adresse de connexion ne change pas ici.
+        @if (m.matricule) { Matricule {{ m.matricule }}. }
+      </p>
+    } @else {
+      <h2>Nouveau compte</h2>
+    }
+
+    <form (ngSubmit)="enregistrer()" novalidate>
+      <!-- Le type ne se choisit qu'à la création : il détermine COMMENT les
+           droits sont calculés. Le changer après coup transformerait un
+           responsable en administrateur sans laisser de trace. -->
+      @if (!enEdition()) {
+        <span class="gu-libelle">Niveau</span>
+        <div class="choix-type">
+          @for (t of typesCreables; track t.code) {
+            <label class="carte-choix" [class.carte-choix--actif]="type() === t.code">
+              <input type="radio" name="type" [value]="t.code"
+                     [ngModel]="type()" (ngModelChange)="type.set($event)" />
+              <span class="carte-choix__titre">{{ t.libelle }}</span>
+              <span class="carte-choix__aide">{{ t.explication }}</span>
+            </label>
+          }
+        </div>
+      }
+
+      <label class="gu-libelle" for="nom">Nom</label>
+      <input id="nom" name="nom" class="gu-champ" required maxlength="100"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+
+      <label class="gu-libelle" for="prenom">Prénom</label>
+      <input id="prenom" name="prenom" class="gu-champ" maxlength="100"
+             [ngModel]="prenom()" (ngModelChange)="prenom.set($event)" />
+
+      @if (!enEdition()) {
+        <label class="gu-libelle" for="mail">Adresse e-mail</label>
+        <input id="mail" name="email" type="email" class="gu-champ" required maxlength="255"
+               [ngModel]="email()" (ngModelChange)="email.set($event)" />
+        <p class="aide">Sert à se connecter. Elle devra être confirmée.</p>
+
+        <label class="gu-libelle" for="mdp">Mot de passe provisoire</label>
+        <input id="mdp" name="motDePasse" type="password" class="gu-champ" required
+               minlength="12" autocomplete="new-password"
+               [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)" />
+        <p class="aide">Douze caractères au moins. À communiquer à la personne.</p>
+      }
+
+      <label class="gu-libelle" for="tel">Téléphone</label>
+      <input id="tel" name="telephone" class="gu-champ" maxlength="30"
+             [ngModel]="telephone()" (ngModelChange)="telephone.set($event)" />
+
+      @if (type() === 'RESPONSABLE') {
+        <label class="gu-libelle" for="embauche">Date d’embauche</label>
+        <input id="embauche" name="dateEmbauche" type="date" class="gu-champ"
+               [ngModel]="dateEmbauche()" (ngModelChange)="dateEmbauche.set($event)" />
+
+        <span class="gu-libelle">Profils</span>
+        @if (profilsActifs().length === 0) {
+          <p class="aide">
+            Aucun profil n’existe encore. Un responsable sans profil n’aurait
+            aucun droit.
+            <a routerLink="/profils" (click)="fermer()">Créez-en un d’abord.</a>
+          </p>
+        } @else {
+          <p class="aide">
+            Ils décident de ce que la personne pourra faire. Le profil marqué
+            d’une étoile donne son titre.
+          </p>
+          <div class="liste-profils">
+            @for (p of profilsActifs(); track p.id) {
+              <div class="ligne-profil" [class.ligne-profil--actif]="estChoisi(p.id)">
+                <label class="ligne-profil__case">
+                  <input type="checkbox" [checked]="estChoisi(p.id)"
+                         (change)="basculerProfil(p.id)" />
+                  <span>
+                    <span class="ligne-profil__nom">{{ p.nom }}</span>
+                    <span class="ligne-profil__aide">
+                      {{ p.permissions.length }} fonctionnalité(s)
+                    </span>
+                  </span>
+                </label>
+
+                @if (estChoisi(p.id)) {
+                  <button type="button" class="etoile"
+                          [class.etoile--active]="profilPrincipal() === p.id"
+                          (click)="profilPrincipal.set(p.id)"
+                          [attr.aria-label]="'Faire de ' + p.nom + ' le profil principal'"
+                          title="Profil principal — il donne le titre">
+                    <gu-icone nom="star" />
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+
+      @if (erreurFormulaire(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="enregistrement() || !nom()
+                            || (!enEdition() && (!email() || motDePasse().length < 12))
+                            || (type() === 'RESPONSABLE' && profilsChoisis().length === 0)">
+          @if (enregistrement()) {
+            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else if (enEdition()) {
+            Enregistrer
+          } @else { Créer le compte }
+        </button>
+      </div>
+    </form>
+  </aside>
+}

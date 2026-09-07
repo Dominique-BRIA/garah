@@ -1,0 +1,177 @@
+package com.garah.api.iam.web;
+
+import com.garah.api.iam.domaine.ServiceEquipe;
+import com.garah.api.iam.domaine.TypeUtilisateur;
+import com.garah.api.iam.domaine.VueMembre;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Les comptes internes : administrateurs et responsables.
+ *
+ * <p>Distinct de {@code /api/auth/inscription}, qui crée un CLIENT et qui est
+ * ouvert à tous. Ici, on crée quelqu'un qui travaille dans l'entreprise : cela
+ * demande une permission, et le compte reçoit des droits.</p>
+ */
+@RestController
+@RequestMapping("/api/equipe")
+public class ControleurEquipe {
+
+    private final ServiceEquipe equipe;
+
+    public ControleurEquipe(ServiceEquipe equipe) {
+        this.equipe = equipe;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('RESPONSABLE_CONSULTER')")
+    public List<VueMembre> lister() {
+        return equipe.lister();
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('RESPONSABLE_CONSULTER')")
+    public VueMembre detail(@PathVariable Long id) {
+        return equipe.detail(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('RESPONSABLE_CREER')")
+    public VueMembre creer(@Valid @RequestBody DemandeMembre demande) {
+        return equipe.creer(demande.type(), demande.nom(), demande.prenom(),
+                demande.email(), demande.telephone(), demande.motDePasse(),
+                demande.dateEmbauche(), demande.profilIds(), demande.profilPrincipalId());
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('RESPONSABLE_MODIFIER')")
+    public VueMembre modifier(@PathVariable Long id,
+                              @Valid @RequestBody DemandeModificationMembre demande) {
+        return equipe.modifier(id, demande.nom(), demande.prenom(),
+                demande.telephone(), demande.dateEmbauche());
+    }
+
+    /**
+     * Remplace les profils d'un responsable.
+     *
+     * <p>Un {@code PUT} : l'écran envoie l'état complet des cases cochées, pas
+     * la différence. Calculer la différence côté frontend est un calcul de
+     * plus, donc un endroit de plus où se tromper.</p>
+     */
+    @PutMapping("/{id}/profils")
+    @PreAuthorize("hasAuthority('RESPONSABLE_MODIFIER')")
+    public VueMembre affecterProfils(@PathVariable Long id,
+                                     @Valid @RequestBody DemandeProfils demande) {
+        return equipe.affecterProfils(id, demande.profilIds(), demande.profilPrincipalId());
+    }
+
+    /*
+     * Activation et desactivation sur la MEME route, distinguees par le verbe
+     * et gardees par DEUX permissions differentes. Le referentiel les a
+     * separees des le depart : rendre quelqu'un a son poste et l'en retirer ne
+     * se confient pas forcement a la meme personne.
+     */
+    @PostMapping("/{id}/activation")
+    @PreAuthorize("hasAuthority('RESPONSABLE_ACTIVER')")
+    public VueMembre activer(@PathVariable Long id) {
+        return equipe.changerStatut(id, true);
+    }
+
+    @DeleteMapping("/{id}/activation")
+    @PreAuthorize("hasAuthority('RESPONSABLE_DESACTIVER')")
+    public VueMembre desactiver(@PathVariable Long id) {
+        return equipe.changerStatut(id, false);
+    }
+
+    /**
+     * Impose un nouveau mot de passe.
+     *
+     * <p>L'ancien n'est pas demandé : un administrateur ne le connaît pas, et
+     * c'est très bien ainsi. Cette route sert au dépannage, quand quelqu'un a
+     * perdu le sien.</p>
+     */
+    @PostMapping("/{id}/mot-de-passe")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('RESPONSABLE_MODIFIER')")
+    public void reinitialiserMotDePasse(@PathVariable Long id,
+                                        @Valid @RequestBody DemandeMotDePasse demande) {
+        equipe.reinitialiserMotDePasse(id, demande.motDePasse());
+    }
+
+    // -------------------------------------------------------------------------
+
+    public record DemandeMembre(
+            @NotNull(message = "Le type de compte est obligatoire.")
+            TypeUtilisateur type,
+
+            @NotBlank(message = "Le nom est obligatoire.")
+            @Size(max = 100, message = "Le nom ne peut pas depasser 100 caracteres.")
+            String nom,
+
+            @Size(max = 100, message = "Le prenom ne peut pas depasser 100 caracteres.")
+            String prenom,
+
+            @NotBlank(message = "L'adresse e-mail est obligatoire.")
+            @Email(message = "Cette adresse e-mail n'est pas valide.")
+            @Size(max = 255, message = "Adresse e-mail trop longue.")
+            String email,
+
+            @Size(max = 30, message = "Numero de telephone trop long.")
+            @Pattern(regexp = "^$|^[+()0-9 .-]{6,30}$",
+                     message = "Ce numero de telephone n'est pas valide.")
+            String telephone,
+
+            /*
+             * Douze caracteres au minimum, comme a l'inscription. Un compte
+             * interne ouvre plus de portes qu'un compte client : il serait
+             * absurde de lui demander moins.
+             */
+            @NotBlank(message = "Le mot de passe est obligatoire.")
+            @Size(min = 12, max = 100,
+                  message = "Le mot de passe doit compter au moins 12 caracteres.")
+            String motDePasse,
+
+            LocalDate dateEmbauche,
+
+            /* Obligatoires pour un RESPONSABLE ; le service le verifie. */
+            List<Long> profilIds,
+            Long profilPrincipalId) {
+    }
+
+    public record DemandeModificationMembre(
+            @NotBlank(message = "Le nom est obligatoire.")
+            @Size(max = 100, message = "Le nom ne peut pas depasser 100 caracteres.")
+            String nom,
+
+            @Size(max = 100, message = "Le prenom ne peut pas depasser 100 caracteres.")
+            String prenom,
+
+            @Size(max = 30, message = "Numero de telephone trop long.")
+            @Pattern(regexp = "^$|^[+()0-9 .-]{6,30}$",
+                     message = "Ce numero de telephone n'est pas valide.")
+            String telephone,
+
+            LocalDate dateEmbauche) {
+    }
+
+    public record DemandeProfils(
+            @NotEmpty(message = "Choisissez au moins un profil.")
+            List<Long> profilIds,
+
+            Long profilPrincipalId) {
+    }
+
+    public record DemandeMotDePasse(
+            @NotBlank(message = "Le mot de passe est obligatoire.")
+            @Size(min = 12, max = 100,
+                  message = "Le mot de passe doit compter au moins 12 caracteres.")
+            String motDePasse) {
+    }
+}

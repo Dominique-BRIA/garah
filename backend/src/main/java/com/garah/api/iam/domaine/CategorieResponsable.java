@@ -65,6 +65,18 @@ public class CategorieResponsable {
     public String getStatut() { return statut; }
     public Set<CasUtilisation> getCasUtilisation() { return casUtilisation; }
 
+    /**
+     * Renomme le profil.
+     *
+     * <p>Une méthode nommée plutôt qu'un {@code setNom} : ce nom est aussi le
+     * <b>titre affiché</b> des responsables qui le portent. Le changer ne
+     * corrige pas une étiquette, il change comment douze personnes sont
+     * désignées dans toute l'application.</p>
+     */
+    public void renommer(String nom) {
+        this.nom = nom;
+    }
+
     public void setDescription(String description) { this.description = description; }
     public void setStatut(String statut) { this.statut = statut; }
 }
