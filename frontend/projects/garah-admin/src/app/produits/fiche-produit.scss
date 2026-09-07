@@ -419,3 +419,86 @@
   border: 1px dashed var(--verre-bordure);
   background: transparent;
 }
+
+// --- La création par grille ---------------------------------------------------
+.entete-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.dimension-choix {
+  margin-bottom: 0.9rem;
+}
+
+.dimension-choix__nom {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.dimension-choix__valeurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+// Une puce cliquable plutôt qu'une case à cocher alignée : on choisit des
+// valeurs par paquets, et une colonne de cases fait lire vingt fois la même
+// forme pour trouver celle qu'on veut.
+.puce {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.7rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); }
+
+  // La case sort de la VUE, pas du FLUX : retirée du flux, elle ne serait
+  // plus atteignable au clavier.
+  input[type='checkbox'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.puce--active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  font-weight: 600;
+}
+
+.puce__couleur,
+.valeur-dim__couleur {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  border: 1px solid var(--champ-bordure);
+  flex-shrink: 0;
+}
+
+// --- Les valeurs portées par une déclinaison ---------------------------------
+.valeur-dim {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-douce);
+  font-size: 0.72rem;
+  vertical-align: middle;
+}

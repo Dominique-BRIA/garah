@@ -1,3 +1,5 @@
+import type { ValeurChoisie } from './attribut';
+
 /**
  * Un palier de la grille tarifaire.
  *
@@ -30,4 +32,15 @@ export interface Variante {
   readonly parDefaut: boolean;
   readonly statut: string;
   readonly paliers: readonly PalierPrix[];
+  /**
+   * Les valeurs d'attribut qui definissent cette declinaison.
+   *
+   * C'est ce qui permet a la vitrine d'afficher des SELECTEURS plutot qu'une
+   * liste d'intitules : « Taille : 42, 43 » se deduit des valeurs, jamais du
+   * texte libre.
+   *
+   * Vide sur les declinaisons creees avant le referentiel — elles restent
+   * valides, elles n'ont simplement pas de selecteur.
+   */
+  readonly valeurs: readonly ValeurChoisie[];
 }

@@ -3,6 +3,7 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
+  Attribut,
   Categorie,
   DetailProduit,
   EtatStock,
@@ -29,6 +30,13 @@ import {
 type Formulaire =
   | { readonly quoi: 'produit' }
   | { readonly quoi: 'variante-creation' }
+  /*
+   * La creation par GRILLE : on choisit des valeurs de dimensions, le serveur
+   * compose toutes les combinaisons. C'est le chemin recommande — SKU et
+   * intitules sont alors coherents par construction, la ou quatre saisies
+   * manuelles sont quatre occasions de diverger.
+   */
+  | { readonly quoi: 'variante-grille' }
   | { readonly quoi: 'variante-edition'; readonly varianteId: number }
   | { readonly quoi: 'palier-creation'; readonly varianteId: number }
   | { readonly quoi: 'palier-prix'; readonly varianteId: number; readonly palierId: number }
@@ -76,6 +84,14 @@ export class FicheProduit {
   // --- Champs d'une déclinaison ---
   protected readonly sku = signal('');
   protected readonly libelle = signal('');
+
+  // --- La création par grille ---
+  //
+  // Le référentiel des dimensions, chargé à la première ouverture seulement :
+  // la plupart des visites de cette page ne créent aucune déclinaison.
+  protected readonly attributs = signal<readonly Attribut[]>([]);
+  protected readonly chargementAttributs = signal(false);
+  protected readonly valeursChoisies = signal<ReadonlySet<number>>(new Set());
 
   // --- Champs d'un palier ---
   protected readonly quantiteMin = signal(1);
@@ -221,6 +237,105 @@ export class FicheProduit {
     this.libelle.set('');
     this.erreurForm.set(null);
     this.formulaire.set({ quoi: 'variante-creation' });
+  }
+
+  // -------------------------------------------------------------------------
+  // La création par grille
+  // -------------------------------------------------------------------------
+
+  /**
+   * Ouvre le choix des dimensions.
+   *
+   * <p>Le référentiel est chargé à la première ouverture seulement : la
+   * plupart des visites de cette page ne créent aucune déclinaison.</p>
+   */
+  protected ouvrirGrille(): void {
+    this.valeursChoisies.set(new Set());
+    this.erreurForm.set(null);
+    this.formulaire.set({ quoi: 'variante-grille' });
+
+    if (this.attributs().length === 0) {
+      this.chargementAttributs.set(true);
+      this.http.get<Attribut[]>('/api/attributs').subscribe({
+        next: (a) => {
+          this.attributs.set(a);
+          this.chargementAttributs.set(false);
+        },
+        error: () => {
+          this.attributs.set([]);
+          this.chargementAttributs.set(false);
+        },
+      });
+    }
+  }
+
+  protected basculerValeur(id: number): void {
+    this.valeursChoisies.update((courant) => {
+      const suivant = new Set(courant);
+      if (!suivant.delete(id)) {
+        suivant.add(id);
+      }
+      return suivant;
+    });
+  }
+
+  protected valeurChoisie(id: number): boolean {
+    return this.valeursChoisies().has(id);
+  }
+
+  /**
+   * Combien de déclinaisons la grille produira.
+   *
+   * <p>Le produit des dimensions retenues : deux tailles et deux couleurs font
+   * quatre déclinaisons. Le dire <b>avant</b> le clic évite d'en créer
+   * cinquante par inadvertance — un catalogue se salit beaucoup plus vite
+   * qu'il ne se nettoie.</p>
+   */
+  protected readonly nbCombinaisons = computed(() => {
+    const dimensions = this.dimensionsRetenues();
+    return dimensions.length === 0
+      ? 0
+      : dimensions.reduce((total, valeurs) => total * valeurs.length, 1);
+  });
+
+  /**
+   * Les valeurs cochées, groupées par dimension.
+   *
+   * <p>⚠️ L'ordre des dimensions suit celui du référentiel, et il fixe l'ordre
+   * dans le SKU : {@code CH-2026-42-BLANC} plutôt que
+   * {@code CH-2026-BLANC-42}. Les deux sont valides ; mélanger les deux dans
+   * un même catalogue le rend illisible.</p>
+   */
+  private readonly dimensionsRetenues = computed<number[][]>(() => {
+    const choisies = this.valeursChoisies();
+
+    return this.attributs()
+      .map((a) => a.valeurs.filter((v) => choisies.has(v.id)).map((v) => v.id))
+      .filter((valeurs) => valeurs.length > 0);
+  });
+
+  protected creerGrille(): void {
+    if (this.action() || this.nbCombinaisons() === 0) {
+      return;
+    }
+    this.action.set('variante');
+    this.erreurForm.set(null);
+
+    this.http
+      .post<Variante[]>(`/api/produits/${this.id()}/variantes/grille`, {
+        dimensions: this.dimensionsRetenues(),
+      })
+      .subscribe({
+        next: () => {
+          this.action.set(null);
+          this.fermer();
+          this.chargerVariantes();
+        },
+        error: (e: unknown) => {
+          this.action.set(null);
+          this.erreurForm.set(message(e, 'Les déclinaisons n’ont pas pu être créées.'));
+        },
+      });
   }
 
   protected ouvrirEditionVariante(v: Variante): void {

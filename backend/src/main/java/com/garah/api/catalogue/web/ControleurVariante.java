@@ -42,6 +42,32 @@ public class ControleurVariante {
         return variantes.ajouter(produitId, demande.sku(), demande.libelle());
     }
 
+    /**
+     * Cree les declinaisons d'une GRILLE de valeurs.
+     *
+     * <pre>
+     * { "dimensions": [ [12, 13], [45, 46] ] }
+     *     Taille 42, 43  ×  Couleur Blanc, Noir  →  quatre declinaisons
+     * </pre>
+     *
+     * <p>C'est le chemin recommande. Le SKU et l'intitule sont COMPOSES a
+     * partir des valeurs choisies — donc coherents par construction. La route
+     * `POST` simple reste, pour les declinaisons qui ne suivent aucune
+     * dimension du referentiel.</p>
+     *
+     * <p>⚠️ L'ordre des dimensions fixe l'ordre dans le SKU. Envoyer
+     * `[couleurs, tailles]` produirait `CH-2026-BLANC-42` la ou
+     * `[tailles, couleurs]` produit `CH-2026-42-BLANC`. Les deux sont valides,
+     * mais melanger les deux ordres dans un meme catalogue le rend illisible.</p>
+     */
+    @PostMapping("/grille")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('VARIANTE_CREER')")
+    public List<VueVariante> creerGrille(@PathVariable Long produitId,
+                                         @Valid @RequestBody DemandeGrille demande) {
+        return variantes.creerGrille(produitId, demande.dimensions());
+    }
+
     /** Corrige le SKU et l'intitule d'une declinaison. */
     @PutMapping("/{varianteId}")
     @PreAuthorize("hasAuthority('VARIANTE_MODIFIER')")
@@ -152,6 +178,23 @@ public class ControleurVariante {
     }
 
     /** Le nouveau prix d'un palier existant. Les quantites n'y figurent pas. */
+    /**
+     * Une grille de valeurs : une liste par dimension.
+     *
+     * <pre>
+     * { "dimensions": [ [12, 13], [45, 46] ] }
+     * </pre>
+     *
+     * <p>Une seule dimension est parfaitement valide — un produit qui ne se
+     * decline qu'en taille. Deux dimensions donnent le produit cartesien,
+     * comme le theme « SizeName-ColorName » d'Amazon.</p>
+     */
+    public record DemandeGrille(
+            @NotNull(message = "La grille est obligatoire.")
+            @Size(min = 1, message = "Choisissez au moins une dimension.")
+            List<List<Long>> dimensions) {
+    }
+
     public record DemandePrix(
             @NotNull(message = "Le prix est obligatoire.")
             @DecimalMin(value = "0", message = "Le prix ne peut pas etre negatif.")

@@ -1,0 +1,168 @@
+<a routerLink="/produits" class="retour">
+  <gu-icone nom="chevron-right" class="retour__fleche" /> Les produits
+</a>
+
+<header class="entete">
+  <div>
+    <h1>Dimensions</h1>
+    <p class="sous-titre">
+      Taille, Couleur, Conditionnement — les axes selon lesquels un produit se
+      décline. Définis une fois, réutilisés par tout le catalogue.
+    </p>
+  </div>
+
+  @if (session.peut('ATTRIBUT_GERER') && !formDimension()) {
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirDimension()">
+      <gu-icone nom="plus" /> Nouvelle dimension
+    </button>
+  }
+</header>
+
+@if (erreur(); as m) {
+  <p class="alerte" role="alert">{{ m }}</p>
+}
+
+@if (formDimension()) {
+  <form class="gu-carte formulaire" (ngSubmit)="creerDimension()" novalidate>
+    <label class="gu-libelle" for="nom">Nom</label>
+    <input id="nom" name="nom" class="gu-champ" required maxlength="100"
+           placeholder="Taille"
+           [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+    <p class="aide">
+      Au singulier, tel qu’on le lit devant une valeur : « Taille 42 ».
+    </p>
+
+    <span class="gu-libelle">Affichage</span>
+    <!-- Deux cartes, pas une liste déroulante : le choix décide de ce que le
+         client verra sur la vitrine, il mérite son explication à côté. -->
+    <div class="choix-affichage">
+      @for (t of typesAffichage; track t.code) {
+        <label class="carte-choix" [class.carte-choix--actif]="typeAffichage() === t.code">
+          <input type="radio" name="typeAffichage" [value]="t.code"
+                 [ngModel]="typeAffichage()" (ngModelChange)="typeAffichage.set($event)" />
+          <span class="carte-choix__titre">{{ t.libelle }}</span>
+          <span class="carte-choix__aide">{{ t.explication }}</span>
+        </label>
+      }
+    </div>
+
+    @if (erreurForm(); as m) {
+      <p class="alerte" role="alert">{{ m }}</p>
+    }
+
+    <div class="boutons">
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
+      <button type="submit" class="gu-btn gu-btn--primaire"
+              [disabled]="action() !== null || !nom().trim()">
+        @if (action() === 'dimension') {
+          <gu-icone nom="circle-notch" tourne /> Création…
+        } @else { Créer la dimension }
+      </button>
+    </div>
+  </form>
+}
+
+@if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="tags" class="etat__icone" />
+    <p class="etat__titre">Aucune dimension</p>
+    <p class="etat__aide">
+      Sans dimension, une déclinaison se décrit au clavier — et deux personnes
+      écrivent « M », « Medium » ou « Moyen » pour la même taille.
+    </p>
+  </div>
+} @else {
+  <div class="grille-dimensions">
+    @for (a of liste(); track a.id) {
+      <article class="gu-carte dimension">
+        <header class="dimension__entete">
+          <div>
+            <h2>{{ a.nom }}</h2>
+            <code class="dimension__code">{{ a.code }}</code>
+          </div>
+          <span class="gu-badge gu-badge--neutre">
+            @if (estPastille(a)) { Pastille } @else { Liste }
+          </span>
+        </header>
+
+        @if (a.valeurs.length === 0) {
+          <p class="vide">
+            Aucune valeur. Une dimension sans valeur ne peut décliner aucun
+            produit.
+          </p>
+        } @else {
+          <!-- Les valeurs dans l'ordre du référentiel, jamais alphabétique :
+               « 10, 38, 9 » n'est pas une suite de tailles. -->
+          <ul class="valeurs">
+            @for (v of a.valeurs; track v.id) {
+              <li class="valeur">
+                @if (estPastille(a) && v.valeurAffichage) {
+                  <span class="pastille" [style.background]="v.valeurAffichage"
+                        aria-hidden="true"></span>
+                }
+                <span class="valeur__libelle">{{ v.libelle }}</span>
+
+                @if (session.peut('ATTRIBUT_GERER')) {
+                  <button type="button" class="valeur__retirer"
+                          (click)="supprimerValeur(a, v.id, v.libelle)"
+                          [disabled]="action() !== null"
+                          [attr.aria-label]="'Retirer ' + v.libelle">
+                    <gu-icone nom="xmark" />
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        @if (session.peut('ATTRIBUT_GERER')) {
+          @if (formValeur() === a.id) {
+            <form class="encart" (ngSubmit)="ajouterValeur(a)" novalidate>
+              <label class="gu-libelle" [for]="'val-' + a.id">Valeur</label>
+              <input [id]="'val-' + a.id" name="libelle" class="gu-champ"
+                     required maxlength="100" placeholder="42"
+                     [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
+
+              @if (estPastille(a)) {
+                <label class="gu-libelle" [for]="'coul-' + a.id">Couleur</label>
+                <div class="choix-couleur">
+                  <input [id]="'coul-' + a.id" name="couleur" type="color"
+                         [ngModel]="couleur()" (ngModelChange)="couleur.set($event)" />
+                  <code>{{ couleur() }}</code>
+                </div>
+              }
+
+              @if (erreurForm(); as m) {
+                <p class="alerte" role="alert">{{ m }}</p>
+              }
+
+              <div class="boutons">
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="fermer()">Terminé</button>
+                <button type="submit" class="gu-btn gu-btn--primaire petit"
+                        [disabled]="action() !== null || !libelle().trim()">
+                  @if (action() === 'valeur') {
+                    <gu-icone nom="circle-notch" tourne />
+                  }
+                  Ajouter
+                </button>
+              </div>
+              <!-- Le formulaire reste ouvert après un ajout : on saisit
+                   rarement une seule taille. -->
+              <p class="aide">Le champ se vide, la liste s’allonge.</p>
+            </form>
+          } @else {
+            <button type="button" class="lien-action" (click)="ouvrirValeur(a)">
+              <gu-icone nom="plus" /> Ajouter une valeur
+            </button>
+          }
+        }
+      </article>
+    }
+  </div>
+}

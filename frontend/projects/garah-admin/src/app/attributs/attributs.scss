@@ -1,0 +1,198 @@
+// Le référentiel des dimensions. Les motifs communs viennent de styles.scss.
+
+.retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texte-attenue);
+  text-decoration: none;
+
+  &:hover { color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.retour__fleche { transform: rotate(180deg); font-size: 0.7rem; }
+
+.formulaire {
+  display: flex;
+  flex-direction: column;
+  max-width: 34rem;
+  margin-bottom: 1.5rem;
+
+  .gu-libelle:not(:first-child) { margin-top: 1rem; }
+}
+
+// --- Le choix de l'affichage, en cartes --------------------------------------
+//
+// Pas une liste déroulante : ce choix décide de ce que le client verra sur la
+// vitrine, il mérite son explication à côté et non dans une bulle d'aide.
+.choix-affichage {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.carte-choix {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); }
+
+  // Le bouton radio natif sort de la VUE, pas du FLUX : un champ retiré du
+  // flux n'est plus atteignable au clavier.
+  input[type='radio'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.carte-choix--actif {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.carte-choix__titre { font-weight: 600; font-size: 0.9rem; }
+.carte-choix__aide { font-size: 0.78rem; color: var(--texte-attenue); line-height: 1.4; }
+
+// --- Les dimensions ----------------------------------------------------------
+.grille-dimensions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.dimension {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.dimension__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  h2 { font-size: 1.02rem; }
+}
+
+.dimension__code {
+  font-size: 0.7rem;
+  color: var(--texte-attenue);
+}
+
+.vide {
+  margin: 0;
+  color: var(--texte-attenue);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+// --- Les valeurs -------------------------------------------------------------
+.valeurs {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+
+.valeur {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface-douce);
+  font-size: 0.82rem;
+}
+
+.valeur__libelle { font-variant-numeric: tabular-nums; }
+
+// La pastille MONTRE la teinte. « Bleu ciel » écrit en toutes lettres oblige
+// le client à l'imaginer — et deux personnes n'imaginent pas la même.
+.pastille {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  border: 1px solid var(--champ-bordure);
+  flex-shrink: 0;
+}
+
+.valeur__retirer {
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--texte-attenue);
+  font-size: 0.55rem;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { background: var(--danger); color: #fff; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+}
+
+// --- L'ajout d'une valeur ----------------------------------------------------
+.encart {
+  display: flex;
+  flex-direction: column;
+  padding: 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-douce);
+
+  .gu-libelle:not(:first-child) { margin-top: 0.7rem; }
+}
+
+.choix-couleur {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  input[type='color'] {
+    width: 2.6rem;
+    height: 2.1rem;
+    padding: 0;
+    border: 1px solid var(--champ-bordure);
+    border-radius: var(--radius-sm);
+    background: none;
+    cursor: pointer;
+  }
+
+  code { font-size: 0.78rem; color: var(--texte-attenue); }
+}
+
+.lien-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}

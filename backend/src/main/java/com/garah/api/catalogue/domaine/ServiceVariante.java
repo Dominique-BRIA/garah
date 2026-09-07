@@ -37,6 +37,32 @@ public class ServiceVariante {
     }
 
     /**
+     * Cree toutes les declinaisons d'une grille de valeurs.
+     *
+     * <pre>
+     * Taille  42, 43     →  42 — Blanc   43 — Blanc
+     * Couleur Blanc, Noir   42 — Noir    43 — Noir
+     * </pre>
+     *
+     * <p>SKU et intitules sont COMPOSES a partir des valeurs, jamais saisis :
+     * quatre declinaisons creees une par une, ce sont quatre occasions
+     * d'ecrire l'intitule differemment.</p>
+     *
+     * <p>Les combinaisons deja presentes sont ignorees en silence. Ajouter la
+     * couleur « Rouge » a un produit qui a deja 42-Blanc doit creer 42-Rouge
+     * sans se plaindre du reste.</p>
+     */
+    @Transactional
+    public List<VueVariante> creerGrille(Long produitId, List<List<Long>> valeursParAttribut) {
+        return catalogue.creerGrille(produitId, valeursParAttribut).stream()
+                // Les paliers sont vides : une declinaison qui vient de naitre
+                // n'a pas encore de prix. C'est justement ce que l'ecran doit
+                // montrer comme manquant.
+                .map(v -> VueVariante.de(v, produitId, List.of()))
+                .toList();
+    }
+
+    /**
      * Les variantes d'un produit, chacune avec sa grille.
      *
      * <p>⚠️ Tout est lu DANS la transaction. La grille est chargee ici, et non

@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,6 +49,9 @@ public class ServiceCatalogue {
     private final CategorieProduitRepository categories;
     private final MediaRepository medias;
     private final TarificationRepository tarifications;
+
+    /** Le referentiel des dimensions, pour composer les declinaisons d une grille. */
+    private final ValeurAttributRepository valeursAttribut;
 
     /**
      * Traduit les clés d'objet en adresses affichables.
@@ -91,7 +96,8 @@ public class ServiceCatalogue {
                             StockageObjet urlsMedias,
                             DepotFichiers fichiers,
                             ServiceMarchand marchands,
-                            ApplicationEventPublisher evenements) {
+                            ApplicationEventPublisher evenements,
+                            ValeurAttributRepository valeursAttribut) {
         this.produits = produits;
         this.variantes = variantes;
         this.categories = categories;
@@ -101,6 +107,7 @@ public class ServiceCatalogue {
         this.fichiers = fichiers;
         this.marchands = marchands;
         this.evenements = evenements;
+        this.valeursAttribut = valeursAttribut;
     }
 
     /**
@@ -232,6 +239,146 @@ public class ServiceCatalogue {
         valeurs.forEach(variante::definirPar);
         annoncerLaNaissance(variante);
         return variante;
+    }
+
+    /**
+     * Crée les déclinaisons d'une <b>grille</b> de valeurs.
+     *
+     * <pre>
+     * Taille  42, 43        →  42 — Blanc     43 — Blanc
+     * Couleur Blanc, Noir      42 — Noir      43 — Noir
+     * </pre>
+     *
+     * <h2>Pourquoi une grille plutôt qu'une par une</h2>
+     *
+     * <p>Quatre déclinaisons créées séparément, ce sont quatre occasions
+     * d'écrire un intitulé différemment. La grille les produit toutes d'un
+     * geste, avec des SKU et des intitulés <b>composés</b> — donc cohérents
+     * par construction.</p>
+     *
+     * <h2>Ce que la méthode fait taire, délibérément</h2>
+     *
+     * <p>Une combinaison qui existe déjà est <b>ignorée</b>, pas refusée.
+     * Ajouter la couleur « Rouge » à un produit qui a déjà 42-Blanc et
+     * 43-Blanc doit créer 42-Rouge et 43-Rouge sans se plaindre des deux
+     * autres. Refuser toute la grille pour un doublon obligerait à décocher à
+     * l'aveugle ce qui existe déjà.</p>
+     *
+     * @param valeursParAttribut une liste de valeurs par dimension. L'ordre
+     *                           des dimensions fixe l'ordre dans le SKU.
+     */
+    @Transactional
+    public List<Variante> creerGrille(Long produitId, List<List<Long>> valeursParAttribut) {
+        Produit produit = produits.findById(produitId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId));
+
+        List<List<ValeurAttribut>> dimensions = valeursParAttribut.stream()
+                .map(this::chargerValeurs)
+                .filter(liste -> !liste.isEmpty())
+                .toList();
+
+        if (dimensions.isEmpty()) {
+            throw new RegleMetierViolee("GRILLE_VIDE",
+                    "Choisissez au moins une valeur pour créer des déclinaisons.");
+        }
+
+        // Les combinaisons déjà présentes, pour les sauter sans rien dire.
+        Set<String> existantes = produit.getVariantes().stream()
+                .map(ServiceCatalogue::empreinte)
+                .collect(Collectors.toSet());
+
+        List<Variante> creees = new ArrayList<>();
+
+        for (List<ValeurAttribut> combinaison : produitCartesien(dimensions)) {
+            String sku = CompositionVariante.sku(produit.getReference(), combinaison);
+
+            if (existantes.contains(empreinteDe(combinaison)) || variantes.existsBySku(sku)) {
+                continue;
+            }
+
+            Variante variante = produit.ajouterVariante(
+                    sku, CompositionVariante.libelle(produit.getNom(), combinaison), false);
+            combinaison.forEach(variante::definirPar);
+            annoncerLaNaissance(variante);
+            creees.add(variante);
+        }
+
+        if (creees.isEmpty()) {
+            throw new ConflitEtat("GRILLE_DEJA_CREEE",
+                    "Toutes ces combinaisons existent déjà.");
+        }
+        return creees;
+    }
+
+    /**
+     * Les valeurs d'une dimension, dans l'ordre du référentiel.
+     *
+     * <p>⚠️ Toutes doivent appartenir au <b>même</b> attribut. Mélanger une
+     * taille et une couleur dans la même dimension produirait une grille où
+     * « 42 » et « Blanc » s'excluent, alors qu'ils se combinent.</p>
+     */
+    private List<ValeurAttribut> chargerValeurs(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        List<ValeurAttribut> valeurs = ids.stream()
+                .distinct()
+                .map(id -> valeursAttribut.findById(id)
+                        .orElseThrow(() -> RessourceIntrouvable.de("Valeur d'attribut", id)))
+                .sorted(Comparator.comparingInt(ValeurAttribut::getOrdre))
+                .toList();
+
+        long nbAttributs = valeurs.stream()
+                .map(v -> v.getAttribut().getId())
+                .distinct()
+                .count();
+
+        if (nbAttributs > 1) {
+            throw new RegleMetierViolee("DIMENSION_MELANGEE",
+                    "Une dimension de la grille ne peut porter que les valeurs "
+                    + "d'un seul attribut.");
+        }
+        return valeurs;
+    }
+
+    /**
+     * Le produit cartésien des dimensions.
+     *
+     * <p>{@code [[42, 43], [Blanc, Noir]]} donne quatre combinaisons. C'est
+     * exactement ce qu'Amazon appelle une variation à deux thèmes.</p>
+     */
+    private static List<List<ValeurAttribut>> produitCartesien(List<List<ValeurAttribut>> dimensions) {
+        List<List<ValeurAttribut>> resultat = new ArrayList<>();
+        resultat.add(new ArrayList<>());
+
+        for (List<ValeurAttribut> dimension : dimensions) {
+            List<List<ValeurAttribut>> etendu = new ArrayList<>();
+            for (List<ValeurAttribut> debut : resultat) {
+                for (ValeurAttribut valeur : dimension) {
+                    List<ValeurAttribut> suite = new ArrayList<>(debut);
+                    suite.add(valeur);
+                    etendu.add(suite);
+                }
+            }
+            resultat = etendu;
+        }
+        return resultat;
+    }
+
+    /** Les identifiants de valeurs, triés et joints : deux fois les mêmes = doublon. */
+    private static String empreinte(Variante variante) {
+        return variante.getValeurs().stream()
+                .map(v -> String.valueOf(v.getId()))
+                .sorted()
+                .collect(Collectors.joining("-"));
+    }
+
+    private static String empreinteDe(List<ValeurAttribut> valeurs) {
+        return valeurs.stream()
+                .map(v -> String.valueOf(v.getId()))
+                .sorted()
+                .collect(Collectors.joining("-"));
     }
 
     /**
@@ -507,9 +654,32 @@ public class ServiceCatalogue {
      * exactement ceux sur lesquels il reste du travail.</p>
      */
     @Transactional(readOnly = true)
-    public Page<ResumeProduit> administration(String recherche, Pageable pagination) {
+    public Page<ResumeProduit> administration(String recherche, String disponibilite,
+                                              Pageable pagination) {
         String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
-        return enrichir(produits.administration(filtre, pagination));
+
+        // Une valeur inconnue ne fait pas échouer la requête : elle retombe sur
+        // « tous ». Un back-office qui répond 400 parce qu'un paramètre d'URL a
+        // été bricolé à la main donne l'impression d'être cassé.
+        String mode = Disponibilite.valide(disponibilite);
+
+        return enrichir(produits.administration(filtre, mode, pagination));
+    }
+
+    /** Les filtres de disponibilité proposés par la liste d'administration. */
+    public enum Disponibilite {
+        TOUS, EN_STOCK, FAIBLE, RUPTURE;
+
+        static String valide(String demande) {
+            if (demande == null || demande.isBlank()) {
+                return TOUS.name();
+            }
+            try {
+                return valueOf(demande.strip().toUpperCase(java.util.Locale.ROOT)).name();
+            } catch (IllegalArgumentException inconnu) {
+                return TOUS.name();
+            }
+        }
     }
 
     /**
@@ -523,7 +693,7 @@ public class ServiceCatalogue {
      */
     private Page<ResumeProduit> enrichir(Page<Produit> page) {
         if (page.isEmpty()) {
-            return page.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique, null, null));
+            return page.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique, null, null, 0));
         }
 
         Set<Long> idsMarchands = page.getContent().stream()
@@ -545,8 +715,17 @@ public class ServiceCatalogue {
                 .collect(Collectors.toMap(PrixMinProduit::produitId, p -> p,
                         (a, b) -> a.prixMin().compareTo(b.prixMin()) <= 0 ? a : b));
 
+        // La disponibilité, agrégée par produit — une requête pour la page.
+        Map<Long, Integer> disponibles = variantes.disponibilitesPar(idsProduits).stream()
+                .collect(Collectors.toMap(
+                        VarianteRepository.DisponibiliteProduit::getProduitId,
+                        VarianteRepository.DisponibiliteProduit::getDisponible));
+
         return page.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique,
-                nomsMarchands.get(p.getMarchandId()), prix.get(p.getId())));
+                nomsMarchands.get(p.getMarchandId()), prix.get(p.getId()),
+                // Absent de la table : le produit n'a aucune ligne de stock,
+                // ce qui vaut zéro et non « inconnu ».
+                disponibles.getOrDefault(p.getId(), 0)));
     }
 
     /**

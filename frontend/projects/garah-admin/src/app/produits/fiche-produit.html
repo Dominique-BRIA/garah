@@ -123,12 +123,92 @@
           </p>
         </div>
         @if (session.peut('VARIANTE_CREER') && formulaire() === null) {
-          <button type="button" class="gu-btn gu-btn--secondaire petit"
-                  (click)="ouvrirCreationVariante()">
-            <gu-icone nom="plus" /> Ajouter
-          </button>
+          <div class="entete-actions">
+            <!-- La grille EN PREMIER, et en bouton primaire : c'est le chemin
+                 recommandé. La saisie libre reste possible pour ce qui ne suit
+                 aucune dimension du référentiel, mais elle ne doit plus être
+                 le réflexe — c'est elle qui a produit « 42 » en intitulé et
+                 « Taille » en référence. -->
+            <button type="button" class="gu-btn gu-btn--primaire petit"
+                    (click)="ouvrirGrille()">
+              <gu-icone nom="layer-group" /> Par dimensions
+            </button>
+            <button type="button" class="gu-btn gu-btn--secondaire petit"
+                    (click)="ouvrirCreationVariante()">
+              <gu-icone nom="plus" /> Saisie libre
+            </button>
+          </div>
         }
       </header>
+
+      <!-- ---------------- La création par grille ---------------- -->
+      @if (ouvert('variante-grille')) {
+        <form class="encart" (ngSubmit)="creerGrille()" novalidate>
+          @if (chargementAttributs()) {
+            <p class="vide"><gu-icone nom="circle-notch" tourne /> Chargement des dimensions…</p>
+          } @else if (attributs().length === 0) {
+            <!-- Sans dimension, la grille n'a rien à proposer. On envoie au
+                 référentiel plutôt que d'afficher un formulaire vide. -->
+            <p class="vide">
+              Aucune dimension n’est définie. Une dimension — Taille, Couleur —
+              se définit une fois et sert à tout le catalogue.
+            </p>
+            <div class="boutons">
+              <button type="button" class="gu-btn gu-btn--secondaire petit"
+                      (click)="fermer()">Annuler</button>
+              <a routerLink="/attributs" class="gu-btn gu-btn--primaire petit">
+                Définir les dimensions
+              </a>
+            </div>
+          } @else {
+            @for (a of attributs(); track a.id) {
+              <div class="dimension-choix">
+                <span class="dimension-choix__nom">{{ a.nom }}</span>
+                <div class="dimension-choix__valeurs">
+                  @for (val of a.valeurs; track val.id) {
+                    <label class="puce" [class.puce--active]="valeurChoisie(val.id)">
+                      <input type="checkbox" [checked]="valeurChoisie(val.id)"
+                             (change)="basculerValeur(val.id)" />
+                      @if (val.valeurAffichage) {
+                        <span class="puce__couleur" [style.background]="val.valeurAffichage"
+                              aria-hidden="true"></span>
+                      }
+                      {{ val.libelle }}
+                    </label>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Le nombre AVANT le clic. Deux tailles et deux couleurs font
+                 quatre déclinaisons ; cinq et six en font trente. Un catalogue
+                 se salit beaucoup plus vite qu'il ne se nettoie. -->
+            <p class="aide">
+              @if (nbCombinaisons() === 0) {
+                Choisissez au moins une valeur.
+              } @else {
+                {{ nbCombinaisons() }} déclinaison(s) seront créées. Les
+                références et les intitulés sont composés à partir des valeurs.
+              }
+            </p>
+
+            @if (erreurForm(); as m) {
+              <p class="alerte" role="alert">{{ m }}</p>
+            }
+
+            <div class="boutons">
+              <button type="button" class="gu-btn gu-btn--secondaire petit"
+                      (click)="fermer()">Annuler</button>
+              <button type="submit" class="gu-btn gu-btn--primaire petit"
+                      [disabled]="action() !== null || nbCombinaisons() === 0">
+                @if (action() === 'variante') {
+                  <gu-icone nom="circle-notch" tourne /> Création…
+                } @else { Créer les déclinaisons }
+              </button>
+            </div>
+          }
+        </form>
+      }
 
       @if (ouvert('variante-creation')) {
         <form class="encart" (ngSubmit)="ajouterVariante()" novalidate>
@@ -170,6 +250,21 @@
               <div>
                 <span class="variante__libelle">{{ v.libelle }}</span>
                 <code>{{ v.sku }}</code>
+
+                <!-- Les valeurs de dimension, quand la déclinaison en porte.
+                     C'est ce qui distingue « Taille 42 » d'un intitulé tapé au
+                     clavier : ici, la valeur est CHOISIE dans le référentiel,
+                     donc filtrable et affichable en sélecteur sur la vitrine. -->
+                @for (val of v.valeurs; track val.valeurId) {
+                  <span class="valeur-dim" [attr.title]="val.attribut">
+                    @if (val.valeurAffichage) {
+                      <span class="valeur-dim__couleur"
+                            [style.background]="val.valeurAffichage" aria-hidden="true"></span>
+                    }
+                    {{ val.libelle }}
+                  </span>
+                }
+
                 @if (v.parDefaut) {
                   <span class="gu-badge gu-badge--neutre petit-badge">par défaut</span>
                 }
