@@ -1481,3 +1481,22 @@ tableau de bord annonce le double de la réalité.
 **Ce qu'on perd.** Le repli immédiat. Redéployer sur Render redevient un
 travail de mise en place — mais `render.yaml` reste dans l'historique git, et
 D-14 dit pourquoi il avait été écrit ainsi.
+
+**Ce qui a été fait le 08/09/2026, et la nuance.** Le service a été
+**suspendu**, pas supprimé. Vérifié : `garah-api.onrender.com/api/sante`
+répond `503` en 0,78 s — c'est Render qui répond, pas l'application. Aucun
+processus ne tourne, donc aucun doublon de tâche planifiée.
+
+> ⚠️ **Un service suspendu peut être repris**, d'un clic ou par Render
+> lui-même. Ce jour-là, il redémarrerait avec `autoDeploy` et **la même base
+> Neon** — et le doublon décrit plus haut reviendrait sans que rien ne le
+> signale. La suppression est la seule forme définitive.
+>
+> Tant que le service existe, cette entrée reste ouverte.
+
+**Le gain, mesuré le 08/09/2026 sur `/api/sante` :**
+
+| | Render | Azure B1 |
+|---|---|---|
+| À chaud | 6 s | **1,24 s** |
+| Au réveil | ~120 s | **aucun réveil** (Always On) |

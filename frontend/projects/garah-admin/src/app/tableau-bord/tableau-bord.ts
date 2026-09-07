@@ -98,6 +98,12 @@ export class TableauBord {
       icone: 'comments',
       teinte: 'vert',
       permission: 'CONVERSATION_CONSULTER',
+      // Même raisonnement que la carte des réclamations : le lien porte le
+      // filtre que la carte vient de compter. La file d'attente, ce sont les
+      // conversations WAITING — mener à « toutes » ferait chercher les trois
+      // dossiers libres au milieu de ceux de toute l'équipe.
+      lien: '/conversations',
+      parametres: { statut: 'WAITING' },
       source: () => this.compterListe('/api/conversations/file-attente'),
     },
     {

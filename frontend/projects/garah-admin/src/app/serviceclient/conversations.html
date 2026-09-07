@@ -1,0 +1,223 @@
+<header class="entete">
+  <div>
+    <h1>Service client</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (libelleStatut(); as s) { {{ total() }} conversation(s) — {{ s }} }
+      @else { {{ total() }} conversation(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <!-- « Mes dossiers » est le filtre le plus utilisé : il a son propre
+         bouton, pas une case perdue dans un menu. -->
+    <button type="button" class="gu-btn"
+            [class.gu-btn--primaire]="miennes()"
+            [class.gu-btn--secondaire]="!miennes()"
+            (click)="basculerMiennes()">
+      Mes dossiers
+    </button>
+
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<nav class="filtres" aria-label="Filtrer par statut">
+  <button type="button" class="filtre" [class.filtre--actif]="statut() === ''"
+          (click)="filtrer('')">Toutes</button>
+
+  @for (s of statuts; track s.code) {
+    <button type="button" class="filtre"
+            [class.filtre--actif]="statut() === s.code"
+            [class.filtre--action]="s.agir"
+            (click)="filtrer(s.code)">
+      {{ s.libelle }}
+    </button>
+  }
+</nav>
+
+@if (erreur(); as m) {
+  <p class="alerte" role="alert">{{ m }}</p>
+}
+
+@if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="comments" class="etat__icone" />
+    @if (miennes()) {
+      <p class="etat__titre">Aucun dossier ne vous est attribué</p>
+      <p class="etat__aide">Prenez-en un dans la file d’attente.</p>
+    } @else if (libelleStatut(); as s) {
+      <p class="etat__titre">Aucune conversation « {{ s }} »</p>
+    } @else {
+      <p class="etat__titre">Aucune conversation</p>
+      <!-- D'où viennent les conversations. Sans cette phrase, on cherche un
+           bouton « Nouvelle conversation » qui n'existe pas : c'est le client
+           qui écrit, jamais le back-office à sa place. -->
+      <p class="etat__aide">
+        Une conversation est ouverte par le client. Elle ne se crée pas depuis
+        cet écran.
+      </p>
+    }
+  </div>
+} @else {
+  <ul class="conversations">
+    @for (c of liste(); track c.id) {
+      <li class="conv" [class.conv--attend]="agirSur(c.statut)" (click)="ouvrir(c)"
+          tabindex="0" (keyup.enter)="ouvrir(c)">
+        <div class="conv__tete">
+          <span class="conv__sujet">{{ c.sujet }}</span>
+          <span class="gu-badge" [class]="badge(c.statut)">{{ libelle(c.statut) }}</span>
+        </div>
+
+        <p class="conv__client">
+          {{ c.clientNom ?? 'Client supprimé' }}
+          @if (c.clientCode) { <span class="attenue">· {{ c.clientCode }}</span> }
+        </p>
+
+        <div class="conv__pied">
+          <!-- 🎯 Le compteur de NON LUS, pas le total : une conversation de
+               quarante messages tous lus n'attend rien. -->
+          @if (c.nonLus > 0) {
+            <span class="pastille">{{ c.nonLus }} non lu(s)</span>
+          } @else {
+            <span class="attenue">{{ c.nombreMessages }} message(s)</span>
+          }
+
+          <span class="attenue">{{ attente(c.dateCreation) }}</span>
+
+          @if (prenable(c)) {
+            <button type="button" class="gu-btn gu-btn--primaire petit"
+                    (click)="prendre(c, $event)"
+                    [disabled]="action() !== null">
+              Prendre
+            </button>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="allerA($event)" />
+}
+
+<!-- ==================================================================== -->
+<!-- Le fil                                                                -->
+<!-- ==================================================================== -->
+@if (ouverte() || chargementFil() || erreurFil()) {
+  <div class="voile" (click)="fermerFil()" aria-hidden="true"></div>
+
+  <aside class="panneau panneau--large" role="dialog" aria-modal="true"
+         aria-label="Conversation">
+    @if (chargementFil()) {
+      <div class="etat">
+        <gu-icone nom="circle-notch" tourne class="etat__icone" />
+        <p class="etat__titre">Chargement…</p>
+      </div>
+    } @else if (ouverte(); as fil) {
+      <header class="fil__entete">
+        <div>
+          <h2>{{ fil.sujet }}</h2>
+          <p class="aide">Ouverte le {{ dateHeure(fil.dateCreation) }}</p>
+        </div>
+        <span class="gu-badge" [class]="badge(fil.statut)">{{ libelle(fil.statut) }}</span>
+      </header>
+
+      @if (fil.messages.length === 0) {
+        <!-- Un fil vide se DIT. Un blanc laisserait croire à un défaut
+             d'affichage, alors qu'ouvrir sans écrire est permis. -->
+        <p class="attenue">Aucun message. Le sujet a suffi à ouvrir le dossier.</p>
+      } @else {
+        <ol class="fil">
+          @for (m of fil.messages; track m.id) {
+            <li class="bulle" [class.bulle--equipe]="deLEquipe(m.expediteurId)">
+              <p class="bulle__contenu">{{ m.contenu }}</p>
+              <p class="bulle__date">{{ dateHeure(m.dateEnvoi) }}</p>
+            </li>
+          }
+        </ol>
+      }
+
+      <!-- ⚠️ Les propositions vivent DANS la conversation. Les sortir sur un
+           écran à part leur ferait perdre leur contexte — et supprimerait la
+           garantie qu'un échange précède toujours un prix négocié. -->
+      @if (propositions().length > 0) {
+        <p class="gu-libelle">Prix négociés</p>
+        <ul class="propositions">
+          @for (p of propositions(); track p.id) {
+            <li class="proposition">
+              <div class="proposition__tete">
+                <span class="proposition__prix">{{ montant(p.prixUnitairePropose) }}</span>
+                <span class="gu-badge" [class]="badgeProposition(p.statut)">
+                  {{ libelleProposition(p.statut) }}
+                </span>
+              </div>
+              <p class="proposition__detail">
+                {{ p.quantite }} unité(s) ·
+                @if (p.sens === 'CLIENT') { proposé par le client }
+                @else { proposé par l’équipe }
+                · jusqu’au {{ dateHeure(p.dateExpiration) }}
+              </p>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (erreurFil(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      @if (fil.statut !== 'CLOSED') {
+        <form class="repondre" (ngSubmit)="repondre()" novalidate>
+          <label class="gu-libelle" for="reponse">Répondre</label>
+          <textarea id="reponse" name="reponse" class="gu-champ" rows="3"
+                    placeholder="Votre réponse au client…"
+                    [ngModel]="reponse()" (ngModelChange)="reponse.set($event)"></textarea>
+
+          <div class="boutons">
+            <button type="submit" class="gu-btn gu-btn--primaire"
+                    [disabled]="!reponse().trim() || action() !== null">
+              @if (action() === 'reponse') { <gu-icone nom="circle-notch" tourne /> }
+              Envoyer
+            </button>
+
+            @if (closable()) {
+              <button type="button" class="gu-btn gu-btn--secondaire"
+                      (click)="clore()" [disabled]="action() !== null">
+                @if (action() === 'cloture') { <gu-icone nom="circle-notch" tourne /> }
+                Clore la conversation
+              </button>
+            }
+          </div>
+        </form>
+      } @else {
+        <p class="aide">
+          Fermée le {{ dateHeure(fil.dateCloture) }}. Un nouvel échange demande
+          une nouvelle conversation.
+        </p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermerFil()">
+          Fermer
+        </button>
+      </div>
+    } @else if (erreurFil(); as m) {
+      <div class="etat" role="alert">
+        <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+        <p class="etat__titre">{{ m }}</p>
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermerFil()">Fermer</button>
+      </div>
+    }
+  </aside>
+}

@@ -1,0 +1,205 @@
+// Le service client. Motifs communs dans ecrans-communs.scss.
+
+// --- Les filtres de statut ---------------------------------------------------
+.filtres {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.filtre {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte-attenue);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// Un point devant les statuts qui appellent un geste. Pas une couleur de fond :
+// le filtre actif s'en sert deja, et deux signaux sur le meme canal ne se
+// distinguent plus.
+.filtre--action::before {
+  content: '';
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--primary);
+  vertical-align: middle;
+}
+
+.filtre--actif {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+
+  &::before { background: #fff; }
+}
+
+// --- La file -----------------------------------------------------------------
+// Des cartes plutot qu'un tableau : une conversation se reconnait a son SUJET,
+// une phrase de longueur variable qu'une colonne tronquerait.
+.conversations {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.conv {
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-md, 0.75rem);
+  background: var(--surface);
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// Ce qui attend un geste porte un filet a gauche. Discret : dans une file de
+// vingt dossiers, la moitie attend quelque chose — les peindre en couleur ne
+// distinguerait plus rien.
+.conv--attend { border-left: 3px solid var(--primary); }
+
+.conv__tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.conv__sujet { font-weight: 600; line-height: 1.4; }
+
+.conv__client {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 0.86rem;
+}
+
+.conv__pied {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+}
+
+// Le compteur de non lus. C'est le seul chiffre qui reponde a « laquelle
+// attend ma reponse ? », donc le seul qui merite une pastille.
+.pastille {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.conv__pied .gu-btn { margin-left: auto; }
+
+.attenue { color: var(--texte-attenue); }
+
+// --- Le fil ------------------------------------------------------------------
+// Plus large que les autres panneaux : on y lit une conversation entiere, pas
+// un formulaire de six champs.
+.panneau--large { width: min(34rem, 100vw); }
+
+.fil__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+
+  h2 { margin-bottom: 0.2rem; }
+}
+
+.fil {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.bulle {
+  max-width: 85%;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-md, 0.75rem);
+  background: var(--surface-douce);
+}
+
+// L'equipe a droite, le client a gauche — la convention de toutes les
+// messageries. L'inverser demanderait de lire l'expediteur a chaque ligne.
+.bulle--equipe {
+  margin-left: auto;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.bulle__contenu {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  white-space: pre-wrap;   // un message garde ses retours a la ligne
+}
+
+.bulle__date {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  color: var(--texte-attenue);
+}
+
+// --- Les prix negocies -------------------------------------------------------
+.propositions {
+  list-style: none;
+  margin: 0.5rem 0 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.proposition {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+}
+
+.proposition__tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.proposition__prix {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.proposition__detail {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--texte-attenue);
+  line-height: 1.5;
+}
+
+.repondre {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--champ-bordure);
+}
+
+.panneau .boutons { margin-top: 1rem; }

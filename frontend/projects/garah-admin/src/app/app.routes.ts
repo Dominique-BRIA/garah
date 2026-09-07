@@ -56,6 +56,10 @@ export const routes: Routes = [
       // sont pas les memes.
       { path: 'reclamations', loadComponent: () => import('./sav/reclamations').then((m) => m.Reclamations) },
       { path: 'retours', loadComponent: () => import('./sav/retours').then((m) => m.Retours) },
+      // Le service client. Les propositions de prix n'ont pas de route a
+      // elles : elles vivent DANS une conversation, et les en sortir leur
+      // ferait perdre leur contexte.
+      { path: 'conversations', loadComponent: () => import('./serviceclient/conversations').then((m) => m.Conversations) },
       { path: 'lieux', loadComponent: () => import('./lieux/lieux').then((m) => m.Lieux) },
       // Les itineraires vivent dans le meme dossier que les lieux : un trajet
       // n'est rien d'autre qu'une suite de lieux, et on ne peut en definir un
