@@ -42,6 +42,35 @@ spring:
         timeout: 10000
         writetimeout: 10000
 
+  # ---------------------------------------------------------------------------
+  # Les dépôts s'initialisent à la PREMIÈRE UTILISATION, pas au démarrage
+  # ---------------------------------------------------------------------------
+  # 🎯 C'est ce réglage qui a sauvé le déploiement du 07/09/2026.
+  #
+  # L'instance gratuite mourait avec « Out of memory (used over 512Mi) », juste
+  # après QueryEnhancerFactory. Reproduit en local sous -XX:MaxRAM=512m, le
+  # diagnostic est tombé : OutOfMemoryError sur le TAS, pas sur le natif.
+  #
+  # La cause n'est pas la taille de l'application, c'est la SIMULTANÉITÉ :
+  # Spring Data compile toutes les requêtes de tous les dépôts d'un seul coup.
+  # Une trentaine de @Query, dont plusieurs de trente lignes avec sous-requêtes,
+  # analysées en rafale — un pic que le tas ne peut pas absorber.
+  #
+  #     tas 205 Mo   OOM        tas 307 Mo   démarre (132 Mo vivants)
+  #     tas 230 Mo + ce réglage démarre, répond, 245 Mo de RSS
+  #
+  # ⚠️ CE QUE ÇA COÛTE, ET IL FAUT LE SAVOIR. Une requête @Query invalide ne
+  #    fait plus échouer le DÉMARRAGE : elle échoue à la première requête qui
+  #    l'utilise, en production, devant un utilisateur.
+  #
+  #    C'est pourquoi le profil `test` plus bas repasse en `default` : en test,
+  #    le contexte doit encore refuser de démarrer sur une requête cassée.
+  #    Le filet reste tendu là où il sert — avant la mise en ligne.
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: lazy
+
   jpa:
     # ddl-auto: none — LE SCHÉMA APPARTIENT À FLYWAY, jamais à Hibernate.
     # Laisser Hibernate créer les tables ferait perdre tous les CHECK, les
@@ -54,6 +83,26 @@ spring:
         jdbc:
           time_zone: UTC
         format_sql: true
+
+        # ---------------------------------------------------------------------
+        # Le cache de plans de requetes — le plus gros poste memoire caché
+        # ---------------------------------------------------------------------
+        # Hibernate garde en memoire l'arbre syntaxique de CHAQUE requete HQL
+        # qu'il a compilee. Le defaut est de 2048 entrees.
+        #
+        # Ce projet compte plusieurs dizaines de @Query, dont certaines font
+        # trente lignes — les listes filtrees du back-office, avec leurs
+        # sous-requetes. Chaque arbre pese, et ils sont TOUS construits au
+        # demarrage, au moment ou Spring Data cree les proxys de depot.
+        #
+        # ⚠️ C'est exactement la ou l'instance gratuite est morte : le journal
+        #    s'arrete sur QueryEnhancerFactory, puis « Out of memory ».
+        #
+        # 64 entrees couvrent tout ce que l'application execute reellement.
+        # Au-dela, on ne fait que retenir des plans qu'on ne rejouera jamais.
+        query:
+          plan_cache_max_size: 64
+          plan_parameter_metadata_max_size: 32
 
   flyway:
     enabled: true
@@ -92,6 +141,26 @@ spring:
 server:
   port: ${PORT:8080}
 
+  # ---------------------------------------------------------------------------
+  # Tomcat, taille d'une instance gratuite
+  # ---------------------------------------------------------------------------
+  # Le defaut est de 200 threads de traitement. Sur une instance a UN cœur et
+  # 512 Mo, c'est absurde : ces threads ne s'executent jamais en parallele, ils
+  # ne font qu'occuper de la memoire — pile reservee, structures internes,
+  # objets de requete.
+  #
+  # 20 suffit tres largement : avec un seul cœur, une requete lente bloque de
+  # toute facon les autres. Ce qui protege des pics, c'est la file d'attente
+  # (accept-count), pas le nombre de threads.
+  #
+  # ⚠️ A remonter le jour d'un plan payant a plusieurs cœurs. Laisse tel quel,
+  #    ce reglage plafonnerait le debit d'une machine capable de plus.
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
+    accept-count: 50
+
 logging:
   level:
     org.flywaydb: INFO
@@ -101,5 +170,18 @@ spring:
   config:
     activate:
       on-profile: test
+
+  # ⚠️ En TEST, les dépôts s'initialisent au démarrage — l'inverse de la
+  #    production. Ce n'est pas une incohérence, c'est le filet.
+  #
+  #    Avec `lazy`, une @Query invalide passerait le démarrage sans un mot et
+  #    n'échouerait qu'à la première requête qui l'utilise. En test, on veut
+  #    exactement le contraire : que le contexte REFUSE de démarrer, tout de
+  #    suite, avant la mise en ligne.
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: default
+
   datasource:
     url: ${GARAH_TEST_DB_URL:jdbc:postgresql://localhost:5432/garah_test}

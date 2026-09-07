@@ -112,7 +112,51 @@ COPY --from=construction /build/target/*.jar application.jar
 # comporte differemment selon les versions de BuildKit, et un reglage memoire
 # qui se transforme en chaine vide ne se voit qu au moment ou le conteneur
 # meurt.
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=40 -XX:MaxMetaspaceSize=144m -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
+#
+# ─── Revision du 07/09/2026 : l instance est morte en demarrant ──────────────
+#
+# « Out of memory (used over 512Mi) », juste apres QueryEnhancerFactory —
+# c est-a-dire pendant que Spring Data compile les requetes des depots.
+#
+# ⚠️ LE PREMIER REFLEXE ETAIT LE MAUVAIS. Reduire le tas semblait logique
+#    « pour laisser de la place au natif ». Reproduit localement avec
+#    -XX:MaxRAM=512m, le journal a repondu :
+#
+#        Terminating due to java.lang.OutOfMemoryError: Java heap space
+#
+#    Ce n etait donc PAS le natif : c est le tas qui manquait, et le rogner
+#    aggravait exactement ce qu il fallait soulager.
+#
+# Ce que la mesure a montre, chiffre par chiffre :
+#
+#   tas 205 Mo (40%)              OOM au demarrage
+#   tas 205 Mo + lazy-init beans  OOM au demarrage
+#   tas 307 Mo (60%)              demarre — 132 Mo vivants en tenured
+#   tas 281 Mo (55%)              465 Mo de RSS, encore en train de demarrer
+#
+# Le pic n est pas la taille de l application : c est la COMPILATION DE
+# TOUTES LES REQUETES D UN SEUL COUP. Une trentaine de @Query, dont
+# plusieurs de trente lignes avec sous-requetes, analysees en rafale.
+#
+# La solution n est donc pas d agrandir le tas — elle est d etaler le pic.
+# `spring.data.jpa.repositories.bootstrap-mode=lazy` (application.yml) cree
+# les proxys de depot a la PREMIERE UTILISATION plutot qu au demarrage.
+#
+#   tas 230 Mo (45%) + bootstrap-mode lazy   demarre, repond,
+#                                            245 Mo de RSS mesures
+#
+# Les autres reglages restent utiles et sont conserves :
+#   - MaxMetaspaceSize plafonne, pour obtenir une erreur lisible plutot qu un
+#     conteneur tue sans explication ;
+#   - ReservedCodeCacheSize a 40 Mo : avec TieredStopAtLevel=1 on ne compile
+#     qu en C1, et le defaut de 240 Mo reserve un espace jamais utilise ;
+#   - UseSerialGC : la plus petite empreinte, et sur un seul cœur les
+#     collecteurs paralleles ne servent a rien.
+#
+# ⚠️ 245 Mo laissent de la marge, mais elle n est pas infinie. Chaque lot
+#    ajoute des entites et des requetes. Le jour ou ca remeurt, la reponse
+#    n est plus de rogner : c est un plan payant, ou un autre hebergeur.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=45 -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=40m -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError"
 
 # Render fournit le port dans $PORT. application.yml lit ${PORT:8080}.
 EXPOSE 8080
