@@ -12,6 +12,7 @@ import {
   ReponseErreur,
   ServiceSession,
   Variante,
+  montantLisible,
   aplatirCategories,
 } from 'garah-ui';
 
@@ -531,16 +532,10 @@ export class FicheProduit {
     }
   }
 
-  /**
-   * Un montant lisible : « 5 000 FCFA ».
-   *
-   * <p>Sans séparateur de milliers, 5000 et 50000 ne se distinguent qu'en
-   * comptant les chiffres — dans une grille faite pour comparer des prix,
-   * c'est exactement ce qu'il ne faut pas demander à l'œil.</p>
-   */
+  /** « 5 000 FCFA ». Le formatage vit dans `garah-ui`, pour ne pas dériver
+   *  d'un écran à l'autre. */
   protected montant(valeur: number, devise: string): string {
-    const nombre = new Intl.NumberFormat('fr-FR').format(valeur);
-    return `${nombre} ${devise === 'XAF' ? 'FCFA' : devise}`;
+    return montantLisible(valeur, devise);
   }
 
   /**

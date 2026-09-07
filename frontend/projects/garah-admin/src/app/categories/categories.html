@@ -1,8 +1,9 @@
 <header class="entete">
   <div>
-    <h1>Catégories</h1>
+    <h1>Catégories de produits</h1>
     <p class="sous-titre">
-      @if (chargement()) { Chargement… } @else { {{ lignes().length }} catégorie(s) }
+      Les familles qui classent le catalogue.
+      @if (chargement()) { Chargement… } @else { {{ lignes().length }} au total. }
     </p>
   </div>
 

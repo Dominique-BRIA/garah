@@ -72,14 +72,12 @@
               </div>
             </td>
             <td><code>{{ produit.reference }}</code></td>
-            <td>{{ produit.marchandNom }}</td>
-            <td>{{ produit.categorieNom }}</td>
+            <!-- Un tiret plutôt qu'une case vide : une colonne blanche laisse
+                 croire à un défaut d'affichage, le tiret dit « rien ici ». -->
+            <td>{{ produit.marchandNom || '—' }}</td>
+            <td>{{ produit.categorieNom || '—' }}</td>
             <td><span class="gu-badge" [class]="badge(produit.statut)">{{ produit.statut }}</span></td>
-            <td class="droite">
-              @if (produit.prixMin !== null) {
-                {{ produit.prixMin | number:'1.0-0' }} FCFA
-              } @else { — }
-            </td>
+            <td class="droite">{{ montant(produit.prixMin, produit.devise) }}</td>
           </tr>
         }
       </tbody>

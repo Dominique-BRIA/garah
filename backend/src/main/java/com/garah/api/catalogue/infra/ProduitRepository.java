@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
@@ -28,6 +29,33 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
     Page<Produit> findByStatut(StatutProduit statut, Pageable pagination);
 
     Page<Produit> findByCategorieIdAndStatut(Long categorieId, StatutProduit statut, Pageable pagination);
+
+    /**
+     * La liste du back-office : <b>tous les statuts</b>, brouillons compris.
+     *
+     * <p>C'est ce qui la distingue du catalogue public. Une liste de gestion
+     * qui ne montrerait que les produits publiés cacherait précisément ceux sur
+     * lesquels il reste du travail — un brouillon créé le matin serait
+     * introuvable l'après-midi.</p>
+     *
+     * <p>Le {@code JOIN FETCH} sur la catégorie évite une requête par ligne :
+     * la relation est {@code LAZY}, et chaque nom de catégorie affiché
+     * déclencherait sinon son propre aller-retour.</p>
+     */
+    @Query(value = """
+            SELECT p FROM Produit p
+              JOIN FETCH p.categorie
+             WHERE (:recherche IS NULL
+                    OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
+                    OR LOWER(p.reference) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+            """,
+            countQuery = """
+            SELECT count(p) FROM Produit p
+             WHERE (:recherche IS NULL
+                    OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
+                    OR LOWER(p.reference) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+            """)
+    Page<Produit> administration(@Param("recherche") String recherche, Pageable pagination);
 
     /**
      * Charge un produit avec ses variantes.

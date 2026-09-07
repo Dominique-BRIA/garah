@@ -123,4 +123,26 @@ public class ControleurProduit {
     public DetailProduit ficheAdministration(@PathVariable Long id) {
         return catalogue.ficheAdministration(id);
     }
+
+    /**
+     * La liste du back-office : <b>tous les statuts</b>.
+     *
+     * <p>Le {@code GET /api/produits} juste au-dessus est la vitrine, et il ne
+     * montre que les produits publiés. Faire servir les deux besoins par une
+     * seule route conditionnée par « est-ce que l'appelant a le droit de voir
+     * les brouillons ? » est exactement le genre d'endroit où une fuite finit
+     * par se glisser — un brouillon, un prix non validé, un produit retiré de
+     * la vente s'afficheraient un jour chez un client.</p>
+     */
+    @GetMapping("/administration")
+    @PreAuthorize("hasAuthority('PRODUIT_CONSULTER')")
+    public Page<ResumeProduit> listeAdministration(
+            @RequestParam(required = false) String recherche,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "24") int taille) {
+
+        return catalogue.administration(recherche, PageRequest.of(
+                Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX),
+                Sort.by(Sort.Direction.DESC, "dateCreation")));
+    }
 }

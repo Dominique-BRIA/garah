@@ -1,12 +1,12 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { DecimalPipe } from '@angular/common';
+
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Icone, Page, ResumeProduit, ServiceSession } from 'garah-ui';
+import { Icone, Page, ResumeProduit, ServiceSession, montantLisible } from 'garah-ui';
 
 @Component({
   selector: 'ga-produits',
-  imports: [DecimalPipe, Icone, RouterLink],
+  imports: [Icone, RouterLink],
   templateUrl: './produits.html',
   styleUrl: './produits.scss',
 })
@@ -27,7 +27,10 @@ export class Produits {
     this.chargement.set(true);
     this.erreur.set(null);
 
-    this.http.get<Page<ResumeProduit>>('/api/produits?page=0&taille=24').subscribe({
+    // ⚠️ La route d'ADMINISTRATION, pas le catalogue public. Ce dernier ne
+    // renvoie que les produits publiés : la liste de gestion cachait donc
+    // exactement les brouillons sur lesquels il restait du travail.
+    this.http.get<Page<ResumeProduit>>('/api/produits/administration?page=0&taille=24').subscribe({
       next: (page) => {
         this.produits.set(page.content);
         this.total.set(page.page.totalElements);
@@ -45,6 +48,11 @@ export class Produits {
   }
 
   /** La classe de badge correspondant au statut. */
+  /** « 5 000 FCFA », ou un tiret si le produit n'a pas encore de prix. */
+  protected montant(valeur: number | null, devise: string | null): string {
+    return montantLisible(valeur, devise);
+  }
+
   protected badge(statut: string): string {
     switch (statut) {
       case 'PUBLIE': return 'gu-badge--succes';

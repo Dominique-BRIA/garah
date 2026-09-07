@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Set;
 
 /**
@@ -373,7 +375,57 @@ public class ServiceCatalogue {
                 ? produits.findByStatut(StatutProduit.PUBLIE, pagination)
                 : produits.findByCategorieIdAndStatut(categorieId, StatutProduit.PUBLIE, pagination);
 
-        return resultats.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique));
+        return enrichir(resultats);
+    }
+
+    /**
+     * La liste du back-office : tous les statuts, brouillons compris.
+     *
+     * <p>Distincte du catalogue public, et pas par excès de prudence : une
+     * liste de gestion qui ne montrerait que les produits publiés cacherait
+     * exactement ceux sur lesquels il reste du travail.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<ResumeProduit> administration(String recherche, Pageable pagination) {
+        String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
+        return enrichir(produits.administration(filtre, pagination));
+    }
+
+    /**
+     * Complète une page de produits avec le marchand et le prix d'appel.
+     *
+     * <p>🎯 <b>Deux requêtes pour toute la page, pas deux par ligne.</b> La
+     * version naturelle — lire le marchand et la grille dans le {@code map} —
+     * en ferait quarante-huit pour vingt-quatre produits. Ce coût est
+     * invisible en développement, avec trois produits et une base locale ; il
+     * ne l'est plus sur une base distante et une connexion mobile.</p>
+     */
+    private Page<ResumeProduit> enrichir(Page<Produit> page) {
+        if (page.isEmpty()) {
+            return page.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique, null, null));
+        }
+
+        Set<Long> idsMarchands = page.getContent().stream()
+                .map(Produit::getMarchandId)
+                .collect(Collectors.toSet());
+
+        List<Long> idsProduits = page.getContent().stream()
+                .map(Produit::getId)
+                .toList();
+
+        Map<Long, String> nomsMarchands = marchands.nomsPar(idsMarchands);
+
+        Map<Long, PrixMinProduit> prix = tarifications
+                .prixMinPar(idsProduits, LocalDate.now()).stream()
+                // Un produit n'a qu'une devise en pratique. Si ce n'était plus
+                // vrai, on garde le prix le plus bas : c'est celui qui est
+                // annoncé, et annoncer le plus élevé serait mentir à la baisse
+                // dans l'autre sens.
+                .collect(Collectors.toMap(PrixMinProduit::produitId, p -> p,
+                        (a, b) -> a.prixMin().compareTo(b.prixMin()) <= 0 ? a : b));
+
+        return page.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique,
+                nomsMarchands.get(p.getMarchandId()), prix.get(p.getId())));
     }
 
     /**

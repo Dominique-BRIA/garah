@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -204,6 +205,73 @@ class ServiceCatalogueTest {
         assertThatThrownBy(() -> catalogue.ajouterVariante(id, "CHO-M-BLE", "autre", List.of()))
                 .isInstanceOf(RegleMetierViolee.class)
                 .hasMessageContaining("SKU");
+    }
+
+    // -------------------------------------------------------------------------
+    // La liste du back-office
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("la liste d'administration montre les brouillons, la vitrine non")
+    void administrationMontreLesBrouillons() {
+        DetailProduit brouillon = creerChemise();
+        em.flush();
+
+        // La vitrine ne montre que le publié : un brouillon n'y a rien à faire.
+        assertThat(catalogue.catalogue(null, PageRequest.of(0, 10)).getContent())
+                .extracting(ResumeProduit::id)
+                .doesNotContain(brouillon.id());
+
+        // Le back-office, lui, doit voir exactement ce sur quoi il reste du
+        // travail. Une liste de gestion qui cache les brouillons rend
+        // introuvable le produit créé le matin même.
+        assertThat(catalogue.administration(null, PageRequest.of(0, 10)).getContent())
+                .extracting(ResumeProduit::id)
+                .contains(brouillon.id());
+    }
+
+    @Test
+    @DisplayName("la liste porte le marchand, la catégorie et le prix d'appel")
+    void listeEnrichie() {
+        Long id = creerChemise().id();
+        donnerUnPrix(id);
+        em.flush();
+
+        ResumeProduit resume = catalogue.administration("Chemise", PageRequest.of(0, 10))
+                .getContent().getFirst();
+
+        // Les trois colonnes qu'on lit pour décider sur quelle ligne cliquer.
+        // Elles étaient absentes du DTO : la liste affichait des cases vides.
+        assertThat(resume.marchandNom()).isEqualTo("Marchand catalogue");
+        assertThat(resume.categorieNom()).isEqualTo("Vêtements de test");
+        assertThat(resume.prixMin()).isEqualByComparingTo("15000.00");
+        assertThat(resume.devise()).isEqualTo("XAF");
+    }
+
+    @Test
+    @DisplayName("un produit sans prix n'en invente pas un")
+    void listeSansPrix() {
+        creerChemise();
+        em.flush();
+
+        ResumeProduit resume = catalogue.administration("Chemise", PageRequest.of(0, 10))
+                .getContent().getFirst();
+
+        // `null`, et surtout pas zéro : un produit à 0 FCFA serait annoncé
+        // gratuit, alors qu'il n'a simplement pas encore de tarif.
+        assertThat(resume.prixMin()).isNull();
+        assertThat(resume.marchandNom()).isEqualTo("Marchand catalogue");
+    }
+
+    @Test
+    @DisplayName("la recherche porte sur le nom comme sur la référence")
+    void rechercheParNomOuReference() {
+        creerChemise();
+        em.flush();
+
+        assertThat(catalogue.administration("oxford", PageRequest.of(0, 10))).hasSize(1);
+        assertThat(catalogue.administration("REF-CAT", PageRequest.of(0, 10))).hasSize(1);
+        assertThat(catalogue.administration("introuvable", PageRequest.of(0, 10))).isEmpty();
     }
 
     private void donnerUnPrix(Long produitId) {

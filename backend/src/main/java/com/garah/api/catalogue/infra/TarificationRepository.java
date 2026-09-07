@@ -1,11 +1,13 @@
 package com.garah.api.catalogue.infra;
 
+import com.garah.api.catalogue.domaine.PrixMinProduit;
 import com.garah.api.catalogue.domaine.Tarification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -78,4 +80,34 @@ public interface TarificationRepository extends JpaRepository<Tarification, Long
                                 @Param("min") int min,
                                 @Param("max") int max,
                                 @Param("jour") LocalDate jour);
+
+    /**
+     * Le prix d'appel de plusieurs produits, en <b>une</b> requête.
+     *
+     * <p>⚠️ Le point de cette méthode est le {@code IN :produitIds}. La version
+     * naturelle — appeler {@code grille()} pour chaque ligne de la page — fait
+     * vingt-quatre allers-retours pour afficher vingt-quatre produits. On ne le
+     * voit pas en développement, avec une base locale et trois produits ; on le
+     * voit sur une connexion mobile et une base distante.</p>
+     *
+     * <p>Seules les déclinaisons <b>actives</b> comptent : afficher « à partir
+     * de 3 000 » d'après une déclinaison retirée de la vente promettrait un
+     * prix qu'aucun client ne peut obtenir.</p>
+     *
+     * <p>Le regroupement porte aussi sur la devise. Un produit n'en a qu'une en
+     * pratique, mais grouper sur elle évite d'avoir à choisir arbitrairement
+     * laquelle garder si ce n'était plus vrai.</p>
+     */
+    @Query("""
+            SELECT new com.garah.api.catalogue.domaine.PrixMinProduit(
+                       t.variante.produit.id, MIN(t.prixUnitaire), t.devise)
+              FROM Tarification t
+             WHERE t.variante.produit.id IN :produitIds
+               AND t.variante.statut = 'ACTIVE'
+               AND t.dateDebut <= :jour
+               AND (t.dateFin IS NULL OR t.dateFin > :jour)
+             GROUP BY t.variante.produit.id, t.devise
+            """)
+    List<PrixMinProduit> prixMinPar(@Param("produitIds") Collection<Long> produitIds,
+                                    @Param("jour") LocalDate jour);
 }

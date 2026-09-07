@@ -5,8 +5,6 @@ export interface ResumeProduit {
   readonly nom: string;
   readonly reference: string;
   readonly statut: StatutProduit;
-  readonly marchandNom: string;
-  readonly categorieNom: string;
   /**
    * ⚠️ L'URL, jamais la cle d'objet.
    *
@@ -15,7 +13,11 @@ export interface ResumeProduit {
    * il doit utiliser celle-ci telle quelle.
    */
   readonly urlPhotoPrincipale: string | null;
+  readonly marchandNom: string | null;
+  readonly categorieNom: string | null;
+  /** Le plus bas de la grille. Nul tant qu'aucun prix n'est pose. */
   readonly prixMin: number | null;
+  readonly devise: string | null;
 }
 
 export type StatutProduit = 'BROUILLON' | 'PUBLIE' | 'MASQUE' | 'ARCHIVE';
@@ -70,4 +72,32 @@ export interface Manques {
   readonly variante: boolean;
   readonly prix: boolean;
   readonly photo: boolean;
+}
+
+/**
+ * Un montant lisible : « 5 000 FCFA ».
+ *
+ * Sans separateur de milliers, 5000 et 50000 ne se distinguent qu'en comptant
+ * les chiffres — dans une liste faite pour comparer des prix, c'est exactement
+ * ce qu'il ne faut pas demander a l'oeil.
+ *
+ * ⚠️ Le test est `== null` et non `=== null`, volontairement : il attrape AUSSI
+ * `undefined`. Un champ absent de la reponse JSON arrive en `undefined`, et un
+ * `!== null` le laissait passer — c'est ainsi que la liste affichait « FCFA »
+ * tout seul, sans montant devant.
+ *
+ * @param devise le code renvoye par l'API. XAF s'ecrit FCFA : c'est le nom que
+ *               tout le monde emploie ici, et personne ne lit « XAF » sur un
+ *               prix.
+ */
+export function montantLisible(
+  valeur: number | null | undefined,
+  devise?: string | null,
+  absent = '—',
+): string {
+  if (valeur == null) {
+    return absent;
+  }
+  const nombre = new Intl.NumberFormat('fr-FR').format(valeur);
+  return `${nombre} ${devise === 'XAF' || !devise ? 'FCFA' : devise}`;
 }

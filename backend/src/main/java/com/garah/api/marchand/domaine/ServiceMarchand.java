@@ -8,7 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Les marchands : GARAH elle-même, et les partenaires qui vendent via elle.
@@ -96,6 +99,22 @@ public class ServiceMarchand {
     @Transactional(readOnly = true)
     public Page<VueMarchand> actifs(Pageable pagination) {
         return marchands.findByStatut(StatutMarchand.ACTIF, pagination).map(VueMarchand::de);
+    }
+
+    /**
+     * Les noms de plusieurs marchands, indexés par identifiant.
+     *
+     * <p>Pour les listes d'un autre domaine — le catalogue affiche « de qui
+     * vient ce produit ». Une requête pour toute la page, pas une par ligne.</p>
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> nomsPar(Collection<Long> ids) {
+        if (ids.isEmpty()) {
+            // `IN ()` est une requête invalide en SQL : on ne la lance pas.
+            return Map.of();
+        }
+        return marchands.nomsPar(ids).stream()
+                .collect(Collectors.toMap(NomMarchand::id, NomMarchand::nom));
     }
 
     @Transactional(readOnly = true)
