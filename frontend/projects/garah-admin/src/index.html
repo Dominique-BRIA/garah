@@ -8,8 +8,18 @@
   <!-- Deux déclarations, et l'ordre compte peu : un navigateur qui sait lire
        le SVG le préfère et reste net à toutes les tailles ; les autres
        retombent sur le .ico sans qu'on ait à les détecter. -->
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- ⚠️ L'ORDRE COMPTE, et il est contre-intuitif.
+       Le .ico se déclare EN PREMIER, le SVG ENSUITE. Un navigateur qui
+       comprend les deux retient la dernière déclaration qu'il sait lire :
+       en mettant le SVG d'abord, c'est le vieux .ico qui gagnait, et
+       l'onglet gardait l'ancienne icône alors que le fichier vert était
+       parfaitement servi.
+
+       Le .ico reste pour les navigateurs qui ignorent le SVG. `sizes="any"`
+       sur le SVG dit qu'il vaut pour toutes les tailles — c'est ce qui le
+       fait préférer sur les moteurs qui arbitrent par taille. -->
   <link rel="icon" href="favicon.ico" sizes="32x32">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" sizes="any">
 
   <!--
     L'écran d'attente, écrit ICI et pas dans un composant.
