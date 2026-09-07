@@ -1,6 +1,8 @@
 package com.garah.api.commerce.web;
 
 import com.garah.api.commerce.domaine.MoyenPaiement;
+import com.garah.api.commerce.domaine.StatutPaiement;
+import com.garah.api.commerce.domaine.TypePaiement;
 import com.garah.api.commerce.domaine.ServicePaiement;
 import com.garah.api.commerce.domaine.ResumePaiement;
 import com.garah.api.commerce.domaine.ServicePaiementMobile;
@@ -16,6 +18,8 @@ import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -216,6 +221,39 @@ public class ControleurPaiement {
         return paiements.rembourserEtResumer(
                 demande.commandeId(), demande.montant(), demande.moyen(),
                 demande.origineType(), demande.origineId());
+    }
+
+    /**
+     * La liste du back-office : encaissements et remboursements.
+     *
+     * <p>⚠️ Cette route est <b>séparée</b> de {@code GET /api/paiements/{id}},
+     * qui est réservée au propriétaire de la commande. Deux publics, deux
+     * règles d'accès, deux routes : la règle devient une annotation qu'on lit
+     * d'un coup d'œil au lieu d'une branche de code.</p>
+     */
+    @GetMapping
+    @PreAuthorize("hasAuthority('PAIEMENT_CONSULTER')")
+    public Page<ResumePaiement> lister(
+            @RequestParam(required = false) StatutPaiement statut,
+            @RequestParam(required = false) TypePaiement type,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int taille) {
+
+        return paiements.administration(statut, type, recherche,
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, 100)));
+    }
+
+    /**
+     * Tout ce qui s'est passé sur l'argent d'une commande.
+     *
+     * <p>Encaissements et remboursements ensemble : un remboursement n'a de
+     * sens qu'en regard de l'encaissement qu'il défait.</p>
+     */
+    @GetMapping("/commandes/{commandeId}")
+    @PreAuthorize("hasAuthority('PAIEMENT_CONSULTER')")
+    public List<ResumePaiement> pourCommande(@PathVariable Long commandeId) {
+        return paiements.pourCommande(commandeId);
     }
 
     /** Le reste dû sur une commande — pour le back-office. */

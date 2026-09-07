@@ -20,6 +20,7 @@ export * from './lib/modeles/marchand';
 export * from './lib/modeles/categorie';
 export * from './lib/modeles/variante';
 export * from './lib/modeles/equipe';
+export * from './lib/modeles/commerce';
 
 // --- Les listes ---
 export * from './lib/liste/bascule-vue';

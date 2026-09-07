@@ -1,0 +1,158 @@
+// La fiche commande. Les motifs communs viennent de styles.scss.
+
+.retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texte-attenue);
+  text-decoration: none;
+
+  &:hover { color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.retour__fleche { transform: rotate(180deg); font-size: 0.7rem; }
+
+.entete h1 {
+  font-size: 1.6rem;
+  font-family: var(--police-mono);
+}
+
+.actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+// --- L'annulation ------------------------------------------------------------
+//
+// Un encart pleine largeur, pas un panneau latéral : annuler une commande
+// payée déclenche un remboursement. Le geste doit occuper l'écran.
+.encart-annulation {
+  display: flex;
+  flex-direction: column;
+  max-width: 34rem;
+  margin-bottom: 1.5rem;
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 5%, var(--verre-fond));
+}
+
+// --- Les deux colonnes -------------------------------------------------------
+.colonnes {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 60rem) {
+  .colonnes { grid-template-columns: 1fr; }
+}
+
+.section-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+
+  h2 { font-size: 1.05rem; }
+}
+
+.sous-section { margin: 0.3rem 0 0; max-width: 26rem; }
+
+.vide {
+  color: var(--texte-attenue);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.montant { font-variant-numeric: tabular-nums; }
+
+// --- Les totaux --------------------------------------------------------------
+.totaux {
+  margin: 1.15rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--verre-bordure);
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.22rem 0;
+    font-size: 0.86rem;
+    color: var(--texte-attenue);
+  }
+
+  dt { margin: 0; }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+}
+
+.totaux__final {
+  margin-top: 0.4rem;
+  padding-top: 0.6rem !important;
+  border-top: 1px solid var(--verre-bordure);
+  font-size: 1.05rem !important;
+  font-weight: 700;
+  color: var(--texte) !important;
+}
+
+// La TVA sous le total, en plus petit : elle est CONTENUE dans le total,
+// pas ajoutée. La placer au même niveau ferait croire à une addition.
+.totaux__tva { font-size: 0.76rem !important; }
+
+// --- Les paiements -----------------------------------------------------------
+.reste {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: 0.86rem;
+
+  strong { font-variant-numeric: tabular-nums; }
+}
+
+.reste--solde {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.paiements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    padding: 0.7rem 0;
+    border-top: 1px solid var(--verre-bordure);
+  }
+
+  li:first-child { border-top: none; padding-top: 0; }
+}
+
+.paiement__tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.paiement__montant {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+// Un remboursement sort de la caisse. Le signe seul ne suffit pas : dans une
+// colonne de montants, un « − » se lit mal et se confond avec un tiret.
+.paiement__montant--sortant { color: var(--danger); }
+
+.paiement__detail {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--texte-attenue);
+}
+
+.paiement__reference {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--texte-attenue);
+}

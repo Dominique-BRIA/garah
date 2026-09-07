@@ -1,6 +1,7 @@
 package com.garah.api.commerce.web;
 
 import com.garah.api.commerce.domaine.DetailCommande;
+import com.garah.api.commerce.domaine.ResumeCommande;
 import com.garah.api.commerce.domaine.ServiceCommande;
 import com.garah.api.commerce.domaine.StatutCommande;
 import jakarta.validation.Valid;
@@ -104,6 +105,30 @@ public class ControleurCommande {
     // -------------------------------------------------------------------------
     // Le back-office
     // -------------------------------------------------------------------------
+
+    /**
+     * La liste du back-office : toutes les commandes.
+     *
+     * <p>Distincte de {@code /miennes}, qui répond à « où en sont MES
+     * commandes ? ». Servir les deux besoins par une seule route conditionnée
+     * par « est-ce que l'appelant est un responsable ? » finirait un jour par
+     * montrer à un client les commandes de tout le monde.</p>
+     *
+     * <p>{@code statut} filtre, {@code recherche} porte sur le numéro. Sans
+     * filtre par statut, la question « qu'est-ce qui attend une action ? »
+     * demanderait de parcourir toutes les pages.</p>
+     */
+    @GetMapping
+    @PreAuthorize("hasAuthority('COMMANDE_CONSULTER_DETAILS')")
+    public Page<ResumeCommande> lister(
+            @RequestParam(required = false) StatutCommande statut,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int taille) {
+
+        return commandes.administration(statut, recherche, PageRequest.of(
+                Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)));
+    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('COMMANDE_CONSULTER_DETAILS')")

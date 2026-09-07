@@ -18,6 +18,8 @@ import java.time.Instant;
 public record ResumePaiement(
         Long id,
         Long commandeId,
+        /** Renseigné dans les listes du back-office, nul ailleurs. */
+        String commandeNumero,
         String type,
         BigDecimal montant,
         String devise,
@@ -28,8 +30,19 @@ public record ResumePaiement(
         Instant dateConfirmation) {
 
     public static ResumePaiement de(Paiement p) {
+        return de(p, null);
+    }
+
+    /**
+     * @param numero le numéro de la commande, résolu <b>en amont pour toute la
+     *               page</b>. Un paiement ne porte qu'un {@code commandeId} :
+     *               afficher un identifiant numérique dans une liste
+     *               obligerait à ouvrir chaque ligne pour savoir de quelle
+     *               commande il s'agit.
+     */
+    public static ResumePaiement de(Paiement p, String numero) {
         return new ResumePaiement(
-                p.getId(), p.getCommandeId(), p.getType().name(),
+                p.getId(), p.getCommandeId(), numero, p.getType().name(),
                 p.getMontant(), p.getDevise(), p.getMoyen().name(),
                 p.getStatut().name(), p.getReferenceTransaction(),
                 p.getDateInitiation(), p.getDateConfirmation());

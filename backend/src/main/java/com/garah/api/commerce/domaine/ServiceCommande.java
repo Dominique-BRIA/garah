@@ -8,6 +8,8 @@ import com.garah.api.commerce.infra.PanierRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.iam.domaine.NomClient;
+import com.garah.api.iam.domaine.ServiceClient;
 import com.garah.api.iam.domaine.ServiceVerificationEmail;
 import com.garah.api.logistique.domaine.Lieu;
 import com.garah.api.logistique.domaine.TypeLieu;
@@ -27,6 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Le passage de commande : l'opération la plus lourde de tout le backend.
@@ -68,10 +71,14 @@ public class ServiceCommande {
     private final LieuRepository lieux;
     private final ServiceVerificationEmail verification;
 
+    /** La lecture des clients, pour afficher un nom plutot qu un identifiant. */
+    private final ServiceClient clients;
+
     public ServiceCommande(CommandeRepository commandes, PanierRepository paniers,
                            VarianteRepository variantes, ServiceTarification tarification,
                            ServiceCommission commissions, ServiceStock stock,
-                           LieuRepository lieux, ServiceVerificationEmail verification) {
+                           LieuRepository lieux, ServiceVerificationEmail verification,
+                           ServiceClient clients) {
         this.commandes = commandes;
         this.paniers = paniers;
         this.variantes = variantes;
@@ -80,6 +87,7 @@ public class ServiceCommande {
         this.stock = stock;
         this.lieux = lieux;
         this.verification = verification;
+        this.clients = clients;
     }
 
     /**
@@ -324,6 +332,29 @@ public class ServiceCommande {
     public Page<DetailCommande> mesCommandes(Long clientId, Pageable pagination) {
         return commandes.findByClientIdOrderByDateCreationDesc(clientId, pagination)
                 .map(DetailCommande::de);
+    }
+
+    /**
+     * La liste du back-office : toutes les commandes, filtrables.
+     *
+     * <p>🎯 <b>Le nom du client est résolu en UNE requête pour toute la
+     * page.</b> La version naturelle — lire le client dans le {@code map} —
+     * en ferait vingt-cinq pour vingt-cinq lignes. Invisible en développement
+     * avec trois commandes ; très visible sur une base distante.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<ResumeCommande> administration(StatutCommande statut, String recherche,
+                                               Pageable pagination) {
+        String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
+        Page<Commande> page = commandes.administration(statut, filtre, pagination);
+
+        Set<Long> idsClients = page.getContent().stream()
+                .map(Commande::getClientId)
+                .collect(Collectors.toSet());
+
+        Map<Long, NomClient> noms = clients.nomsPar(idsClients);
+
+        return page.map(c -> ResumeCommande.de(c, noms.get(c.getClientId())));
     }
 
     private Commande charger(Long commandeId) {

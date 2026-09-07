@@ -11,11 +11,17 @@ import com.garah.api.stock.domaine.ServiceStock;
 import com.garah.api.surveillance.domaine.GraviteEvenement;
 import com.garah.api.surveillance.domaine.ServiceEvenementsSecurite;
 import com.garah.api.surveillance.domaine.TypeEvenementSecurite;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Le paiement mobile money — et son principal piège : <b>l'asynchronisme</b>.
@@ -281,6 +287,43 @@ public class ServicePaiement {
 
         return commande.getMontantTotal()
                 .subtract(totalConfirme(commandeId, TypePaiement.ENCAISSEMENT));
+    }
+
+    /**
+     * La liste du back-office : encaissements et remboursements.
+     *
+     * <p>Les deux ensemble par défaut. « Qu'est-il arrivé à l'argent de cette
+     * commande ? » ne se répond pas en consultant deux écrans — un
+     * remboursement n'a de sens qu'en regard de l'encaissement qu'il défait.</p>
+     *
+     * <p>Le numéro de commande est résolu <b>en une requête pour toute la
+     * page</b>, comme le nom du client dans la liste des commandes.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<ResumePaiement> administration(StatutPaiement statut, TypePaiement type,
+                                               String recherche, Pageable pagination) {
+        String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
+        Page<Paiement> page = paiements.administration(statut, type, filtre, pagination);
+
+        Set<Long> ids = page.getContent().stream()
+                .map(Paiement::getCommandeId)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> numeros = ids.isEmpty()
+                // `IN ()` est une requête invalide en SQL : on ne la lance pas.
+                ? Map.of()
+                : commandes.numerosPar(ids).stream()
+                        .collect(Collectors.toMap(NumeroCommande::id, NumeroCommande::numero));
+
+        return page.map(p -> ResumePaiement.de(p, numeros.get(p.getCommandeId())));
+    }
+
+    /** L'historique complet d'une commande : ce qu'on a encaissé et remboursé. */
+    @Transactional(readOnly = true)
+    public List<ResumePaiement> pourCommande(Long commandeId) {
+        return paiements.findByCommandeIdOrderByDateInitiationDesc(commandeId).stream()
+                .map(ResumePaiement::de)
+                .toList();
     }
 
     private BigDecimal totalConfirme(Long commandeId, TypePaiement type) {

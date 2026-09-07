@@ -1,0 +1,120 @@
+<header class="entete">
+  <div>
+    <h1>Commandes</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (filtreApplique(); as q) {
+        {{ total() }} résultat(s) pour « {{ q }} »
+      } @else if (libelleStatut(); as s) {
+        {{ total() }} commande(s) — {{ s }}
+      } @else { {{ total() }} commande(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <div class="champ-recherche">
+      <gu-icone nom="magnifying-glass" class="loupe" />
+      <input type="search" class="gu-champ" placeholder="Numéro de commande"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             (keyup.enter)="chercher()" name="recherche"
+             aria-label="Rechercher une commande" />
+    </div>
+
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<!-- Les filtres de statut, en onglets plutôt qu'en liste déroulante.
+     « Qu'est-ce qui attend un geste ? » est LA question de cet écran : la
+     réponse doit être à un clic, pas derrière un menu qu'il faut ouvrir. -->
+<nav class="filtres" aria-label="Filtrer par statut">
+  <button type="button" class="filtre" [class.filtre--actif]="statut() === ''"
+          (click)="filtrer('')">Toutes</button>
+
+  @for (s of statuts; track s.code) {
+    <button type="button" class="filtre"
+            [class.filtre--actif]="statut() === s.code"
+            [class.filtre--action]="s.attendUneAction"
+            (click)="filtrer(s.code)">
+      {{ s.libelle }}
+    </button>
+  }
+</nav>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="cart-shopping" class="etat__icone" />
+    @if (filtreApplique()) {
+      <p class="etat__titre">Aucune commande ne correspond à « {{ filtreApplique() }} »</p>
+      <p class="etat__aide">La recherche porte sur le numéro de commande.</p>
+    } @else if (libelleStatut(); as s) {
+      <p class="etat__titre">Aucune commande « {{ s }} »</p>
+      <p class="etat__aide">Rien n’attend d’action de ce côté.</p>
+    } @else {
+      <p class="etat__titre">Aucune commande</p>
+      <p class="etat__aide">
+        Les commandes apparaîtront ici dès qu’un client en aura passé une.
+      </p>
+    }
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Numéro</th>
+          <th>Client</th>
+          <th>Articles</th>
+          <th>Statut</th>
+          <th>Date</th>
+          <th class="droite">Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of liste(); track c.id) {
+          <tr class="cliquable" [routerLink]="['/commandes', c.id]"
+              [class.attend]="attend(c.statut)">
+            <td><code>{{ c.numero }}</code></td>
+            <td>
+              @if (c.clientNom) {
+                <div class="cellule-client">
+                  <span class="nom">{{ c.clientNom }}</span>
+                  <span class="code">{{ c.clientCode }}</span>
+                </div>
+              } @else {
+                <!-- Le client a disparu de la base ; la commande, elle, ne
+                     disparaît jamais. On le dit plutôt que d'afficher un vide. -->
+                <span class="attenue">compte supprimé</span>
+              }
+            </td>
+            <td>{{ c.nombreLignes }}</td>
+            <td>
+              <span class="gu-badge" [class]="badge(c.statut)">{{ libelle(c.statut) }}</span>
+            </td>
+            <td class="attenue">{{ dateLisible(c.dateCreation) }}</td>
+            <td class="droite montant">{{ montant(c.montantTotal, c.devise) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="changerPage($event)" />
+}

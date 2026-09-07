@@ -1,9 +1,13 @@
 package com.garah.api.iam.infra;
 
 import com.garah.api.iam.domaine.Client;
+import com.garah.api.iam.domaine.NomClient;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
@@ -19,4 +23,23 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
      */
     @Query(value = "SELECT nextval('client_code_seq')", nativeQuery = true)
     long prochainCode();
+
+    /**
+     * De quoi designer plusieurs clients, en <b>une</b> requete.
+     *
+     * <p>Sert aux listes d'un autre domaine — « de qui vient cette
+     * commande ». Charger le client ligne par ligne ferait une requete par
+     * commande affichee.</p>
+     *
+     * <p>C'est une <b>projection</b> : quatre colonnes, aucune entite. Le
+     * domaine appelant ne peut donc pas modifier un client par inadvertance,
+     * ni recevoir son mot de passe hache dans une reponse JSON.</p>
+     */
+    @Query("""
+            SELECT new com.garah.api.iam.domaine.NomClient(
+                       c.id, c.codeClient, u.nom, u.email)
+              FROM Client c JOIN c.utilisateur u
+             WHERE c.id IN :ids
+            """)
+    List<NomClient> nomsPar(@Param("ids") Collection<Long> ids);
 }

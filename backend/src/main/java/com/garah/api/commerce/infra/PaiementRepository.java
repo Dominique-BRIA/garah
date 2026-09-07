@@ -3,6 +3,8 @@ package com.garah.api.commerce.infra;
 import com.garah.api.commerce.domaine.Paiement;
 import com.garah.api.commerce.domaine.StatutPaiement;
 import com.garah.api.commerce.domaine.TypePaiement;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,4 +55,36 @@ public interface PaiementRepository extends JpaRepository<Paiement, Long> {
     BigDecimal total(@Param("commandeId") Long commandeId,
                      @Param("type") TypePaiement type,
                      @Param("statut") StatutPaiement statut);
+
+    /**
+     * La liste du back-office : encaissements et remboursements.
+     *
+     * <p>Les deux ensemble, et c'est voulu : « qu'est-il arrive a l'argent de
+     * cette commande ? » ne se repond pas en consultant deux ecrans. Le filtre
+     * {@code type} permet de les separer quand on cherche autre chose.</p>
+     *
+     * <p>La recherche porte sur la reference de transaction — c'est elle qu'on
+     * recopie depuis le SMS de l'operateur quand un client conteste.</p>
+     */
+    @Query(value = """
+            SELECT p FROM Paiement p
+             WHERE (:statut IS NULL OR p.statut = :statut)
+               AND (:type IS NULL OR p.type = :type)
+               AND (:recherche IS NULL
+                    OR LOWER(p.referenceTransaction)
+                       LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+             ORDER BY p.dateInitiation DESC
+            """,
+            countQuery = """
+            SELECT count(p) FROM Paiement p
+             WHERE (:statut IS NULL OR p.statut = :statut)
+               AND (:type IS NULL OR p.type = :type)
+               AND (:recherche IS NULL
+                    OR LOWER(p.referenceTransaction)
+                       LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+            """)
+    Page<Paiement> administration(@Param("statut") StatutPaiement statut,
+                                  @Param("type") TypePaiement type,
+                                  @Param("recherche") String recherche,
+                                  Pageable pagination);
 }

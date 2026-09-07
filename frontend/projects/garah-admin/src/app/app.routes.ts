@@ -25,6 +25,12 @@ export const routes: Routes = [
       //    « nouveau » et tenterait de charger un produit d'identifiant
       //    « nouveau » — 404 au lieu du formulaire.
       { path: 'produits/:id', loadComponent: () => import('./produits/fiche-produit').then((m) => m.FicheProduit) },
+      { path: 'commandes', loadComponent: () => import('./commandes/commandes').then((m) => m.Commandes) },
+      { path: 'commandes/:id', loadComponent: () => import('./commandes/fiche-commande').then((m) => m.FicheCommande) },
+      // Les paiements vivent dans le meme dossier que les commandes : ils n'ont
+      // aucun sens separes. « Ou est passe l'argent de cette commande ? » est
+      // une seule question, pas deux.
+      { path: 'paiements', loadComponent: () => import('./commandes/paiements').then((m) => m.Paiements) },
       // Les comptes internes. « equipe » et non « utilisateurs » : les clients
       // sont aussi des utilisateurs, et ils ne se gerent pas ici.
       { path: 'equipe', loadComponent: () => import('./equipe/equipe').then((m) => m.Equipe) },

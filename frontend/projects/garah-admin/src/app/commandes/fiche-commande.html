@@ -1,0 +1,202 @@
+@if (erreur() && !commande()) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ erreur() }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement() && !commande()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (commande(); as c) {
+
+  <a routerLink="/commandes" class="retour">
+    <gu-icone nom="chevron-right" class="retour__fleche" /> Toutes les commandes
+  </a>
+
+  <header class="entete">
+    <div>
+      <h1>{{ c.numero }}</h1>
+      <p class="sous-titre">Passée le {{ dateHeure(c.dateCreation) }}</p>
+    </div>
+
+    <div class="actions">
+      <span class="gu-badge" [class]="badge(c.statut)">{{ libelle(c.statut) }}</span>
+
+      <!-- Seules les transitions POSSIBLES sont proposées. Le serveur refuse
+           les autres, mais un bouton « Expédier » sur une commande impayée
+           ferait cliquer pour rien. -->
+      @if (session.peut('COMMANDE_PREPARER')) {
+        @for (suite of suites(); track suite) {
+          <button type="button" class="gu-btn gu-btn--primaire"
+                  (click)="avancer(suite)" [disabled]="action() !== null">
+            @if (action() === 'statut') {
+              <gu-icone nom="circle-notch" tourne />
+            }
+            Passer à « {{ libelle(suite) }} »
+          </button>
+        }
+      }
+
+      @if (annulable() && session.peut('COMMANDE_ANNULER') && !formAnnulation()) {
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="formAnnulation.set(true)">Annuler la commande</button>
+      }
+    </div>
+  </header>
+
+  @if (erreur(); as m) {
+    <p class="alerte" role="alert">{{ m }}</p>
+  }
+
+  @if (formAnnulation()) {
+    <form class="gu-carte encart-annulation" (ngSubmit)="annuler()" novalidate>
+      <label class="gu-libelle" for="motif">Motif de l’annulation</label>
+      <input id="motif" name="motif" class="gu-champ" required maxlength="255"
+             placeholder="Rupture de stock chez le marchand"
+             [ngModel]="motif()" (ngModelChange)="motif.set($event)" />
+      <!-- Le motif est obligatoire, et pas par formalisme : « pourquoi cette
+           commande a-t-elle été annulée ? » est la première question posée
+           quand un client réclame, parfois des mois plus tard. -->
+      <p class="aide">
+        Il sera conservé. Si la commande est payée, le remboursement suit.
+      </p>
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="formAnnulation.set(false)">Revenir</button>
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="action() !== null || !motif().trim()">
+          @if (action() === 'annulation') {
+            <gu-icone nom="circle-notch" tourne /> Annulation…
+          } @else { Confirmer l’annulation }
+        </button>
+      </div>
+    </form>
+  }
+
+  <div class="colonnes">
+    <!-- ---------------- Les articles ---------------- -->
+    <section class="gu-carte">
+      <header class="section-entete">
+        <div>
+          <h2>Articles</h2>
+          <!-- Ce n'est pas un détail d'implémentation : c'est la raison pour
+               laquelle les prix affichés ici peuvent différer du catalogue. -->
+          <p class="aide sous-section">
+            Désignations et prix tels qu’ils étaient au moment de l’achat.
+          </p>
+        </div>
+      </header>
+
+      <div class="gu-tableau-defilant">
+        <table class="gu-tableau">
+          <thead>
+            <tr>
+              <th>Désignation</th>
+              <th class="droite">Qté</th>
+              <th class="droite">Prix unitaire</th>
+              <th class="droite">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of c.lignes; track l.varianteId) {
+              <tr>
+                <td>{{ l.designation }}</td>
+                <td class="droite">{{ l.quantite }}</td>
+                <td class="droite montant">{{ montant(l.prixUnitaire, c.devise) }}</td>
+                <td class="droite montant">{{ montant(l.montantLigne, c.devise) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <dl class="totaux">
+        <div>
+          <dt>Articles</dt>
+          <dd>{{ montant(c.montantArticles, c.devise) }}</dd>
+        </div>
+        <div>
+          <dt>Acheminement</dt>
+          <dd>{{ montant(c.montantFrais, c.devise) }}</dd>
+        </div>
+        @if (c.montantRemise) {
+          <div>
+            <dt>Remise</dt>
+            <dd>− {{ montant(c.montantRemise, c.devise) }}</dd>
+          </div>
+        }
+        <div class="totaux__final">
+          <dt>Total</dt>
+          <dd>{{ montant(c.montantTotal, c.devise) }}</dd>
+        </div>
+        <div class="totaux__tva">
+          <!-- Les prix sont TTC : la TVA en est EXTRAITE, pas ajoutée. Sans
+               cette précision, le total paraît amputé de la taxe. -->
+          <dt>dont TVA</dt>
+          <dd>{{ montant(c.montantTva, c.devise) }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- ---------------- L'argent ---------------- -->
+    <section class="gu-carte">
+      <header class="section-entete">
+        <div>
+          <h2>Paiements</h2>
+          <p class="aide sous-section">
+            Encaissements et remboursements. Un remboursement n’a de sens
+            qu’en regard de ce qu’il défait.
+          </p>
+        </div>
+      </header>
+
+      @if (!session.peut('PAIEMENT_CONSULTER')) {
+        <p class="vide">Votre compte n’a pas le droit de consulter les paiements.</p>
+      } @else {
+        @if (resteAPayer() !== null) {
+          <p class="reste" [class.reste--solde]="resteAPayer() === 0">
+            @if (resteAPayer() === 0) {
+              Entièrement réglée.
+            } @else {
+              Reste à payer : <strong>{{ montant(resteAPayer(), c.devise) }}</strong>
+            }
+          </p>
+        }
+
+        @if (paiements().length === 0) {
+          <p class="vide">Aucun mouvement d’argent sur cette commande.</p>
+        } @else {
+          <ul class="paiements">
+            @for (p of paiements(); track p.id) {
+              <li>
+                <div class="paiement__tete">
+                  <span class="paiement__montant"
+                        [class.paiement__montant--sortant]="p.type === 'REMBOURSEMENT'">
+                    @if (p.type === 'REMBOURSEMENT') { − }
+                    {{ montant(p.montant, p.devise) }}
+                  </span>
+                  <span class="gu-badge" [class]="badgePaiement(p.statut)">
+                    {{ libellePaiement(p.statut) }}
+                  </span>
+                </div>
+
+                <p class="paiement__detail">
+                  {{ moyen(p.moyen) }} · {{ dateHeure(p.dateInitiation) }}
+                </p>
+
+                @if (p.referenceTransaction) {
+                  <!-- La référence de l'opérateur : c'est elle qu'on recopie
+                       depuis le SMS quand un client conteste. -->
+                  <code class="paiement__reference">{{ p.referenceTransaction }}</code>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
+  </div>
+}

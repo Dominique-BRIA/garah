@@ -1,0 +1,139 @@
+<header class="entete">
+  <div>
+    <h1>Paiements</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (filtreApplique(); as q) {
+        {{ total() }} résultat(s) pour « {{ q }} »
+      } @else if (libelleStatut(); as s) {
+        {{ total() }} mouvement(s) — {{ s }}
+      } @else { {{ total() }} mouvement(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <div class="champ-recherche">
+      <gu-icone nom="magnifying-glass" class="loupe" />
+      <input type="search" class="gu-champ" placeholder="Référence de transaction"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             (keyup.enter)="chercher()" name="recherche"
+             aria-label="Rechercher un paiement" />
+    </div>
+
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<nav class="filtres" aria-label="Filtrer par statut">
+  <button type="button" class="filtre" [class.filtre--actif]="statut() === ''"
+          (click)="filtrer('')">Tous</button>
+  @for (s of statuts; track s.code) {
+    <button type="button" class="filtre" [class.filtre--actif]="statut() === s.code"
+            (click)="filtrer(s.code)">{{ s.libelle }}</button>
+  }
+</nav>
+
+<nav class="filtres filtres--secondaire" aria-label="Filtrer par type">
+  <button type="button" class="filtre" [class.filtre--actif]="type() === ''"
+          (click)="filtrerType('')">Encaissements et remboursements</button>
+  <button type="button" class="filtre" [class.filtre--actif]="type() === 'ENCAISSEMENT'"
+          (click)="filtrerType('ENCAISSEMENT')">Encaissements</button>
+  <button type="button" class="filtre" [class.filtre--actif]="type() === 'REMBOURSEMENT'"
+          (click)="filtrerType('REMBOURSEMENT')">Remboursements</button>
+</nav>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="money-bill-wave" class="etat__icone" />
+    @if (filtreApplique()) {
+      <p class="etat__titre">Aucun paiement ne correspond à « {{ filtreApplique() }} »</p>
+      <p class="etat__aide">La recherche porte sur la référence de transaction.</p>
+    } @else {
+      <p class="etat__titre">Aucun mouvement d’argent</p>
+      <p class="etat__aide">
+        Les paiements apparaîtront ici dès qu’un client aura réglé une commande.
+      </p>
+    }
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Commande</th>
+          <th>Moyen</th>
+          <th>Référence</th>
+          <th>Statut</th>
+          <th>Date</th>
+          <th class="droite">Montant</th>
+          <th class="droite">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of liste(); track p.id) {
+          <tr>
+            <td>
+              @if (p.commandeNumero) {
+                <a [routerLink]="['/commandes', p.commandeId]" class="lien-commande">
+                  <code>{{ p.commandeNumero }}</code>
+                </a>
+              } @else {
+                <span class="attenue">—</span>
+              }
+            </td>
+            <td>{{ moyen(p.moyen) }}</td>
+            <td>
+              @if (p.referenceTransaction) {
+                <code class="reference">{{ p.referenceTransaction }}</code>
+              } @else {
+                <!-- Aucune référence = le paiement n'a jamais atteint
+                     l'opérateur. Ce n'est pas une donnée manquante, c'est un
+                     fait, et il explique pourquoi rien ne bouge. -->
+                <span class="attenue">jamais transmis</span>
+              }
+            </td>
+            <td>
+              <span class="gu-badge" [class]="badge(p.statut)">{{ libelle(p.statut) }}</span>
+            </td>
+            <td class="attenue">{{ dateHeure(p.dateInitiation) }}</td>
+            <td class="droite montant"
+                [class.montant--sortant]="p.type === 'REMBOURSEMENT'">
+              @if (p.type === 'REMBOURSEMENT') { − }
+              {{ montant(p.montant, p.devise) }}
+            </td>
+            <td class="droite">
+              @if (verifiable(p)) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="verifier(p)" [disabled]="action() !== null">
+                  @if (action() === p.id) {
+                    <gu-icone nom="circle-notch" tourne />
+                  }
+                  Vérifier
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="changerPage($event)" />
+}
