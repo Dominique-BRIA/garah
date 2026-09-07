@@ -130,30 +130,23 @@
 
 .variante__actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
 
-// Un bouton d'icône : pas de fond au repos, pour ne pas transformer chaque
-// ligne en une rangée de boutons qui se disputent l'attention.
-.icone-action {
-  display: grid;
-  place-items: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--texte-attenue);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: var(--transition);
-
-  &:hover:not(:disabled) { background: var(--surface-douce); color: var(--primary); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
-  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
-}
-
-.icone-action--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
-  color: var(--danger);
-}
+// Les boutons d'action viennent maintenant du thème : `.gu-btn-icone` et ses
+// variantes. La classe `.icone-action` qui vivait ici a été retirée.
+//
+// Elle défendait un choix défendable — aucun fond au repos, pour qu'une liste
+// dense ne devienne pas une rangée de boutons qui se disputent l'attention.
+// Mais l'application en était arrivée à TROIS styles d'action : des pastilles
+// teintées sur les marchands, des icônes nues ici, et des boutons texte sur
+// les catégories. Trois vocabulaires pour un même geste, c'est trois fois plus
+// à apprendre pour celui qui utilise l'outil.
+//
+// La teinte dit désormais la CONSÉQUENCE, partout pareil : ambre pour
+// modifier, gris pour retirer de la vitrine, vert pour remettre en service,
+// rouge pour ce qui ne se rattrape pas.
+//
+// ⚠️ Si la fiche paraît trop chargée, c'est l'opacité des variantes qu'on
+//    baisse dans le thème — une fois, pour tout le monde — et surtout pas une
+//    quatrième classe locale.
 
 // --- La grille tarifaire d'une déclinaison -----------------------------------
 .grille {

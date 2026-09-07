@@ -181,20 +181,23 @@
               @if (formulaire() === null) {
                 <div class="variante__actions">
                   @if (session.peut('VARIANTE_MODIFIER')) {
-                    <button type="button" class="icone-action" (click)="ouvrirEditionVariante(v)"
+                    <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                            (click)="ouvrirEditionVariante(v)"
                             aria-label="Modifier cette déclinaison" title="Modifier">
                       <gu-icone nom="pen" />
                     </button>
                   }
                   @if (v.statut === 'ACTIVE' && session.peut('VARIANTE_DESACTIVER')) {
-                    <button type="button" class="icone-action" (click)="basculerVariante(v)"
+                    <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                            (click)="basculerVariante(v)"
                             [disabled]="action() !== null"
                             aria-label="Désactiver cette déclinaison" title="Désactiver">
                       <gu-icone nom="eye-slash" />
                     </button>
                   }
                   @if (v.statut !== 'ACTIVE' && session.peut('VARIANTE_ACTIVER')) {
-                    <button type="button" class="icone-action" (click)="basculerVariante(v)"
+                    <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+                            (click)="basculerVariante(v)"
                             [disabled]="action() !== null"
                             aria-label="Activer cette déclinaison" title="Activer">
                       <gu-icone nom="eye" />
@@ -259,14 +262,14 @@
                       @if (formulaire() === null) {
                         <span class="paliers__actions">
                           @if (session.peut('PRIX_MODIFIER')) {
-                            <button type="button" class="icone-action"
+                            <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
                                     (click)="ouvrirPrix(v, palier)"
                                     aria-label="Modifier ce prix" title="Modifier le prix">
                               <gu-icone nom="pen" />
                             </button>
                           }
                           @if (session.peut('PRIX_SUPPRIMER')) {
-                            <button type="button" class="icone-action icone-action--danger"
+                            <button type="button" class="gu-btn-icone gu-btn-icone--supprimer"
                                     (click)="supprimerPalier(v.id, palier.id)"
                                     [disabled]="action() !== null"
                                     aria-label="Retirer ce prix" title="Retirer">

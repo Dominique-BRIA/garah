@@ -17,3 +17,106 @@
   place-items: center;
   color: var(--texte-attenue);
 }
+
+// =============================================================================
+// L'affichage en cartes
+// =============================================================================
+// C'est ici que la vue en cartes compte le plus : un catalogue se reconnait a
+// ses photos, et le tableau les reduit a une vignette de 2 rem au bout d'une
+// ligne. La carte leur donne la place qu'elles meritent — c'est aussi
+// l'affichage le plus proche de ce que le client verra sur la vitrine.
+// =============================================================================
+
+// auto-fill et non auto-fit : avec auto-fit, un catalogue d'UN produit
+// etirerait sa carte sur toute la largeur de l'ecran.
+.grille-produits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1.1rem;
+}
+
+.carte-produit {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  // La carte est un LIEN : elle mene a la fiche, comme la ligne du tableau.
+  // Sans ces deux lignes, le souligne du navigateur traverserait le nom.
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carte-produit:hover { transform: none; }
+}
+
+// Un rapport FIXE : sans lui, des photos de proportions differentes donnent
+// des cartes de hauteurs differentes, et la grille devient un escalier.
+.carte-produit__photo {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-douce);
+}
+
+.carte-produit__photo--vide {
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  color: var(--texte-attenue);
+}
+
+.carte-produit__corps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem 1.1rem;
+  // Pousse le prix en bas : les cartes d'une meme rangee alignent alors leur
+  // prix, meme quand un nom passe sur deux lignes.
+  flex: 1;
+
+  .gu-badge { align-self: flex-start; margin-bottom: 0.2rem; }
+}
+
+.carte-produit__nom {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.carte-produit__reference {
+  font-family: var(--police-mono);
+  font-size: 0.68rem;
+  color: var(--texte-attenue);
+}
+
+.carte-produit__classement {
+  margin: 0.15rem 0 0;
+  font-size: 0.76rem;
+  color: var(--texte-attenue);
+  overflow-wrap: anywhere;
+}
+
+.carte-produit__prix {
+  margin: 0.7rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--texte);
+  font-variant-numeric: tabular-nums;
+  margin-top: auto;
+  padding-top: 0.7rem;
+}

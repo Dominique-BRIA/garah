@@ -44,16 +44,21 @@
 
     @media (prefers-color-scheme: dark) {
       .demarrage { background: #0c0c14; }
+      .demarrage__mot { color: #f3f4f6; }
     }
 
+    /* Le mot est neutre, l'emblème vert porte seul la couleur.
+
+       ⚠️ Cet écran ne peut PAS suivre la bascule manuelle du thème : elle est
+          rangée par l'application, qui n'a pas encore démarré. On suit donc le
+          réglage du système, comme le fait déjà le fond juste au-dessus. Un
+          blanc en dur laisserait le mot invisible chez qui est en thème
+          clair. */
     .demarrage__mot {
       font-size: 1.75rem;
       font-weight: 800;
       letter-spacing: 0.14em;
-      background: linear-gradient(135deg, #4f46e5 0%, #aa3bff 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+      color: #0f172a;
     }
 
     /* La marque remplace l'anneau qui tournait ici.
@@ -93,18 +98,17 @@
     <div class="demarrage">
       <svg class="demarrage__marque" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
         <defs>
-          <linearGradient id="demarrage-degrade" gradientUnits="userSpaceOnUse"
-                          x1="7.5" y1="7.5" x2="40" y2="40">
-            <stop offset="0" stop-color="#4f46e5" />
-            <stop offset="1" stop-color="#aa3bff" />
-          </linearGradient>
           <clipPath id="demarrage-niveau">
             <rect id="demarrage-niveau-rect" x="8" y="24" width="34" height="18" />
           </clipPath>
         </defs>
-        <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="url(#demarrage-degrade)"
+        <!-- Le vert de la marque, recopié en dur : c'est le seul endroit du
+             projet où c'est justifié, la feuille de style qui porte
+             `--marque` n'est pas forcément arrivée quand ceci s'affiche.
+             Si la charte change, cette valeur change AUSSI. -->
+        <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="#12a594"
               stroke-width="5" />
-        <path d="M10 25A15 15 0 0 0 40 25Z" fill="url(#demarrage-degrade)"
+        <path d="M10 25A15 15 0 0 0 40 25Z" fill="#12a594"
               clip-path="url(#demarrage-niveau)" />
       </svg>
       <span class="demarrage__mot">GARAH</span>

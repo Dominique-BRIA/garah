@@ -92,6 +92,26 @@ export class ServiceSession {
     return this._permissions().has(code);
   }
 
+  /**
+   * Corrige l'utilisateur affiché après une modification du profil.
+   *
+   * <p>⚠️ <b>Purement local, et volontairement.</b> Le nom et la langue vivent
+   * aussi dans le jeton, qui est signé : on ne peut pas le réécrire, et il
+   * portera l'ancienne valeur jusqu'au prochain rafraîchissement — quinze
+   * minutes au plus (D-19).</p>
+   *
+   * <p>Sans cet appel, quelqu'un qui corrige son nom verrait la barre latérale
+   * continuer d'afficher l'ancien pendant un quart d'heure, et conclurait que
+   * l'enregistrement a échoué. On affiche donc ce que la BASE contient, qui
+   * est la vérité, plutôt que ce que le jeton transporte.</p>
+   *
+   * <p>Ne touche <b>pas</b> aux permissions : elles, seul le serveur les
+   * décide, et les modifier ici ouvrirait des écrans que l'API refusera.</p>
+   */
+  actualiserUtilisateur(champs: Partial<UtilisateurConnecte>): void {
+    this._utilisateur.update((u) => (u ? { ...u, ...champs } : u));
+  }
+
   connecter(email: string, motDePasse: string): Observable<UtilisateurConnecte> {
     return this.http
       .post<ReponseConnexion>('/api/auth/connexion', { email, motDePasse })

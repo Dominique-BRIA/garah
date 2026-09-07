@@ -36,7 +36,20 @@ public class JetonRafraichissement {
         /** Un jeton déjà consommé a été represénté : vol présumé. */
         REUTILISATION,
         /** Le compte a été bloqué ou désactivé. */
-        COMPTE_FERME
+        COMPTE_FERME,
+        /**
+         * Le propriétaire a changé son mot de passe.
+         *
+         * <p>Distinct de {@link #COMPTE_FERME}, et la distinction compte :
+         * le journal d'audit ne se réécrit pas. Confondre les deux ferait
+         * lire, six mois plus tard, qu'un compte a été fermé alors que son
+         * propriétaire s'était contenté de changer son mot de passe.</p>
+         *
+         * <p>⚠️ Valeur autorisée par la contrainte CHECK de la migration V24.
+         * En ajouter une ici sans migration ne casse pas la compilation :
+         * la panne arrive à l'exécution.</p>
+         */
+        MOT_DE_PASSE_CHANGE
     }
 
     @Id

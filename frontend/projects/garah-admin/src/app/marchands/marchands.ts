@@ -1,8 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   Avatar,
+  BasculeVue,
   Icone,
   Marchand,
   PAYS_DESSERVIS,
@@ -10,12 +12,15 @@ import {
   ReponseErreur,
   ServiceSession,
   TypeMarchand,
+  TypeVue,
   libellePays,
 } from 'garah-ui';
 
 @Component({
   selector: 'ga-marchands',
-  imports: [FormsModule, Icone, Avatar],
+  // NgTemplateOutlet : les boutons d'action sont écrits une fois et rendus
+  // dans les deux affichages. Voir le <ng-template #actions> du gabarit.
+  imports: [FormsModule, Icone, Avatar, BasculeVue, NgTemplateOutlet],
   templateUrl: './marchands.html',
   styleUrl: './marchands.scss',
 })
@@ -28,6 +33,15 @@ export class Marchands {
   protected readonly chargement = signal(true);
   protected readonly erreur = signal<string | null>(null);
   protected readonly recherche = signal('');
+
+  /**
+   * Tableau ou cartes.
+   *
+   * <p>Le tableau par défaut : c'est l'affichage qui sert à <b>comparer</b>,
+   * et un back-office s'ouvre le plus souvent pour cela. La bascule mémorise
+   * le choix contraire pour qui préfère les cartes.</p>
+   */
+  protected readonly vue = signal<TypeVue>('tableau');
 
   /** Les pays proposés à la saisie. */
   protected readonly listePays = PAYS_DESSERVIS;

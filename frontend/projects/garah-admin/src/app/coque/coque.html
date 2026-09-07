@@ -43,14 +43,19 @@
         @if (theme.sombreEffectif()) { Thème clair } @else { Thème sombre }
       </button>
 
+      <!-- Le bloc du compte MÈNE au profil. C'est là qu'on le cherche : on
+           clique sur son nom, pas sur une entrée de menu perdue au milieu des
+           écrans de gestion. -->
       @if (session.utilisateur(); as u) {
-        <div class="compte">
+        <a routerLink="/profil" routerLinkActive="compte--actif" class="compte"
+           (click)="fermerLeMenu()">
           <gu-avatar [nom]="u.nom" taille="2.25rem" />
           <div class="compte__texte">
             <div class="compte__nom">{{ u.nom }}</div>
-            <div class="compte__type">{{ u.type }}</div>
+            <div class="compte__type">{{ role(u.type) }}</div>
           </div>
-        </div>
+          <gu-icone nom="chevron-right" class="compte__fleche" />
+        </a>
       }
 
       <button type="button" class="gu-btn gu-btn--secondaire plein"

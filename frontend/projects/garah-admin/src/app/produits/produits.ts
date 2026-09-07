@@ -3,17 +3,19 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  BasculeVue,
   Icone,
   Page,
   ReponseErreur,
   ResumeProduit,
   ServiceSession,
+  TypeVue,
   montantLisible,
 } from 'garah-ui';
 
 @Component({
   selector: 'ga-produits',
-  imports: [Icone, RouterLink],
+  imports: [Icone, RouterLink, BasculeVue],
   templateUrl: './produits.html',
   styleUrl: './produits.scss',
 })
@@ -23,6 +25,16 @@ export class Produits {
 
   protected readonly produits = signal<readonly ResumeProduit[]>([]);
   protected readonly total = signal(0);
+
+  /**
+   * Tableau ou cartes.
+   *
+   * <p>Les cartes par défaut ici, contrairement aux marchands : un catalogue
+   * se reconnaît à ses photos, et un tableau les réduit à une vignette de
+   * 2 rem au bout d'une ligne. C'est aussi l'affichage qui ressemble le plus
+   * à ce que verra le client sur la vitrine.</p>
+   */
+  protected readonly vue = signal<TypeVue>('cartes');
   protected readonly chargement = signal(true);
   protected readonly erreur = signal<string | null>(null);
 

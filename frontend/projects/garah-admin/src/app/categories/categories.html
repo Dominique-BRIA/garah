@@ -61,26 +61,46 @@
             <td>
               <span class="gu-badge"
                     [class]="ligne.categorie.statut === 'ACTIVE' ? 'gu-badge--succes' : 'gu-badge--neutre'">
-                {{ ligne.categorie.statut }}
+                {{ ligne.categorie.statut === 'ACTIVE' ? 'Active' : 'Inactive' }}
               </span>
             </td>
             <td class="droite">
               @if (session.peut('CATEGORIE_PRODUIT_GERER')) {
+                <!-- Les mêmes pastilles que partout ailleurs : la teinte dit
+                     la conséquence, pas la place du bouton dans la ligne. -->
                 <div class="cellule-actions">
-                  <button type="button" class="gu-btn gu-btn--secondaire petit"
-                          (click)="ouvrirEdition(ligne.categorie)">
-                    <gu-icone nom="pen" /> Renommer
+                  <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                          (click)="ouvrirEdition(ligne.categorie)"
+                          aria-label="Renommer cette catégorie" title="Renommer">
+                    <gu-icone nom="pen" />
                   </button>
+
                   @if (ligne.niveau < 2) {
-                    <button type="button" class="gu-btn gu-btn--secondaire petit"
-                            (click)="ouvrirFormulaire(ligne.categorie.id)">
-                      Sous-catégorie
+                    <!-- Neutre : ajouter n'est ni destructif ni réversible,
+                         c'est simplement autre chose. -->
+                    <button type="button" class="gu-btn-icone"
+                            (click)="ouvrirFormulaire(ligne.categorie.id)"
+                            aria-label="Ajouter une sous-catégorie"
+                            title="Ajouter une sous-catégorie">
+                      <gu-icone nom="plus" />
                     </button>
                   }
-                  <button type="button" class="gu-btn gu-btn--secondaire petit"
-                          (click)="basculerActivation(ligne.categorie)">
-                    @if (ligne.categorie.statut === 'ACTIVE') { Désactiver } @else { Activer }
-                  </button>
+
+                  <!-- Désactiver ne supprime pas : la catégorie sort du
+                       catalogue et revient d'un clic. Pas de rouge. -->
+                  @if (ligne.categorie.statut === 'ACTIVE') {
+                    <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                            (click)="basculerActivation(ligne.categorie)"
+                            aria-label="Désactiver cette catégorie" title="Désactiver">
+                      <gu-icone nom="eye-slash" />
+                    </button>
+                  } @else {
+                    <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+                            (click)="basculerActivation(ligne.categorie)"
+                            aria-label="Activer cette catégorie" title="Activer">
+                      <gu-icone nom="eye" />
+                    </button>
+                  }
                 </div>
               }
             </td>

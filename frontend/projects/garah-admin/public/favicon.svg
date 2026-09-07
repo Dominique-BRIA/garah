@@ -7,7 +7,7 @@
 
         A 16 px, un trait de 5 unites sur une grille de 48 tombe a 1,7 pixel
         physique. Le navigateur l'etale sur deux rangees a demi allumees et
-        l'anse devient un halo gris : la marque n'a plus de contour, juste une
+        l'anse devient un halo : la marque n'a plus de contour, juste une
         tache. A 6,2 le trait couvre franchement ses deux pixels.
 
         Ce n'est pas une seconde marque, c'est la meme a une autre echelle —
@@ -17,13 +17,7 @@
     Le .ico reste a cote pour les navigateurs anciens ; index.html declare
     les deux, et celui qui comprend le SVG le choisit.
   -->
-  <defs>
-    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="7" y1="7" x2="40" y2="40">
-      <stop offset="0" stop-color="#4f46e5"/>
-      <stop offset="1" stop-color="#aa3bff"/>
-    </linearGradient>
-  </defs>
-  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="url(#g)"
+  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="#12a594"
         stroke-width="6.2" stroke-linecap="butt"/>
-  <path d="M10 25A15 15 0 0 0 40 25Z" fill="url(#g)"/>
+  <path d="M10 25A15 15 0 0 0 40 25Z" fill="#12a594"/>
 </svg>

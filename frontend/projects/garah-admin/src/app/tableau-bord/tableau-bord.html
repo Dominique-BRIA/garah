@@ -35,8 +35,11 @@
 } @else {
   <div class="grille-indicateurs">
     @for (carte of cartes(); track carte.cle) {
-      <article class="indicateur gu-carte">
-        <div class="pastille" [class]="'pastille--' + carte.teinte">
+      <!-- La teinte est portée par la CARTE, pas par la pastille : la pastille
+           et le bouton « Voir la liste » doivent la partager, et une couleur
+           déclarée deux fois finit par diverger. -->
+      <article class="indicateur gu-carte" [class]="'teinte--' + carte.teinte">
+        <div class="pastille">
           <gu-icone [nom]="carte.icone" />
         </div>
 

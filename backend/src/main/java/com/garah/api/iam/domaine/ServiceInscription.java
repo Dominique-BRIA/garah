@@ -40,7 +40,16 @@ public class ServiceInscription {
      * toutes les listes d'attaque. La longueur est ce qui coûte réellement
      * cher à un attaquant.</p>
      */
-    private static final int LONGUEUR_MOT_DE_PASSE_MIN = 10;
+    /**
+     * ⚠️ Volontairement visible dans le paquetage, et non {@code private}.
+     *
+     * <p>{@link ServiceProfil} applique la <b>même</b> exigence au changement
+     * de mot de passe. Recopier le nombre là-bas produirait deux règles de
+     * sécurité qui divergeraient au premier durcissement : on remonterait
+     * l'une à douze, et l'inscription continuerait d'accepter dix sans que
+     * rien ne le signale.</p>
+     */
+    static final int LONGUEUR_MOT_DE_PASSE_MIN = 10;
 
     /** Les langues du référentiel (D-08 / D-09). */
     private static final Set<String> LANGUES = Set.of("fr", "en", "sg");
@@ -250,7 +259,10 @@ public class ServiceInscription {
      * exotique envoyé par un frontend mal configuré serait absurde. La clé
      * étrangère vers {@code langue} refuserait de toute façon la valeur.</p>
      */
-    private static String langueValide(String langue) {
+    // Visible dans le paquetage : ServiceProfil applique la MÊME règle quand
+    // on change sa langue depuis son profil. Deux copies divergeraient le jour
+    // où une quatrième langue arrive.
+    static String langueValide(String langue) {
         if (langue == null) {
             return "fr";
         }

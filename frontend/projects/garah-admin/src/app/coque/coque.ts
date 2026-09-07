@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Avatar, Icone, Marque, ServiceSession, ServiceTheme } from 'garah-ui';
+import { Avatar, Icone, Marque, ServiceSession, ServiceTheme, libelleRole } from 'garah-ui';
 
 interface Entree {
   readonly libelle: string;
@@ -22,6 +22,9 @@ export class Coque {
   protected readonly theme = inject(ServiceTheme);
 
   protected readonly menuOuvert = signal(false);
+
+  /** `SUPER_ADMIN` n'a rien à faire à l'écran : on affiche le libellé. */
+  protected readonly role = libelleRole;
 
   /**
    * Le menu, filtré par permission.

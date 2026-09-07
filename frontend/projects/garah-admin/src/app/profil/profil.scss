@@ -1,0 +1,147 @@
+// =============================================================================
+// Mon profil
+// =============================================================================
+// Trois blocs, dans l'ordre du risque : ce qu'on lit, ce qu'on corrige, ce qui
+// déconnecte. Le mot de passe est en dernier — on ne met pas l'opération la
+// plus lourde de conséquences en haut d'un écran qu'on ouvre pour vérifier son
+// numéro de téléphone.
+// =============================================================================
+
+// auto-fit plutôt que des points de rupture fixes : les blocs se replient
+// selon la place réelle, y compris quand la barre latérale est dépliée.
+.colonnes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.gu-carte {
+  padding: 1.75rem;
+}
+
+.titre-bloc {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 1.25rem;
+}
+
+// --- L'identité --------------------------------------------------------------
+.identite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.9rem;
+}
+
+.identite__texte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.identite__nom {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  // Sans cela, un nom composé long élargit la carte au lieu de passer à la
+  // ligne, et toute la grille se décale.
+  overflow-wrap: anywhere;
+}
+
+// Les faits : libellé au-dessus, valeur en dessous. Une <dl> plutôt que des
+// <div> : ce SONT des couples terme/définition, et le lecteur d'écran les
+// annonce alors comme tels.
+.faits {
+  width: 100%;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  text-align: left;
+}
+
+.fait {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.fait dt {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.fait dd {
+  margin: 0;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  // Une adresse e-mail longue ne doit pas forcer un défilement horizontal.
+  overflow-wrap: anywhere;
+}
+
+.petit-badge {
+  font-size: 0.62rem;
+  padding: 0.12rem 0.5rem;
+}
+
+// --- Les formulaires ---------------------------------------------------------
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+form .gu-libelle:not(:first-child) {
+  margin-top: 1rem;
+}
+
+.boutons {
+  margin-top: 1.5rem;
+}
+
+// L'avertissement du bloc mot de passe. Bordé plutôt que rempli : il informe,
+// il ne signale pas une erreur — un fond rouge ici ferait croire que quelque
+// chose ne va pas alors que rien ne s'est encore produit.
+.aide--avertissement {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-bottom: 1.25rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--texte);
+  line-height: 1.45;
+
+  gu-icone {
+    color: var(--warning);
+    margin-top: 0.15rem;
+  }
+}
+
+// La confirmation d'enregistrement. Elle disparaît dès qu'on retouche un
+// champ : laisser « Enregistré » affiché au-dessus d'une saisie modifiée mais
+// non envoyée serait un mensonge.
+.succes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+  font-size: 0.85rem;
+  font-weight: 600;
+}

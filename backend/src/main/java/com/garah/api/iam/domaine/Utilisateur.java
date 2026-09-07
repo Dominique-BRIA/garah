@@ -152,6 +152,21 @@ public class Utilisateur {
     public Instant getDateCreation() { return dateCreation; }
     public Instant getDateDerniereConnexion() { return dateDerniereConnexion; }
 
+    /**
+     * Change le nom affiché.
+     *
+     * <p>Une méthode nommée plutôt qu'un {@code setNom} : le nom est le seul
+     * champ obligatoire du constructeur, et il ne doit jamais pouvoir devenir
+     * vide par un appel distrait. La règle vit donc ici, avec la donnée, et
+     * non chez chacun de ses appelants.</p>
+     */
+    public void renommer(String nom) {
+        if (nom == null || nom.isBlank()) {
+            throw new IllegalArgumentException("Le nom ne peut pas être vide.");
+        }
+        this.nom = nom.strip();
+    }
+
     public void setPrenom(String prenom) { this.prenom = prenom; }
     public void setTelephone(String telephone) { this.telephone = telephone; }
     public void setLangue(String langue) { this.langue = langue; }

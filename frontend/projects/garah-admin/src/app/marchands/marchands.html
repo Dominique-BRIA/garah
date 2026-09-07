@@ -14,6 +14,8 @@
              (keyup.enter)="charger()" aria-label="Rechercher un marchand" />
     </div>
 
+    <gu-bascule-vue [(vue)]="vue" cle="marchands" />
+
     @if (session.peut('MARCHAND_CREER')) {
       <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirFormulaire()">
         Nouveau marchand
@@ -41,7 +43,7 @@
       Créez-en un pour pouvoir enregistrer des produits à son nom.
     </p>
   </div>
-} @else {
+} @else if (vue() === 'tableau') {
   <div class="gu-tableau-defilant">
     <table class="gu-tableau">
       <thead>
@@ -85,18 +87,7 @@
             </td>
             <td class="droite">
               <div class="cellule-actions">
-                @if (session.peut('MARCHAND_MODIFIER')) {
-                  <button type="button" class="gu-btn gu-btn--secondaire petit"
-                          (click)="ouvrirEdition(m)">
-                    <gu-icone nom="pen" /> Modifier
-                  </button>
-                }
-                @if (session.peut('MARCHAND_DESACTIVER')) {
-                  <button type="button" class="gu-btn gu-btn--secondaire petit"
-                          (click)="basculerActivation(m)">
-                    @if (m.statut === 'ACTIF') { Désactiver } @else { Activer }
-                  </button>
-                }
+                <ng-container *ngTemplateOutlet="actions; context: { $implicit: m }" />
               </div>
             </td>
           </tr>
@@ -104,7 +95,86 @@
       </tbody>
     </table>
   </div>
+} @else {
+  <!-- L'affichage en cartes. Les MÊMES données, groupées par marchand au lieu
+       d'être alignées par colonne : on identifie un marchand d'un coup d'œil
+       là où le tableau demande de suivre une ligne sur toute la largeur. -->
+  <div class="grille-cartes">
+    @for (m of liste(); track m.id) {
+      <article class="carte gu-carte">
+        <header class="carte__tete">
+          <gu-avatar [nom]="m.nom" [url]="m.urlLogo" taille="2.75rem" />
+          <div class="carte__identite">
+            <h2 class="carte__nom">{{ m.nom }}</h2>
+            <code class="carte__code">{{ m.code }}</code>
+          </div>
+          <span class="gu-badge"
+                [class]="m.statut === 'ACTIF' ? 'gu-badge--succes' : 'gu-badge--neutre'">
+            {{ m.statut === 'ACTIF' ? 'Actif' : 'Inactif' }}
+          </span>
+        </header>
+
+        <dl class="carte__faits">
+          <div class="carte__fait">
+            <dt>Pays</dt>
+            <dd>{{ libelle(m.pays) }}</dd>
+          </div>
+          <div class="carte__fait">
+            <dt>Type</dt>
+            <dd>{{ m.type === 'INTERNE' ? 'GARAH' : 'Partenaire' }}</dd>
+          </div>
+          <div class="carte__fait">
+            <dt>Contact</dt>
+            <dd>
+              @if (m.telephone) { <span>{{ m.telephone }}</span> }
+              @if (m.email) { <span class="attenue">{{ m.email }}</span> }
+              @if (!m.telephone && !m.email) { <span class="attenue">—</span> }
+            </dd>
+          </div>
+        </dl>
+
+        <footer class="carte__actions">
+          <ng-container *ngTemplateOutlet="actions; context: { $implicit: m }" />
+        </footer>
+      </article>
+    }
+  </div>
 }
+
+<!-- Les actions, écrites UNE fois pour les deux affichages.
+     Les dupliquer garantirait qu'un jour un libellé, ou pire une VÉRIFICATION
+     DE PERMISSION, soit corrigé d'un côté seulement — et la vue en cartes
+     laisserait alors un bouton que le tableau cache déjà. -->
+<ng-template #actions let-m>
+  @if (session.peut('MARCHAND_MODIFIER')) {
+    <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+            (click)="ouvrirEdition(m)"
+            aria-label="Modifier ce marchand" title="Modifier">
+      <gu-icone nom="pen" />
+    </button>
+  }
+
+  @if (session.peut('MARCHAND_DESACTIVER')) {
+    <!-- ⚠️ PAS de corbeille rouge ici, et ce n'est pas un oubli de style.
+         Désactiver ne supprime rien : le marchand sort de la vitrine et
+         revient d'un clic. Une icône de suppression promettrait un geste
+         irréversible, et quelqu'un hésiterait à cliquer — ou pire, cliquerait
+         en croyant effacer. L'œil barré dit ce qui se passe vraiment. -->
+    @if (m.statut === 'ACTIF') {
+      <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+              (click)="basculerActivation(m)"
+              aria-label="Désactiver ce marchand" title="Désactiver">
+        <gu-icone nom="eye-slash" />
+      </button>
+    } @else {
+      <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+              (click)="basculerActivation(m)"
+              aria-label="Activer ce marchand" title="Activer">
+        <gu-icone nom="eye" />
+      </button>
+    }
+  }
+</ng-template>
 
 <!-- Le formulaire, en panneau latéral. Le même pour créer et pour modifier. -->
 @if (formulaireOuvert()) {

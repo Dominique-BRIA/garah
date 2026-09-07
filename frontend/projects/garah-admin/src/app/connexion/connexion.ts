@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Icone, Marque, ReponseErreur, ServiceSession, ServiceTheme } from 'garah-ui';
 
@@ -14,6 +14,21 @@ export class Connexion {
   private readonly session = inject(ServiceSession);
   private readonly router = inject(Router);
   protected readonly theme = inject(ServiceTheme);
+
+  /**
+   * Pourquoi on se retrouve ici.
+   *
+   * <p>Changer son mot de passe coupe toutes les sessions, celle-ci comprise
+   * (D-19). Sans ce message, on est éjecté sur l'écran de connexion une
+   * seconde après avoir cliqué « Changer » — et la protection ressemble à une
+   * panne.</p>
+   */
+  protected readonly avis = signal<string | null>(
+    inject(ActivatedRoute).snapshot.queryParamMap.get('motif') === 'mot-de-passe-change'
+      ? 'Votre mot de passe a été modifié et toutes vos sessions ont été fermées. '
+        + 'Connectez-vous avec le nouveau mot de passe.'
+      : null,
+  );
 
   protected readonly email = signal('');
   protected readonly motDePasse = signal('');

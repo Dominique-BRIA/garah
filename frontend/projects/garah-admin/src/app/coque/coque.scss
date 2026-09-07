@@ -81,14 +81,19 @@
   min-width: 0;
 }
 
+// Le mot est neutre, la couleur est portée par l'emblème seul.
+//
+// ⚠️ `var(--texte)` et NON `#fff`.
+//
+//    En thème sombre, `--texte` VAUT du blanc (#f3f4f6) : c'est exactement le
+//    rendu voulu. En thème clair il devient encre — sans quoi le mot
+//    disparaîtrait purement et simplement sur la barre latérale claire, et la
+//    marque n'aurait plus de nom la moitié du temps.
 .marque__mot {
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: 0.14em;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--texte);
 }
 
 .marque__role {
@@ -143,6 +148,8 @@ nav a {
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 }
 
+// Un lien vers son profil, pas un simple encart : il se comporte donc comme
+// un lien — survol, focus au clavier, et pas de souligné.
 .compte {
   display: flex;
   align-items: center;
@@ -151,6 +158,33 @@ nav a {
   margin: 0.75rem 0;
   border-radius: var(--radius-sm);
   background: var(--surface-douce);
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background: var(--surface-douce-survol);
+    border-color: var(--verre-bordure);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+.compte--actif {
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+// La chevron dit « ça mène ailleurs ». `margin-left: auto` la colle à droite
+// sans avoir à donner une largeur au bloc du texte.
+.compte__fleche {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--texte-attenue);
+  flex-shrink: 0;
 }
 
 .compte__texte {

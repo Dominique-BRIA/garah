@@ -103,6 +103,16 @@ h1, h2, h3, h4, h5, h6 {
   font-family: inherit;
   transition: all 0.2s ease-in-out;
 
+  // ⚠️ Un bouton peut être un <a> : « Nouveau produit », « Annuler »,
+  // « Créer un marchand » sont des LIENS, parce qu'ils mènent à une autre
+  // adresse — un <button> les priverait du clic milieu, du « ouvrir dans un
+  // nouvel onglet » et de l'aperçu de l'URL en bas de l'écran.
+  //
+  // Mais un <a> arrive avec le souligné du navigateur, et le souligné
+  // traverse alors le libellé du bouton. C'est ici qu'il faut l'éteindre :
+  // le faire écran par écran, c'est l'oublier au prochain bouton-lien.
+  text-decoration: none;
+
   // ⚠️ Un bouton désactivé doit se VOIR désactivé, pas seulement refuser le
   // clic. Sans cela, l'utilisateur clique, rien ne se passe, et il conclut que
   // l'application est cassée.
@@ -117,6 +127,104 @@ h1, h2, h3, h4, h5, h6 {
   &:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
+  }
+}
+
+// =============================================================================
+// Le bouton-icône : une action de ligne, sans libellé
+// =============================================================================
+// Dans un tableau, « Modifier » et « Désactiver » écrits en toutes lettres sur
+// chaque ligne répètent le même mot autant de fois qu'il y a de lignes, et
+// poussent la colonne d'actions à occuper le tiers de la largeur. Une pastille
+// ronde par action rend la ligne lisible et la colonne étroite.
+//
+// ⚠️ UN BOUTON SANS LIBELLÉ N'A PAS DE NOM ACCESSIBLE.
+//
+//    Au lecteur d'écran, il s'annonce « bouton », et rien d'autre : la
+//    personne entend une liste de « bouton, bouton, bouton » sans savoir
+//    lequel supprime. Chaque usage DOIT donc porter un `aria-label`.
+//    Un `title` en plus donne l'infobulle à la souris — les deux servent des
+//    publics différents, aucun ne remplace l'autre.
+// =============================================================================
+.gu-btn-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: inherit;
+  background: var(--surface-douce);
+  color: var(--texte-attenue);
+  transition: all 0.2s ease-in-out;
+  // Il peut être un <a> quand l'action mène à un écran : même raison que
+  // pour .gu-btn, le souligné traverserait l'icône.
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-douce-survol);
+    color: var(--texte);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Les teintes disent la CONSÉQUENCE, pas la place du bouton dans la ligne.
+// Un même geste doit porter la même couleur d'un écran à l'autre, sans quoi
+// la couleur cesse d'être une information.
+.gu-btn-icone--modifier {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--warning) 26%, transparent);
+    color: var(--warning);
+  }
+}
+
+/** Destructif et IRRÉVERSIBLE : suppression, rien d'autre. */
+.gu-btn-icone--supprimer {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 26%, transparent);
+    color: var(--danger);
+  }
+}
+
+/** Retire de la vitrine sans rien détruire. Réversible, donc pas rouge. */
+.gu-btn-icone--retirer {
+  background: color-mix(in srgb, var(--texte-attenue) 14%, transparent);
+  color: var(--texte-attenue);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--texte-attenue) 24%, transparent);
+    color: var(--texte);
+  }
+}
+
+/** Remet en service. */
+.gu-btn-icone--activer {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--success) 26%, transparent);
+    color: var(--success);
   }
 }
 

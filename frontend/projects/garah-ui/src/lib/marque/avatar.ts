@@ -1,50 +1,93 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 /**
- * Une pastille d'identité : la photo si elle existe, les initiales sinon.
+ * L'hôte de DiceBear et la version de son API.
+ *
+ * <p>Extraits en constantes pour une raison précise : DiceBear
+ * <b>s'auto-héberge</b>. Le jour où l'on ne veut plus dépendre d'un service
+ * tiers — ou le jour où il devient payant, lent, ou inatteignable depuis le
+ * Cameroun comme l'est déjà Render (D-22) — c'est cette seule ligne qui
+ * change, et rien d'autre dans le projet.</p>
+ *
+ * <p>⚠️ La version est <b>épinglée</b>. {@code 7.x} est celle du projet de
+ * référence, éprouvée. Ne pas écrire « la dernière » : une collection
+ * renommée entre deux versions majeures ne casse pas bruyamment, elle renvoie
+ * une image vide — et l'écran se remplit de pastilles blanches sans qu'aucune
+ * erreur n'apparaisse.</p>
+ */
+const DICEBEAR = 'https://api.dicebear.com/7.x';
+
+/** Les collections utilisées. Les mêmes que le projet de référence. */
+export type CollectionAvatar = 'adventurer' | 'avataaars' | 'initials' | 'shapes' | 'identicon';
+
+/**
+ * Une pastille d'identité : la photo, sinon un avatar engendré, sinon les
+ * initiales.
  *
  * <pre>
  * &lt;gu-avatar nom="Bria Togbé" /&gt;
  * &lt;gu-avatar nom="Ets Ngono" [url]="marchand.urlLogo" taille="3rem" /&gt;
+ * &lt;gu-avatar nom="Ets Ngono" collection="shapes" /&gt;
  * </pre>
  *
- * <h2>Pourquoi l'avatar par défaut est ENGENDRÉ, et non stocké</h2>
+ * <h2>Trois niveaux, et chacun rattrape le précédent</h2>
  *
- * <p>La tentation serait de fabriquer une image à l'inscription et de la
- * déposer sur le stockage d'objets. Ce serait payer trois fois :</p>
+ * <pre>
+ * 1. la vraie photo      si elle existe          &lt;- toujours prioritaire
+ * 2. l'avatar DiceBear   engendré depuis le nom  &lt;- demande le réseau
+ * 3. les initiales       deux lettres, une couleur &lt;- coûte zéro octet
+ * </pre>
  *
- * <ul>
- *   <li>un fichier par utilisateur, à stocker et à servir indéfiniment ;</li>
- *   <li>un aller-retour réseau à chaque affichage — sur une connexion mobile
- *       camerounaise, quarante avatars dans une liste font quarante
- *       requêtes ;</li>
- *   <li>une image <b>figée</b>, qui ne suivrait ni le thème ni un changement
- *       de nom.</li>
- * </ul>
+ * <p>🎯 <b>Les initiales sont affichées AVANT l'image, pas à sa place.</b></p>
  *
- * <p>Ici, l'avatar est deux lettres et une couleur. Il coûte zéro octet, se
- * calcule instantanément, et disparaît dès qu'une vraie photo est déposée.</p>
+ * <p>C'est le point qui fait tenir l'ensemble. Un avatar DiceBear est une
+ * requête vers un service tiers ; sur une connexion mobile camerounaise, une
+ * liste de quarante marchands en fait quarante. Si l'on attendait l'image, la
+ * liste s'afficherait avec quarante trous, puis se remplirait par à-coups.</p>
+ *
+ * <p>Ici les initiales sont peintes immédiatement, l'image les recouvre quand
+ * elle arrive, et <b>si elle n'arrive jamais</b> — hors ligne, service en
+ * panne, réseau qui filtre — elles restent. L'écran est correct dans les trois
+ * cas, et à aucun moment il n'est vide.</p>
+ *
+ * <p>{@code loading="lazy"} complète le dispositif : les avatars sous la ligne
+ * de flottaison ne sont même pas demandés.</p>
+ *
+ * <h2>⚠️ Ce que ça envoie dehors</h2>
+ *
+ * <p>Le <b>nom</b> part chez DiceBear, puisqu'il sert de graine. Ce n'est pas
+ * anodin même si ce n'est pas sensible : un nom de marchand et un nom
+ * d'administrateur transitent par un tiers à chaque affichage non mis en
+ * cache. Ne jamais y mettre autre chose — pas d'e-mail, pas de téléphone, pas
+ * d'identifiant interne.</p>
  */
 @Component({
   selector: 'gu-avatar',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (url() && !echec()) {
-      <img
-        [src]="url()"
-        [alt]="nom()"
-        (error)="echec.set(true)"
-        loading="lazy"
-        decoding="async"
-      />
-    } @else {
-      <!-- aria-hidden : le nom est presque toujours écrit juste à côté.
-           L'annoncer une seconde fois sous forme d'initiales n'apporterait
-           rien et alourdirait la lecture au lecteur d'écran. -->
-      <span class="initiales" [style.background]="fond()" aria-hidden="true">
-        {{ initiales() }}
-      </span>
-    }
+    <span class="pastille" [style.background]="fond()">
+      <!-- Les initiales, dessous. Retirées seulement quand une image a
+           RÉELLEMENT fini de charger : les collections DiceBear ont un fond
+           transparent, et les laisser derrière ferait lire les deux
+           superposées. -->
+      @if (!chargee()) {
+        <!-- aria-hidden : le nom est presque toujours écrit juste à côté.
+             L'annoncer une seconde fois sous forme d'initiales n'apporterait
+             rien et alourdirait la lecture au lecteur d'écran. -->
+        <span class="initiales" aria-hidden="true">{{ initiales() }}</span>
+      }
+
+      @if (source(); as adresse) {
+        <img
+          [src]="adresse"
+          [alt]="nom()"
+          (load)="chargee.set(true)"
+          (error)="surEchec()"
+          loading="lazy"
+          decoding="async"
+        />
+      }
+    </span>
   `,
   styles: [
     `
@@ -53,13 +96,22 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
         flex-shrink: 0;
       }
 
-      img,
-      .initiales {
+      .pastille {
+        position: relative;
         width: var(--gu-avatar-taille, 2.5rem);
         height: var(--gu-avatar-taille, 2.5rem);
         border-radius: 50%;
         display: grid;
         place-items: center;
+        /* Sans cela, un avatar carré déborderait du cercle par les coins. */
+        overflow: hidden;
+      }
+
+      img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
         /* object-fit : une photo rectangulaire est recadrée au centre plutôt
            qu'écrasée. Sans cela, tout visage non carré est déformé. */
         object-fit: cover;
@@ -73,6 +125,7 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
         font-size: calc(var(--gu-avatar-taille, 2.5rem) * 0.38);
         letter-spacing: 0.02em;
         user-select: none;
+        line-height: 1;
       }
     `,
   ],
@@ -83,10 +136,19 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 export class Avatar {
   readonly nom = input.required<string>();
 
-  /** L'URL de la photo. Absente ou en échec : on retombe sur les initiales. */
+  /** L'URL de la vraie photo. Absente ou en échec : on descend d'un niveau. */
   readonly url = input<string | null>(null);
 
   readonly taille = input('2.5rem');
+
+  /**
+   * Le style de l'avatar engendré.
+   *
+   * <p>{@code adventurer} pour des personnes, {@code shapes} pour une
+   * entreprise — un personnage de dessin animé pour une société de transport
+   * fait un drôle d'effet dans un back-office.</p>
+   */
+  readonly collection = input<CollectionAvatar>('adventurer');
 
   /**
    * ⚠️ Le repli n'est pas seulement pour l'absence d'URL.
@@ -96,9 +158,67 @@ export class Avatar {
    * cache, finit par pointer vers un lien mort — et sans ce repli, l'écran se
    * remplirait d'icônes d'image brisée.</p>
    */
-  protected readonly echec = signal(false);
+  private readonly echecPhoto = signal(false);
+
+  /** DiceBear injoignable : hors ligne, en panne, ou filtré par l'opérateur. */
+  private readonly echecEngendre = signal(false);
+
+  /** Vrai une fois l'image réellement peinte, jamais avant. */
+  protected readonly chargee = signal(false);
 
   protected readonly initiales = computed(() => initialesDe(this.nom()));
+
+  /**
+   * La photo si elle existe, sinon l'avatar engendré, sinon rien.
+   *
+   * <p>Renvoyer {@code null} au bout de la cascade est ce qui retire le
+   * {@code <img>} du gabarit : sans cela, le navigateur garderait l'icône
+   * d'image brisée par-dessus les initiales.</p>
+   */
+  protected readonly source = computed(() => {
+    const photo = this.url();
+    if (photo && !this.echecPhoto()) {
+      return photo;
+    }
+    return this.echecEngendre() ? null : this.engendree();
+  });
+
+  /**
+   * Descend d'un cran dans la cascade.
+   *
+   * <p>⚠️ Il faut savoir <b>laquelle</b> des deux images vient d'échouer. Un
+   * drapeau unique ferait sauter directement aux initiales quand une photo
+   * expire — alors que l'avatar engendré, lui, serait parfaitement
+   * disponible.</p>
+   *
+   * <p>{@code chargee} est remis à faux : l'image suivante n'est pas encore
+   * peinte, et les initiales doivent réapparaître en attendant.</p>
+   */
+  protected surEchec(): void {
+    if (this.url() && !this.echecPhoto()) {
+      this.echecPhoto.set(true);
+    } else {
+      this.echecEngendre.set(true);
+    }
+    this.chargee.set(false);
+  }
+
+  /**
+   * L'avatar DiceBear, dérivé du nom.
+   *
+   * <p>⚠️ {@code encodeURIComponent} n'est pas une précaution de style :
+   * « BRIA ophelie » contient une espace, et beaucoup de noms d'ici portent
+   * des accents. Sans encodage, la graine est tronquée au premier caractère
+   * douteux — deux marchands différents reçoivent alors le même avatar, et on
+   * cherche longtemps pourquoi.</p>
+   */
+  private readonly engendree = computed(() => {
+    const graine = (this.nom() ?? '').trim();
+    if (!graine) {
+      return null;
+    }
+    return `${DICEBEAR}/${this.collection()}/svg?seed=${encodeURIComponent(graine)}`;
+  });
 
   /**
    * La couleur est <b>dérivée du nom</b>, jamais tirée au hasard.
@@ -106,6 +226,9 @@ export class Avatar {
    * <p>C'est ce qui rend l'avatar reconnaissable : la même personne garde sa
    * couleur d'un écran à l'autre et d'une session à l'autre. Une couleur
    * aléatoire changerait à chaque rendu et ne servirait plus à rien.</p>
+   *
+   * <p>Elle reste visible derrière les collections à fond transparent : le
+   * fond coloré fait partie de l'avatar, pas seulement du repli.</p>
    */
   protected readonly fond = computed(() => degradeDe(this.nom()));
 }

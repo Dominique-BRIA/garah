@@ -9,7 +9,7 @@ interface Indicateur {
   readonly cle: string;
   readonly libelle: string;
   readonly icone: string;
-  /** La teinte de l'icône. Voir les classes `.pastille--*`. */
+  /** La teinte de la carte — pastille et bouton. Voir les classes `.teinte--*`. */
   readonly teinte: string;
   /** Le code de `cas_utilisation` requis. Sans lui, la carte n'est pas affichée. */
   readonly permission: string;

@@ -11,6 +11,8 @@
             (click)="charger()" [disabled]="chargement()">
       <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
     </button>
+    <gu-bascule-vue [(vue)]="vue" cle="produits" />
+
     @if (session.peut('PRODUIT_CREER')) {
       <a routerLink="/produits/nouveau" class="gu-btn gu-btn--primaire">Nouveau produit</a>
     }
@@ -40,7 +42,7 @@
       puis créez votre premier produit.
     </p>
   </div>
-} @else {
+} @else if (vue() === 'tableau') {
   <div class="gu-tableau-defilant">
     <table class="gu-tableau">
       <thead>
@@ -82,5 +84,36 @@
         }
       </tbody>
     </table>
+  </div>
+} @else {
+  <!-- L'affichage en cartes. C'est ICI qu'il compte le plus : un catalogue se
+       reconnaît à ses photos, et le tableau les réduit à des vignettes de
+       2 rem au bout d'une ligne. La carte leur donne la place qu'elles
+       méritent — c'est la vue qui ressemble à ce que verra le client. -->
+  <div class="grille-produits">
+    @for (produit of produits(); track produit.id) {
+      <a class="carte-produit gu-carte" [routerLink]="['/produits', produit.id]">
+        @if (produit.urlPhotoPrincipale) {
+          <img [src]="produit.urlPhotoPrincipale" [alt]="produit.nom"
+               class="carte-produit__photo" loading="lazy" />
+        } @else {
+          <div class="carte-produit__photo carte-produit__photo--vide" aria-hidden="true">
+            <gu-icone nom="image" />
+          </div>
+        }
+
+        <div class="carte-produit__corps">
+          <span class="gu-badge" [class]="badge(produit.statut)">{{ produit.statut }}</span>
+          <h2 class="carte-produit__nom">{{ produit.nom }}</h2>
+          <code class="carte-produit__reference">{{ produit.reference }}</code>
+
+          <p class="carte-produit__classement">
+            {{ produit.marchandNom || '—' }} · {{ produit.categorieNom || '—' }}
+          </p>
+
+          <p class="carte-produit__prix">{{ montant(produit.prixMin, produit.devise) }}</p>
+        </div>
+      </a>
+    }
   </div>
 }

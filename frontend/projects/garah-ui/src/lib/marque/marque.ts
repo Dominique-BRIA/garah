@@ -8,7 +8,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
  * &lt;gu-marque taille="4rem" /&gt;          dans un en-tête
  * &lt;gu-marque animee="entree" /&gt;        elle se trace et se remplit, une fois
  * &lt;gu-marque animee="boucle" /&gt;        elle respire — pour une attente
- * &lt;gu-marque mono /&gt;                   une seule couleur, celle du texte
+ * &lt;gu-marque mono /&gt;                   la couleur du texte, pas celle de la marque
  * </pre>
  *
  * <h2>Ce que la forme raconte</h2>
@@ -23,22 +23,21 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
  * un <b>G</b> ensuite — et c'est le bon ordre : la marque doit dire le métier
  * avant de dire le nom, puisque le nom est déjà écrit à côté.</p>
  *
- * <p>{@link Logo} reste la <b>bannière</b> photographique, pour un écran
- * d'accueil. Ceci est la <b>marque</b>, pour tout le reste : onglet,
- * barre latérale, tampon, en-tête d'e-mail.</p>
+ * <p>{@link Logo} reste la <b>bannière</b> photographique, pour une vitrine où
+ * une photo de produits a un rôle à jouer. Ceci est la <b>marque</b>, pour
+ * tout le reste : onglet, barre latérale, tampon, en-tête d'e-mail.</p>
  *
- * <h2>⚠️ Aucune couleur en dur</h2>
+ * <h2>Sur la couleur</h2>
  *
- * <p>Les deux arrêts du dégradé lisent {@code var(--primary)} et
- * {@code var(--accent)}. C'est l'inversion par les jetons de D-03 : la marque
- * devient indigo dans le back-office et prendra la teinte de la vitrine sur la
- * vitrine, <b>sans un seul fichier de plus</b>.</p>
+ * <p>Un aplat, pas un dégradé, et il vient de {@code var(--marque)} — la seule
+ * constante de {@code _jetons.scss}. L'emblème garde donc sa couleur sur les
+ * trois frontends et dans les deux thèmes, pendant que {@code --primary} varie
+ * d'une application à l'autre.</p>
  *
- * <p>C'est aussi pourquoi cette marque est un composant et non un
- * {@code <img src="marque.svg">} : une image ne sait ni suivre le thème, ni
- * hériter de la couleur du texte. Les fichiers {@code assets/marque/*.svg}
- * existent pour ce qui vit HORS de l'application — un e-mail, un README, un
- * document imprimé.</p>
+ * <p>⚠️ <b>La couleur est posée en CSS, jamais en attribut.</b> Une variable
+ * CSS n'est pas substituée dans un attribut de présentation :
+ * {@code fill="var(--marque)"} donnerait simplement du noir. C'est une erreur
+ * qui ne se voit pas à la relecture — l'attribut a l'air parfaitement bon.</p>
  */
 @Component({
   selector: 'gu-marque',
@@ -54,31 +53,12 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
   template: `
     <svg
       viewBox="0 0 48 48"
-      [class]="animee()"
+      [class]="classes()"
       [attr.aria-hidden]="etiquette() ? null : 'true'"
       [attr.role]="etiquette() ? 'img' : null"
       [attr.aria-label]="etiquette() || null"
       focusable="false"
     >
-      @if (!mono()) {
-        <defs>
-          <!-- gradientUnits="userSpaceOnUse" : SANS lui, chaque forme reçoit sa
-               propre rampe indigo→violet et la marque paraît bariolée au lieu
-               d'être traversée par un seul dégradé. -->
-          <linearGradient
-            [attr.id]="idDegrade"
-            gradientUnits="userSpaceOnUse"
-            x1="7.5"
-            y1="7.5"
-            x2="40"
-            y2="40"
-          >
-            <stop offset="0" class="debut" />
-            <stop offset="1" class="fin" />
-          </linearGradient>
-        </defs>
-      }
-
       <!-- Le niveau de remplissage. Immobile hors animation : le rectangle
            couvre alors toute la panse, et le découpage ne se voit pas. -->
       <clipPath [attr.id]="idNiveau">
@@ -88,17 +68,12 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       <!-- L'anse. Bout franc et non arrondi : un bout rond dépasserait sous la
            ligne du bord, à gauche, et ferait une verrue que personne ne sait
            nommer mais que tout le monde voit. -->
-      <path
-        class="anse"
-        d="M10 25A15 15 0 0 1 37.29 16.4"
-        [attr.stroke]="peinture()"
-      />
+      <path class="anse" d="M10 25A15 15 0 0 1 37.29 16.4" />
 
       <!-- La panse. -->
       <path
         class="panse"
         d="M10 25A15 15 0 0 0 40 25Z"
-        [attr.fill]="peinture()"
         [attr.clip-path]="'url(#' + idNiveau + ')'"
       />
     </svg>
@@ -116,21 +91,29 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
         width: 100%;
         height: 100%;
         display: block;
-        overflow: visible;
-      }
-
-      .debut {
-        stop-color: var(--primary);
-      }
-
-      .fin {
-        stop-color: var(--accent);
       }
 
       .anse {
         fill: none;
+        stroke: var(--marque);
         stroke-width: 5;
         stroke-linecap: butt;
+      }
+
+      .panse {
+        fill: var(--marque);
+      }
+
+      /* Sur un aplat de couleur, ou en impression : la marque prend la couleur
+         du texte qui l'entoure. C'est la version qui compte à long terme —
+         une marque qui ne survit pas à l'aplat ne survit ni au tampon, ni à
+         la broderie. */
+      svg.mono .anse {
+        stroke: currentColor;
+      }
+
+      svg.mono .panse {
+        fill: currentColor;
       }
 
       /* ── L'entrée : l'anse se trace, puis la panse se remplit ──────────────
@@ -207,22 +190,19 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 })
 export class Marque {
   /**
-   * Un identifiant par instance.
+   * Un identifiant de découpe par instance.
    *
    * <p>⚠️ Deux marques sur la même page partageraient sinon le même
-   * {@code id} de dégradé. Le second l'emporterait, et la première marque
-   * pointerait vers une définition qui n'est plus la sienne — un bogue qui ne
-   * se voit QUE lorsqu'on affiche deux marques de tailles différentes, donc
-   * jamais pendant qu'on l'écrit.</p>
+   * {@code id}. Le second l'emporterait, et la première pointerait vers une
+   * découpe qui n'est plus la sienne — un bogue qui ne se voit QUE lorsqu'on
+   * affiche deux marques de tailles différentes, donc jamais pendant qu'on
+   * l'écrit.</p>
    *
    * <p>L'encapsulation d'Angular ne protège pas d'un doublon : elle réécrit
    * les sélecteurs CSS, pas les identifiants d'un document SVG.</p>
    */
   private static suivant = 0;
-  private readonly rang = ++Marque.suivant;
-
-  protected readonly idDegrade = `gu-marque-degrade-${this.rang}`;
-  protected readonly idNiveau = `gu-marque-niveau-${this.rang}`;
+  protected readonly idNiveau = `gu-marque-niveau-${++Marque.suivant}`;
 
   /** La taille du carré. La marque est dessinée sur une grille carrée. */
   readonly taille = input('2.5rem');
@@ -230,7 +210,7 @@ export class Marque {
   /** `non`, `entree` (une fois) ou `boucle` (une attente). */
   readonly animee = input<'non' | 'entree' | 'boucle'>('non');
 
-  /** Une seule couleur, héritée du texte : impression, tampon, aplat. */
+  /** La couleur du texte plutôt que celle de la marque : aplat, impression. */
   readonly mono = input(false, { transform: booleen });
 
   /**
@@ -241,8 +221,8 @@ export class Marque {
    */
   readonly etiquette = input<string | null>(null);
 
-  protected readonly peinture = computed(() =>
-    this.mono() ? 'currentColor' : `url(#${this.idDegrade})`,
+  protected readonly classes = computed(() =>
+    this.mono() ? `${this.animee()} mono` : this.animee(),
   );
 }
 

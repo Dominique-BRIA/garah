@@ -1,0 +1,165 @@
+<header class="entete">
+  <div>
+    <h1>Mon profil</h1>
+    <p class="sous-titre">Vos informations et votre mot de passe.</p>
+  </div>
+</header>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (profil(); as p) {
+
+  <div class="colonnes">
+
+    <!-- ============ L'identité, en lecture seule ============ -->
+    <section class="gu-carte identite">
+      <gu-avatar [nom]="p.nom" taille="5rem" />
+
+      <div class="identite__texte">
+        <h2 class="identite__nom">
+          {{ p.prenom ? p.prenom + ' ' + p.nom : p.nom }}
+        </h2>
+        <span class="gu-badge gu-badge--info">{{ role(p.type) }}</span>
+      </div>
+
+      <dl class="faits">
+        <div class="fait">
+          <dt>Adresse e-mail</dt>
+          <dd>
+            {{ p.email }}
+            @if (p.emailVerifie) {
+              <span class="gu-badge gu-badge--succes petit-badge">Confirmée</span>
+            } @else {
+              <!-- Visible, parce que c'est ce qui bloque le passage de commande
+                   (D-23). Sans cette mention, personne ne comprend pourquoi. -->
+              <span class="gu-badge gu-badge--neutre petit-badge">À confirmer</span>
+            }
+          </dd>
+        </div>
+
+        <div class="fait">
+          <dt>Compte créé le</dt>
+          <dd>{{ dateLisible(p.dateCreation) }}</dd>
+        </div>
+
+        @if (p.dateDerniereConnexion; as derniere) {
+          <div class="fait">
+            <dt>Dernière connexion</dt>
+            <dd>{{ dateHeureLisible(derniere) }}</dd>
+          </div>
+        }
+      </dl>
+
+      <p class="aide">
+        L'adresse e-mail sert à vous connecter et ne se modifie pas ici.
+        Contactez un administrateur pour la changer.
+      </p>
+    </section>
+
+    <!-- ============ Les informations modifiables ============ -->
+    <section class="gu-carte">
+      <h2 class="titre-bloc">Vos informations</h2>
+
+      <form (ngSubmit)="enregistrer()" novalidate>
+        <label class="gu-libelle" for="nom">Nom</label>
+        <input id="nom" name="nom" class="gu-champ" required maxlength="100"
+               [ngModel]="nom()" (ngModelChange)="nom.set($event); succes.set(false)" />
+
+        <label class="gu-libelle" for="prenom">Prénom</label>
+        <input id="prenom" name="prenom" class="gu-champ" maxlength="100"
+               [ngModel]="prenom()" (ngModelChange)="prenom.set($event); succes.set(false)" />
+
+        <label class="gu-libelle" for="tel">Téléphone</label>
+        <input id="tel" name="telephone" class="gu-champ" maxlength="30"
+               inputmode="tel" autocomplete="tel"
+               [ngModel]="telephone()" (ngModelChange)="telephone.set($event); succes.set(false)" />
+        <p class="aide">
+          Utilisé pour le paiement mobile. Laissez vide pour le retirer.
+        </p>
+
+        <label class="gu-libelle" for="langue">Langue</label>
+        <select id="langue" name="langue" class="gu-champ"
+                [ngModel]="langue()" (ngModelChange)="langue.set($event); succes.set(false)">
+          @for (l of langues; track l.code) {
+            <option [value]="l.code">{{ l.libelle }}</option>
+          }
+        </select>
+
+        @if (erreurFormulaire(); as m) {
+          <p class="alerte" role="alert">{{ m }}</p>
+        }
+        @if (succes()) {
+          <p class="succes" role="status">
+            <gu-icone nom="check" /> Informations enregistrées.
+          </p>
+        }
+
+        <div class="boutons">
+          <button type="submit" class="gu-btn gu-btn--primaire"
+                  [disabled]="enregistrement() || !nom().trim()">
+            @if (enregistrement()) {
+              <gu-icone nom="circle-notch" tourne /> Enregistrement…
+            } @else { Enregistrer }
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ Le mot de passe ============ -->
+    <section class="gu-carte">
+      <h2 class="titre-bloc">Mot de passe</h2>
+
+      <!-- Dit AVANT, pas après. Une déconnexion qu'on n'a pas annoncée passe
+           pour une panne, même quand elle est le comportement voulu. -->
+      <p class="aide aide--avertissement">
+        <gu-icone nom="triangle-exclamation" />
+        Changer votre mot de passe ferme toutes vos sessions, y compris
+        celle-ci. Vous devrez vous reconnecter.
+      </p>
+
+      <form (ngSubmit)="changerMotDePasse()" novalidate>
+        <label class="gu-libelle" for="actuel">Mot de passe actuel</label>
+        <input id="actuel" name="actuel" type="password" class="gu-champ"
+               autocomplete="current-password" required
+               [ngModel]="actuel()" (ngModelChange)="actuel.set($event)" />
+
+        <label class="gu-libelle" for="nouveau">Nouveau mot de passe</label>
+        <input id="nouveau" name="nouveau" type="password" class="gu-champ"
+               autocomplete="new-password" required minlength="10"
+               [ngModel]="nouveau()" (ngModelChange)="nouveau.set($event)" />
+        <p class="aide">Au moins 10 caractères.</p>
+
+        <label class="gu-libelle" for="confirmation">Confirmez le nouveau</label>
+        <input id="confirmation" name="confirmation" type="password" class="gu-champ"
+               autocomplete="new-password" required
+               [attr.aria-invalid]="discordance() ? 'true' : null"
+               [ngModel]="confirmation()" (ngModelChange)="confirmation.set($event)" />
+
+        @if (discordance()) {
+          <p class="alerte" role="alert">Les deux saisies ne correspondent pas.</p>
+        }
+        @if (erreurMotDePasse(); as m) {
+          <p class="alerte" role="alert">{{ m }}</p>
+        }
+
+        <div class="boutons">
+          <button type="submit" class="gu-btn gu-btn--danger" [disabled]="!peutChanger()">
+            @if (changement()) {
+              <gu-icone nom="circle-notch" tourne /> Modification…
+            } @else { Changer le mot de passe }
+          </button>
+        </div>
+      </form>
+    </section>
+
+  </div>
+}

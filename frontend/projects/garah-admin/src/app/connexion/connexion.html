@@ -23,6 +23,18 @@
   </header>
 
   <div class="connexion__panneau gu-carte">
+    <!-- Pourquoi on se retrouve ici. Affiché AU-DESSUS du formulaire, pas
+         sous le bouton : c'est ce qu'il faut lire avant de se demander
+         pourquoi on a été déconnecté.
+
+         `role="status"` et non `role="alert"` : rien n'a échoué, on informe. -->
+    @if (avis(); as message) {
+      <p class="avis" role="status">
+        <gu-icone nom="check" />
+        <span>{{ message }}</span>
+      </p>
+    }
+
     <!-- novalidate : on veut NOS messages, pas les bulles du navigateur, qui
          ne sont ni traduites, ni stylables, ni annoncées de la même façon
          par tous les lecteurs d'écran. -->

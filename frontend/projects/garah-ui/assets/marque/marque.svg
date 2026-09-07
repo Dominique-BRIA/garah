@@ -5,23 +5,14 @@
     La marque GARAH : la calebasse, ramenee a sa panse et a son anse.
 
     /!\ CE FICHIER EST POUR L'EXTERIEUR de l'application : e-mail, README,
-        document imprime, outil tiers. Les couleurs y sont ecrites en dur
-        parce qu'il n'y a aucun theme pour les fournir.
+        document imprime, outil tiers. Le vert y est ecrit en dur parce qu'il
+        n'y a aucune feuille de style pour fournir var(--marque).
 
-        DANS l'application, utiliser <gu-marque /> : ses arrets de degrade
-        lisent var(--primary) et var(--accent), donc la marque suit le theme
-        de chaque frontend sans un fichier de plus.
+        DANS l'application, utiliser <gu-marque /> : la couleur y vient du
+        jeton, et le jour ou la charte change, elle change a UN seul endroit.
+        Ce fichier-ci est alors a remettre a jour a la main.
   -->
-  <defs>
-    <!-- userSpaceOnUse : un seul degrade traverse les deux formes. En unites
-         de boite englobante, chacune recevrait sa propre rampe complete. -->
-    <linearGradient id="garah-degrade" gradientUnits="userSpaceOnUse"
-                    x1="7.5" y1="7.5" x2="40" y2="40">
-      <stop offset="0" stop-color="#4f46e5"/>
-      <stop offset="1" stop-color="#aa3bff"/>
-    </linearGradient>
-  </defs>
-  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="url(#garah-degrade)"
+  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="#12a594"
         stroke-width="5" stroke-linecap="butt"/>
-  <path d="M10 25A15 15 0 0 0 40 25Z" fill="url(#garah-degrade)"/>
+  <path d="M10 25A15 15 0 0 0 40 25Z" fill="#12a594"/>
 </svg>
