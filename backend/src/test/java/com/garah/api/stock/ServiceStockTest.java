@@ -8,14 +8,19 @@ import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.stock.domaine.EtatStock;
 import com.garah.api.stock.domaine.ServiceStock;
+import com.garah.api.stock.domaine.VueMouvement;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -183,5 +188,71 @@ class ServiceStockTest {
         // C'est le controle a faire tourner chaque nuit : si l'etat et le
         // journal divergent, une ecriture a eu lieu hors du service.
         assertThat(stock.estReconcilie(varianteId)).isTrue();
+    }
+
+    // -------------------------------------------------------------------------
+    // La liste du back-office
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("la liste sans recherche passe une collection NULLE au IN")
+    void listeSansRecherche() {
+        em.flush();
+
+        // ⚠️ Ce test existe pour UNE raison : la requete porte
+        // « :varianteIds IS NULL OR s.varianteId IN :varianteIds », et un
+        // parametre de collection nul est exactement le genre de chose qui
+        // compile, demarre, et casse a la premiere execution. Le verifier au
+        // demarrage ne suffit pas — il faut l'appeler.
+        Page<EtatStock> page = stock.administration(null, false, PageRequest.of(0, 25));
+
+        assertThat(page.getContent()).isNotEmpty();
+        assertThat(page.getContent().getFirst().varianteId()).isEqualTo(varianteId);
+    }
+
+    @Test
+    @DisplayName("la liste porte la designation venue du catalogue")
+    void listeDesignee() {
+        em.flush();
+
+        EtatStock etat = stock.administration(null, false, PageRequest.of(0, 25))
+                .getContent().getFirst();
+
+        // Sans cela, l'ecran afficherait « variante 42 : 10 disponibles » —
+        // une ligne que personne ne sait interpreter.
+        assertThat(etat.produitNom()).isEqualTo("Produit stocké");
+        assertThat(etat.sku()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("la recherche passe par le catalogue, puis filtre les stocks")
+    void listeRecherchee() {
+        em.flush();
+
+        // Le stock ne connait que des identifiants : il ne sait pas ce qu'est
+        // un « produit stocké ». La recherche interroge donc le catalogue en
+        // premier.
+        assertThat(stock.administration("stocké", false, PageRequest.of(0, 25))).isNotEmpty();
+
+        // Et quand rien ne correspond, on ne lance meme pas la seconde requete :
+        // `IN ()` est invalide en SQL.
+        assertThat(stock.administration("introuvable-xyz", false, PageRequest.of(0, 25)))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("l'historique explique la quantite courante")
+    void historique() {
+        stock.entrer(varianteId, 5, null, "Second arrivage");
+        em.flush();
+
+        List<VueMouvement> journal = stock.mouvements(varianteId);
+
+        // Le plus recent d'abord : c'est ce qu'on cherche quand on ouvre
+        // l'historique apres avoir vu un chiffre surprenant.
+        assertThat(journal).hasSize(2);
+        assertThat(journal.getFirst().commentaire()).isEqualTo("Second arrivage");
+        assertThat(journal.getFirst().quantiteAvant()).isEqualTo(10);
+        assertThat(journal.getFirst().quantiteApres()).isEqualTo(15);
     }
 }

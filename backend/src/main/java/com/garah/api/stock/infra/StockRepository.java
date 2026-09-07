@@ -2,10 +2,14 @@ package com.garah.api.stock.infra;
 
 import com.garah.api.stock.domaine.Stock;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,4 +66,25 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     @Query("SELECT s FROM Stock s WHERE s.quantiteDisponible <= s.seuilAlerte")
     List<Stock> sousLeSeuil();
+
+    /**
+     * La liste du back-office.
+     *
+     * <p>{@code varianteIds} nul = aucun filtre. Quand une recherche est en
+     * cours, le service demande d'abord au catalogue quelles declinaisons
+     * correspondent, puis passe leurs identifiants ici : le stock ne connait
+     * que des identifiants, il ne sait pas ce qu'est une « chaussure ».</p>
+     *
+     * <p>Le tri place les ruptures EN PREMIER. Un ecran de stock s'ouvre pour
+     * savoir ce qui manque, pas pour admirer ce qui est plein.</p>
+     */
+    @Query("""
+            SELECT s FROM Stock s
+             WHERE (:varianteIds IS NULL OR s.varianteId IN :varianteIds)
+               AND (:sousLeSeuil = false OR s.quantiteDisponible <= s.seuilAlerte)
+             ORDER BY s.quantiteDisponible ASC, s.varianteId ASC
+            """)
+    Page<Stock> administration(@Param("varianteIds") Collection<Long> varianteIds,
+                               @Param("sousLeSeuil") boolean sousLeSeuil,
+                               Pageable pagination);
 }

@@ -1,14 +1,21 @@
 package com.garah.api.stock.domaine;
 
+import com.garah.api.catalogue.domaine.DesignationVariante;
+import com.garah.api.catalogue.infra.VarianteRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.stock.infra.MouvementStockRepository;
 import com.garah.api.stock.infra.StockRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Le module le plus délicat du backend.
@@ -35,9 +42,19 @@ public class ServiceStock {
     private final StockRepository stocks;
     private final MouvementStockRepository mouvements;
 
-    public ServiceStock(StockRepository stocks, MouvementStockRepository mouvements) {
+    /**
+     * Le catalogue, en lecture seule, pour designer les declinaisons.
+     *
+     * <p>Le stock depend du catalogue, jamais l inverse : le test ArchUnit
+     * « aucun cycle entre les domaines » le verifie au build.</p>
+     */
+    private final VarianteRepository variantes;
+
+    public ServiceStock(StockRepository stocks, MouvementStockRepository mouvements,
+                        VarianteRepository variantes) {
         this.stocks = stocks;
         this.mouvements = mouvements;
+        this.variantes = variantes;
     }
 
     /**
@@ -242,7 +259,74 @@ public class ServiceStock {
 
     @Transactional(readOnly = true)
     public List<EtatStock> alertes() {
-        return stocks.sousLeSeuil().stream().map(EtatStock::de).toList();
+        return enrichir(stocks.sousLeSeuil());
+    }
+
+    /**
+     * La liste du back-office, avec la désignation de chaque déclinaison.
+     *
+     * <p>🎯 Deux requêtes, pas deux par ligne : une pour les stocks, une pour
+     * les désignations de toute la page. Lire le catalogue dans le {@code map}
+     * ferait vingt-cinq allers-retours pour vingt-cinq lignes.</p>
+     *
+     * <p>La recherche fait le chemin <b>inverse</b> : le stock ne connaît que
+     * des identifiants de variante, il ne sait pas ce qu'est une
+     * « chaussure ». On demande donc d'abord au catalogue quelles déclinaisons
+     * correspondent, puis on filtre les stocks sur ces identifiants.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<EtatStock> administration(String recherche, boolean sousLeSeuil,
+                                          Pageable pagination) {
+        String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
+
+        List<Long> ids = null;
+        if (filtre != null) {
+            ids = variantes.idsCorrespondant(filtre);
+            if (ids.isEmpty()) {
+                // Aucune déclinaison ne correspond : inutile d'interroger les
+                // stocks, et surtout `IN ()` est invalide en SQL.
+                return Page.empty(pagination);
+            }
+        }
+
+        Page<Stock> page = stocks.administration(ids, sousLeSeuil, pagination);
+        Map<Long, DesignationVariante> designations = designationsPour(page.getContent());
+
+        return page.map(s -> EtatStock.de(s, designations.get(s.getVarianteId())));
+    }
+
+    /**
+     * L'historique des mouvements d'une déclinaison.
+     *
+     * <p>C'est ce qui répond à « pourquoi n'en reste-t-il que trois ? ». Le
+     * chiffre courant est une photo de l'instant ; les mouvements sont les
+     * faits datés qui l'expliquent.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<VueMouvement> mouvements(Long varianteId) {
+        Stock stock = stocks.findByVarianteId(varianteId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Stock de la variante", varianteId));
+
+        return mouvements.findByStockIdOrderByDateOperationDesc(stock.getId()).stream()
+                .map(VueMouvement::de)
+                .toList();
+    }
+
+    private List<EtatStock> enrichir(List<Stock> liste) {
+        Map<Long, DesignationVariante> designations = designationsPour(liste);
+        return liste.stream()
+                .map(s -> EtatStock.de(s, designations.get(s.getVarianteId())))
+                .toList();
+    }
+
+    private Map<Long, DesignationVariante> designationsPour(List<Stock> liste) {
+        if (liste.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> ids = liste.stream().map(Stock::getVarianteId).collect(Collectors.toSet());
+
+        return variantes.designationsPar(ids).stream()
+                .collect(Collectors.toMap(DesignationVariante::varianteId, d -> d));
     }
 
     // -------------------------------------------------------------------------

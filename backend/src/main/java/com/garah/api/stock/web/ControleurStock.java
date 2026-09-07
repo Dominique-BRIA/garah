@@ -1,11 +1,14 @@
 package com.garah.api.stock.web;
 
 import com.garah.api.stock.domaine.EtatStock;
+import com.garah.api.stock.domaine.VueMouvement;
 import com.garah.api.stock.domaine.ServiceStock;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -38,10 +41,49 @@ public class ControleurStock {
         this.stock = stock;
     }
 
+    /**
+     * L'inventaire complet, filtrable.
+     *
+     * <p>Le tri place les ruptures <b>en premier</b> : un écran de stock
+     * s'ouvre pour savoir ce qui manque, pas pour admirer ce qui est plein.</p>
+     *
+     * <p>{@code sousLeSeuil=true} donne la même chose que {@code /alertes},
+     * mais paginé et cherchable. La route {@code /alertes} reste, non paginée :
+     * elle alimente le compteur du tableau de bord, qui n'a besoin que d'un
+     * nombre.</p>
+     */
+    @GetMapping
+    @PreAuthorize("hasAuthority('STOCK_CONSULTER')")
+    public Page<EtatStock> lister(
+            @RequestParam(required = false) String recherche,
+            @RequestParam(defaultValue = "false") boolean sousLeSeuil,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int taille) {
+
+        return stock.administration(recherche, sousLeSeuil,
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, 100)));
+    }
+
     @GetMapping("/{varianteId}")
     @PreAuthorize("hasAuthority('STOCK_CONSULTER')")
     public EtatStock etat(@PathVariable Long varianteId) {
         return stock.etat(varianteId);
+    }
+
+    /**
+     * L'historique des mouvements d'une déclinaison.
+     *
+     * <p>C'est ce qui répond à « pourquoi n'en reste-t-il que trois ? ». La
+     * quantité courante est une photo de l'instant ; les mouvements sont les
+     * faits datés qui l'expliquent.</p>
+     *
+     * <p>Sa propre permission : voir un stock et voir <b>qui</b> l'a ajusté et
+     * <b>pourquoi</b> ne se confient pas forcément à la même personne.</p>
+     */
+    @GetMapping("/{varianteId}/mouvements")
+    @PreAuthorize("hasAuthority('STOCK_CONSULTER_HISTORIQUE')")
+    public List<VueMouvement> mouvements(@PathVariable Long varianteId) {
+        return stock.mouvements(varianteId);
     }
 
     /**

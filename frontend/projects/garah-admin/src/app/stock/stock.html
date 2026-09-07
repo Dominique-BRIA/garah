@@ -1,0 +1,256 @@
+<header class="entete">
+  <div>
+    <h1>Stock</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (seulementAlertes()) { {{ total() }} déclinaison(s) sous le seuil }
+      @else if (filtreApplique(); as q) { {{ total() }} résultat(s) pour « {{ q }} » }
+      @else { {{ total() }} déclinaison(s) suivie(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <div class="champ-recherche">
+      <gu-icone nom="magnifying-glass" class="loupe" />
+      <input type="search" class="gu-champ" placeholder="Produit, déclinaison ou référence"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             (keyup.enter)="chercher()" name="recherche"
+             aria-label="Rechercher dans le stock" />
+    </div>
+
+    <button type="button" class="gu-btn"
+            [class.gu-btn--primaire]="seulementAlertes()"
+            [class.gu-btn--secondaire]="!seulementAlertes()"
+            (click)="basculerAlertes()">
+      <gu-icone nom="triangle-exclamation" /> Sous le seuil
+    </button>
+
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="warehouse" class="etat__icone" />
+    @if (filtreApplique()) {
+      <p class="etat__titre">Rien ne correspond à « {{ filtreApplique() }} »</p>
+      <p class="etat__aide">La recherche porte sur le produit, la déclinaison et la référence.</p>
+    } @else if (seulementAlertes()) {
+      <p class="etat__titre">Aucune rupture</p>
+      <p class="etat__aide">Toutes les déclinaisons suivies sont au-dessus de leur seuil.</p>
+    } @else {
+      <p class="etat__titre">Aucun stock suivi</p>
+      <p class="etat__aide">
+        Une ligne de stock naît avec la déclinaison qu’elle suit.
+        <a routerLink="/produits">Créez un produit pour commencer.</a>
+      </p>
+    }
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Déclinaison</th>
+          <th>Référence</th>
+          <th class="droite">Disponible</th>
+          <th class="droite">Réservé</th>
+          <th class="droite">Endommagé</th>
+          <th class="droite">Total</th>
+          <th class="droite">Seuil</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of liste(); track s.varianteId) {
+          <tr class="cliquable" [class.rupture]="s.sousLeSeuil" (click)="ouvrir(s)">
+            <td>
+              <div class="cellule-designation">
+                @if (s.sousLeSeuil) {
+                  <gu-icone nom="triangle-exclamation" class="alerte-icone"
+                            aria-label="Sous le seuil" />
+                }
+                <span class="nom">{{ designation(s) }}</span>
+              </div>
+            </td>
+            <td>
+              @if (s.sku) { <code>{{ s.sku }}</code> }
+              @else { <span class="attenue">—</span> }
+            </td>
+            <!-- Le disponible en gras : c'est le seul chiffre qui répond à
+                 « puis-je vendre ? ». Les autres l'expliquent. -->
+            <td class="droite nombre nombre--fort"
+                [class.nombre--rupture]="s.sousLeSeuil">{{ s.disponible }}</td>
+            <td class="droite nombre attenue">{{ s.reserve }}</td>
+            <td class="droite nombre"
+                [class.nombre--abime]="s.endommage > 0">{{ s.endommage }}</td>
+            <td class="droite nombre">{{ s.total }}</td>
+            <td class="droite nombre attenue">{{ s.seuilAlerte }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="changerPage($event)" />
+}
+
+<!-- Le panneau d'une déclinaison : ses compteurs, ses gestes, son histoire. -->
+@if (ouvert(); as s) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau panneau--large" role="dialog" aria-modal="true"
+         [attr.aria-label]="designation(s)">
+    <h2>{{ designation(s) }}</h2>
+    @if (s.sku) { <p class="aide"><code>{{ s.sku }}</code></p> }
+
+    <!-- Les trois compteurs ensemble. Séparés, on croirait qu'une
+         réservation a fait disparaître la marchandise. -->
+    <dl class="compteurs">
+      <div [class.compteurs--rupture]="s.sousLeSeuil">
+        <dt>Disponible</dt>
+        <dd>{{ s.disponible }}</dd>
+      </div>
+      <div>
+        <dt>Réservé</dt>
+        <dd>{{ s.reserve }}</dd>
+      </div>
+      <div>
+        <dt>Endommagé</dt>
+        <dd>{{ s.endommage }}</dd>
+      </div>
+      <div class="compteurs__total">
+        <dt>Dans l’entrepôt</dt>
+        <dd>{{ s.total }}</dd>
+      </div>
+    </dl>
+
+    @if (s.sousLeSeuil) {
+      <p class="avertissement">
+        Sous le seuil d’alerte ({{ s.seuilAlerte }}). À réapprovisionner.
+      </p>
+    }
+
+    <!-- Deux gestes, deux boutons, et surtout deux SENS différents. -->
+    @if (!geste()) {
+      <div class="gestes">
+        @if (session.peut('STOCK_ENTREE_ENREGISTRER')) {
+          <button type="button" class="gu-btn gu-btn--primaire"
+                  (click)="ouvrirGeste('entree')">Réception</button>
+        }
+        @if (session.peut('STOCK_AJUSTER')) {
+          <button type="button" class="gu-btn gu-btn--secondaire"
+                  (click)="ouvrirGeste('ajustement')">Inventaire</button>
+        }
+      </div>
+    } @else {
+      <form class="encart" (ngSubmit)="enregistrerGeste()" novalidate>
+        @if (geste() === 'entree') {
+          <label class="gu-libelle" for="qte">Quantité reçue</label>
+          <input id="qte" name="quantite" type="number" min="1" class="gu-champ"
+                 [ngModel]="quantite()"
+                 (ngModelChange)="quantite.set($event === '' ? null : +$event)" />
+          <p class="aide">Ce qui vient d’arriver, à ajouter au disponible.</p>
+
+          <label class="gu-libelle" for="com">Commentaire</label>
+          <input id="com" name="commentaire" class="gu-champ" maxlength="500"
+                 placeholder="Livraison du fournisseur"
+                 [ngModel]="commentaire()" (ngModelChange)="commentaire.set($event)" />
+        } @else {
+          <label class="gu-libelle" for="qte">Quantité réellement comptée</label>
+          <input id="qte" name="quantite" type="number" min="0" class="gu-champ"
+                 [ngModel]="quantite()"
+                 (ngModelChange)="quantite.set($event === '' ? null : +$event)" />
+          <!-- On envoie le CONSTAT, jamais l'écart. Calculer soi-même « il en
+               manque 3 » suppose de connaître la quantité théorique au moment
+               du comptage — or elle a pu bouger depuis. -->
+          <p class="aide">
+            Ce que vous avez sous les yeux, pas l’écart. Le serveur calcule
+            la différence au moment où il enregistre.
+          </p>
+
+          <label class="gu-libelle" for="com">Motif</label>
+          <input id="com" name="commentaire" class="gu-champ" required maxlength="500"
+                 placeholder="Inventaire du 7 septembre"
+                 [ngModel]="commentaire()" (ngModelChange)="commentaire.set($event)" />
+          <p class="aide">
+            Obligatoire. Un ajustement sans explication est un trou que
+            personne ne saura combler six mois plus tard.
+          </p>
+        }
+
+        @if (erreurPanneau(); as m) {
+          <p class="alerte" role="alert">{{ m }}</p>
+        }
+
+        <div class="boutons">
+          <button type="button" class="gu-btn gu-btn--secondaire"
+                  (click)="geste.set(null)">Annuler</button>
+          <button type="submit" class="gu-btn gu-btn--primaire"
+                  [disabled]="action() !== null || quantite() === null
+                              || (geste() === 'ajustement' && !commentaire().trim())">
+            @if (action()) {
+              <gu-icone nom="circle-notch" tourne /> Enregistrement…
+            } @else { Enregistrer }
+          </button>
+        </div>
+      </form>
+    }
+
+    <!-- L'histoire du compteur. C'est elle qui répond à « pourquoi n'en
+         reste-t-il que trois ? ». -->
+    @if (session.peut('STOCK_CONSULTER_HISTORIQUE')) {
+      <h3 class="titre-journal">Mouvements</h3>
+
+      @if (chargementMouvements()) {
+        <p class="vide"><gu-icone nom="circle-notch" tourne /> Chargement…</p>
+      } @else if (mouvements().length === 0) {
+        <p class="vide">Aucun mouvement enregistré.</p>
+      } @else {
+        <ul class="journal">
+          @for (m of mouvements(); track m.id) {
+            <li>
+              <div class="journal__tete">
+                <span class="journal__type">{{ typeMouvement(m.type) }}</span>
+                <span class="journal__quantite"
+                      [class.journal__quantite--entrant]="entrant(m)">
+                  @if (entrant(m)) { + }{{ m.quantite }}
+                </span>
+              </div>
+
+              <p class="journal__detail">
+                {{ compteur(m.compteur) }} : {{ m.quantiteAvant }} → {{ m.quantiteApres }}
+                · {{ dateHeure(m.dateOperation) }}
+                @if (origine(m.origineType); as o) { · {{ o }} }
+              </p>
+
+              @if (m.commentaire) {
+                <p class="journal__commentaire">{{ m.commentaire }}</p>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
+
+    <div class="boutons">
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Fermer</button>
+    </div>
+  </aside>
+}

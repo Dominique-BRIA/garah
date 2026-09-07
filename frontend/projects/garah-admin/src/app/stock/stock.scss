@@ -1,0 +1,167 @@
+// L'inventaire. Les motifs communs viennent de styles.scss.
+
+.attenue { color: var(--texte-attenue); }
+
+// --- Le tableau --------------------------------------------------------------
+.cellule-designation {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nom { font-weight: 600; }
+
+.alerte-icone {
+  color: var(--warning);
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+// Les colonnes de chiffres s'alignent verticalement. Sans largeur fixe, la
+// comparaison d'une ligne à l'autre demande de compter les caractères.
+.nombre { font-variant-numeric: tabular-nums; }
+
+// Le disponible est le seul chiffre qui répond à « puis-je vendre ? ».
+// Les autres l'expliquent.
+.nombre--fort { font-weight: 700; }
+
+.nombre--rupture { color: var(--warning); }
+
+// Une casse n'est pas une alerte de réapprovisionnement : c'est de la
+// marchandise perdue. Rouge, pas ambre.
+.nombre--abime { color: var(--danger); }
+
+tr.rupture td:first-child {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
+// --- Le panneau --------------------------------------------------------------
+.panneau--large { max-width: 32rem; }
+
+.compteurs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0;
+
+  div {
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-douce);
+  }
+
+  dt {
+    margin: 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--texte-attenue);
+  }
+
+  dd {
+    margin: 0.15rem 0 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.compteurs--rupture {
+  background: color-mix(in srgb, var(--warning) 14%, transparent) !important;
+  dd { color: var(--warning); }
+}
+
+// Le total est la SOMME des trois autres, pas un quatrième compteur. La
+// bordure le sépare pour qu'on ne l'additionne pas une fois de plus.
+.compteurs__total {
+  border: 1px solid var(--verre-bordure);
+  background: transparent !important;
+}
+
+.avertissement {
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: 0.82rem;
+}
+
+.gestes {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.encart {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-douce);
+
+  .gu-libelle:not(:first-child) { margin-top: 0.75rem; }
+}
+
+// --- Le journal des mouvements -----------------------------------------------
+.titre-journal {
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.vide {
+  color: var(--texte-attenue);
+  font-size: 0.86rem;
+}
+
+.journal {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  max-height: 22rem;
+  overflow-y: auto;
+
+  li {
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--verre-bordure);
+  }
+
+  li:first-child { border-top: none; padding-top: 0; }
+}
+
+.journal__tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.journal__type { font-weight: 600; font-size: 0.86rem; }
+
+.journal__quantite {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--danger);
+}
+
+.journal__quantite--entrant { color: var(--success); }
+
+.journal__detail {
+  margin: 0.2rem 0 0;
+  font-size: 0.76rem;
+  color: var(--texte-attenue);
+  // Les quantités avant/après alignées : c'est en les suivant qu'on repère
+  // un mouvement qui ne part pas d'où le précédent est arrivé.
+  font-variant-numeric: tabular-nums;
+}
+
+.journal__commentaire {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}

@@ -31,6 +31,7 @@ export const routes: Routes = [
       // aucun sens separes. « Ou est passe l'argent de cette commande ? » est
       // une seule question, pas deux.
       { path: 'paiements', loadComponent: () => import('./commandes/paiements').then((m) => m.Paiements) },
+      { path: 'stock', loadComponent: () => import('./stock/stock').then((m) => m.Stock) },
       // Les comptes internes. « equipe » et non « utilisateurs » : les clients
       // sont aussi des utilisateurs, et ils ne se gerent pas ici.
       { path: 'equipe', loadComponent: () => import('./equipe/equipe').then((m) => m.Equipe) },
