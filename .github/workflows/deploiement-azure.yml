@@ -155,3 +155,34 @@ jobs:
           done
           echo "::error::L application n a pas repondu 200 en 5 minutes."
           exit 1
+
+      # Un echec de demarrage ne dit RIEN par lui-meme : le workflow s arrete
+      # sur un code HTTP, et la cause est cote Azure. Ces trois lignes
+      # remplacent une heure de recherche a l aveugle — dans l ordre de
+      # frequence reelle.
+      - name: Ou chercher si ca a echoue
+        if: failure()
+        run: |
+          cat <<'FIN'
+          ::group::Les trois causes, par ordre de frequence
+          1. L IMAGE N A PAS PU ETRE TIREE
+             Le paquet ghcr.io est prive par defaut au premier passage.
+             Verifier DOCKER_REGISTRY_SERVER_USERNAME / _PASSWORD dans
+             Variables d environnement, ou rendre le paquet public.
+             Signature : « Application Error » et AUCUN journal applicatif.
+
+          2. WEBSITES_PORT MANQUE OU VAUT AUTRE CHOSE QUE 8080
+             App Service devine alors le port et se trompe. L application
+             demarre normalement, mais rien ne lui parvient.
+             Signature : journaux applicatifs COMPLETS, « Started
+             GarahApplication », et pourtant 502 ou 504 de l exterieur.
+
+          3. UNE VARIABLE GARAH_* MANQUE
+             GARAH_JWT_SECRET de moins de 32 octets, GARAH_DB_URL absente :
+             l application refuse de demarrer, et elle le DIT.
+             Signature : la pile d erreur est dans le flux de journaux.
+
+          Les journaux : portail > garah-api > Flux de journaux
+          Ou : az webapp log tail --name garah-api --resource-group <groupe>
+          ::endgroup::
+          FIN
