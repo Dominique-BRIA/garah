@@ -47,6 +47,10 @@ export class Coque {
     { libelle: 'Dimensions', chemin: '/attributs', icone: 'tags', permission: 'PRODUIT_CONSULTER' },
     { libelle: 'Commandes', chemin: '/commandes', icone: 'cart-shopping', permission: 'COMMANDE_CONSULTER_DETAILS' },
     { libelle: 'Expeditions', chemin: '/expeditions', icone: 'truck-fast', permission: 'EXPEDITION_CONSULTER' },
+    // Le comptoir. Garde par RETRAIT_CONFIRMER et non EXPEDITION_CONSULTER :
+    // c'est le geste de l'agent au point de recuperation, pas celui du
+    // back-office qui regarde la chaine.
+    { libelle: 'Retraits', chemin: '/retraits', icone: 'check', permission: 'RETRAIT_CONFIRMER' },
     { libelle: 'Lieux', chemin: '/lieux', icone: 'earth-africa', permission: 'POINT_RECUPERATION_CONSULTER' },
     { libelle: 'Stock', chemin: '/stock', icone: 'warehouse', permission: 'STOCK_CONSULTER' },
     { libelle: 'Paiements', chemin: '/paiements', icone: 'money-bill-wave', permission: 'PAIEMENT_CONSULTER' },

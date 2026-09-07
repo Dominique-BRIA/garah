@@ -6,6 +6,15 @@ export const routes: Routes = [
     path: 'connexion',
     loadComponent: () => import('./connexion/connexion').then((m) => m.Connexion),
   },
+  // Le suivi public. HORS de la coque, et donc hors du garde : c'est la seule
+  // page qu'on atteint sans compte. Un client recoit un numero par SMS, ouvre
+  // le lien, lit son trajet.
+  //
+  // Deux routes plutot qu'une : '/suivi' seul affiche le champ de recherche,
+  // '/suivi/GRH...' lance la recherche tout seul — arriver par un lien partage
+  // ne doit pas obliger a resaisir ce que le lien contenait deja.
+  { path: 'suivi', loadComponent: () => import('./suivi/suivi').then((m) => m.SuiviColis) },
+  { path: 'suivi/:numero', loadComponent: () => import('./suivi/suivi').then((m) => m.SuiviColis) },
   {
     path: '',
     // La coque porte le garde : chaque ecran enfant en herite, et on ne peut
@@ -32,6 +41,14 @@ export const routes: Routes = [
       // une seule question, pas deux.
       { path: 'paiements', loadComponent: () => import('./commandes/paiements').then((m) => m.Paiements) },
       { path: 'expeditions', loadComponent: () => import('./expeditions/expeditions').then((m) => m.Expeditions) },
+      // A la RACINE, et pas sous 'expeditions/retraits'. Deux raisons :
+      //   - place sous 'expeditions', il faudrait le declarer AVANT ':id',
+      //     sans quoi ':id' capturerait le mot « retraits » ;
+      //   - le menu surlignerait « Expeditions » ET « Retraits » en meme
+      //     temps, la surbrillance n'etant pas exacte.
+      // Le comptoir est de toute facon un geste a lui seul, pas une sous-vue
+      // de la liste des expeditions.
+      { path: 'retraits', loadComponent: () => import('./expeditions/retraits').then((m) => m.Retraits) },
       { path: 'expeditions/:id', loadComponent: () => import('./expeditions/fiche-expedition').then((m) => m.FicheExpedition) },
       { path: 'lieux', loadComponent: () => import('./lieux/lieux').then((m) => m.Lieux) },
       { path: 'attributs', loadComponent: () => import('./attributs/attributs').then((m) => m.Attributs) },

@@ -1,0 +1,158 @@
+<header class="entete">
+  <div>
+    <h1>Retrait au comptoir</h1>
+    <p class="sous-titre">
+      Le client annonce son code. Vérifiez ce qu’il désigne, sortez les colis,
+      puis confirmez la remise.
+    </p>
+  </div>
+
+  <a routerLink="/expeditions" class="gu-btn gu-btn--secondaire">
+    Voir les expéditions
+  </a>
+</header>
+
+<!-- ================================================================== -->
+<!-- 1. Le code                                                          -->
+<!-- ================================================================== -->
+<section class="gu-carte comptoir">
+  <label class="gu-libelle" for="code">Code présenté par le client</label>
+
+  <form class="saisie" (ngSubmit)="chercher()" novalidate>
+    <input id="code" name="code" class="gu-champ champ-code"
+           autocomplete="off" autocapitalize="characters" spellcheck="false"
+           inputmode="text" maxlength="9" placeholder="XXXX-XXXX"
+           aria-describedby="aide-code"
+           [ngModel]="code()" (ngModelChange)="saisir($event)" />
+
+    <button type="submit" class="gu-btn gu-btn--primaire"
+            [disabled]="!codeComplet() || recherche()">
+      @if (recherche()) { Vérification… } @else { Vérifier }
+    </button>
+
+    @if (code()) {
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="reinitialiser()">
+        Effacer
+      </button>
+    }
+  </form>
+
+  <p class="aide" id="aide-code">
+    Huit caractères, séparés par un tiret. Le tiret et les majuscules se
+    mettent tout seuls.
+  </p>
+</section>
+
+@if (remis(); as numero) {
+  <div class="gu-carte succes" role="status">
+    <gu-icone nom="check" class="succes__icone" />
+    <div>
+      <p class="succes__titre">Marchandise remise</p>
+      <p class="succes__texte">
+        L’expédition {{ numero }} est close. Vous pouvez saisir le code suivant.
+      </p>
+    </div>
+  </div>
+}
+
+@if (erreur(); as m) {
+  <p class="alerte" role="alert">{{ m }}</p>
+}
+
+<!-- ================================================================== -->
+<!-- 2. Ce que le code désigne                                           -->
+<!-- ================================================================== -->
+<!-- ⚠️ Cette étape n'est pas décorative : elle est la seule à empêcher la
+     remise du mauvais paquet. La supprimer pour « gagner un clic » rendrait
+     la confirmation aveugle. -->
+@if (trouve(); as c) {
+  <section class="gu-carte resultat">
+    <header class="resultat__entete">
+      <div>
+        <p class="resultat__label">Expédition</p>
+        <h2 class="resultat__numero">{{ c.expedition.numero }}</h2>
+      </div>
+
+      @if (c.dejaRemis) {
+        <span class="gu-badge gu-badge--neutre">Déjà remise</span>
+      } @else {
+        <span class="gu-badge gu-badge--succes">À remettre</span>
+      }
+    </header>
+
+    <!-- Un client qui insiste sur une marchandise déjà partie est une
+         situation courante au comptoir. L'agent a besoin de la DATE pour lui
+         répondre — pas d'un message d'erreur après le clic. -->
+    @if (c.dejaRemis) {
+      <p class="deja" role="alert">
+        Cette marchandise a été remise le {{ dateHeure(c.retrait.dateRetrait) }}.
+        Rien de plus à remettre pour ce code.
+      </p>
+    }
+
+    <p class="resultat__label">Colis à sortir</p>
+
+    @if (c.expedition.colis.length === 0) {
+      <p class="attenue">Aucun colis rattaché à cette expédition.</p>
+    } @else {
+      <ul class="colis">
+        @for (k of c.expedition.colis; track k.id) {
+          <li class="colis__ligne">
+            <gu-icone nom="box-open" class="colis__icone" />
+            <span class="colis__numero">{{ k.numeroSuivi }}</span>
+            @if (k.poidsKg) {
+              <span class="attenue">{{ k.poidsKg }} kg</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    @if (!c.dejaRemis) {
+      <div class="boutons">
+        @if (session.peut('RETRAIT_CONFIRMER')) {
+          <button type="button" class="gu-btn gu-btn--primaire"
+                  (click)="confirmer()" [disabled]="action() !== null">
+            @if (action() === 'confirmation') {
+              Enregistrement…
+            } @else {
+              Confirmer la remise
+            }
+          </button>
+        }
+
+        @if (session.peut('RETRAIT_REFUSER') && !formRefus()) {
+          <button type="button" class="gu-btn gu-btn--secondaire"
+                  (click)="ouvrirRefus()" [disabled]="action() !== null">
+            Refuser
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Un refus se motive. C'est ce que le service client lira quand le
+         client rappellera — « refusé » tout seul ne se défend devant
+         personne. -->
+    @if (formRefus()) {
+      <form class="refus" (ngSubmit)="refuser()" novalidate>
+        <label class="gu-libelle" for="motif">Motif du refus</label>
+        <textarea id="motif" name="motif" class="gu-champ" rows="3" maxlength="500"
+                  placeholder="Pièce d’identité non conforme, litige sur le contenu…"
+                  [ngModel]="motif()" (ngModelChange)="motif.set($event)"></textarea>
+        <p class="aide">
+          Il sera lu par le service client si le dossier revient.
+        </p>
+
+        <div class="boutons">
+          <button type="submit" class="gu-btn gu-btn--danger"
+                  [disabled]="!motif().trim() || action() !== null">
+            @if (action() === 'refus') { Enregistrement… } @else { Enregistrer le refus }
+          </button>
+          <button type="button" class="gu-btn gu-btn--secondaire" (click)="annulerRefus()">
+            Annuler
+          </button>
+        </div>
+      </form>
+    }
+  </section>
+}

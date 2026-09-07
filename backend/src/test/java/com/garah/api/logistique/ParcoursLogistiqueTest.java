@@ -336,6 +336,79 @@ class ParcoursLogistiqueTest {
     }
 
     @Test
+    @DisplayName("le destinataire du retrait se déduit de la commande")
+    void destinataireDeduit() {
+        Colis colis = colisPret();
+        Long expeditionId = colis.getExpedition().getId();
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+
+        // Personne ne saisit le client : l'agent n'a sous les yeux qu'une
+        // expédition. Ce test exécute réellement la jointure HQL vers Commande,
+        // la seule façon de prouver qu'elle est valide — une @Query cassée
+        // n'échoue qu'au moment où on l'appelle.
+        RetraitMarchandise retrait = expeditions.preparerRetrait(expeditionId);
+
+        assertThat(retrait.getClientId()).isEqualTo(clientId);
+    }
+
+    @Test
+    @DisplayName("le comptoir montre ce que le code désigne, sans rien remettre")
+    void comptoirAvantRemise() {
+        Colis colis = colisPret();
+        Long expeditionId = colis.getExpedition().getId();
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+
+        RetraitMarchandise retrait = expeditions.preparerRetrait(expeditionId);
+
+        VueComptoir vue = expeditions.auComptoir(retrait.getCodeRetrait());
+
+        // L'agent doit voir QUELS colis sortir. Sans ça, confirmer serait un
+        // geste aveugle : le code validé, mais la marchandise au hasard.
+        assertThat(vue.expedition().colis()).extracting("numeroSuivi")
+                .contains(colis.getNumeroSuivi());
+        assertThat(vue.dejaRemis()).isFalse();
+
+        // Regarder ne remet rien : le retrait est toujours en attente, et un
+        // code mal tapé ne consomme donc rien.
+        assertThat(expeditions.auComptoir(retrait.getCodeRetrait()).dejaRemis()).isFalse();
+
+        // Le code n'est jamais renvoyé par le comptoir : celui qui demande le
+        // connaît déjà, et le répéter le ferait apparaître dans un journal de
+        // plus.
+        assertThat(vue.retrait().codeRetrait()).isNull();
+
+        expeditions.confirmerRetrait(retrait.getCodeRetrait(), responsableId);
+        assertThat(expeditions.auComptoir(retrait.getCodeRetrait()).dejaRemis()).isTrue();
+    }
+
+    @Test
+    @DisplayName("le suivi public nomme les lieux, et tait le reste")
+    void suiviPublic() {
+        Colis colis = colisPret();
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+
+        VueSuivi suivi = expeditions.suiviPublic(colis.getNumeroSuivi());
+
+        // « lieu 12 » ne répond à personne : la liste des lieux demande une
+        // authentification, et le suivi est public.
+        assertThat(suivi.etapes()).isNotEmpty();
+        assertThat(suivi.etapes()).allSatisfy(e -> {
+            assertThat(e.lieu()).isNotBlank();
+            assertThat(e.ville()).isNotBlank();
+        });
+
+        // Un numéro de suivi circule par SMS : il ne prouve rien sur celui qui
+        // le présente. Le nom de l'agent qui a scanné n'a donc rien à y faire —
+        // et le record n'a même pas le champ pour le porter.
+        assertThat(VueSuivi.Etape.class.getRecordComponents())
+                .extracting("name")
+                .containsExactly("type", "lieu", "ville", "observation", "dateHeure");
+    }
+
+    @Test
     @DisplayName("le code de retrait est la seule preuve de la remise")
     void retraitParCode() {
         Colis colis = colisPret();

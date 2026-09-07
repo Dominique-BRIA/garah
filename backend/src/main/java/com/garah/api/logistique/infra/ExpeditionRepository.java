@@ -73,4 +73,24 @@ public interface ExpeditionRepository extends JpaRepository<Expedition, Long> {
     Page<ResumeExpedition> administration(@Param("statut") StatutExpedition statut,
                                           @Param("recherche") String recherche,
                                           Pageable pagination);
+
+    /**
+     * A quel client cette expedition est-elle destinee ?
+     *
+     * <p>🎯 <b>La reponse se DEDUIT, elle ne se saisit pas.</b> Le back-office
+     * ne connait pas l identifiant du client en preparant un retrait, et le
+     * lui faire saisir serait pire que de le deduire : une faute de frappe
+     * preparerait le retrait de quelqu un d autre — et le code partirait au
+     * mauvais destinataire.</p>
+     *
+     * <p>Meme arbitrage que {@link #administration} : {@code Commande}
+     * n apparait qu en HQL, jamais dans un {@code import}, donc aucun cycle
+     * entre les domaines.</p>
+     */
+    @Query("""
+            SELECT c.clientId FROM Expedition e
+              JOIN Commande c ON c.id = e.commandeId
+             WHERE e.id = :expeditionId
+            """)
+    Optional<Long> clientDe(@Param("expeditionId") Long expeditionId);
 }

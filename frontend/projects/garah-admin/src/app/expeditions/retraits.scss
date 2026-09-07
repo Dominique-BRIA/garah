@@ -1,0 +1,123 @@
+// Le comptoir de retrait. Motifs communs dans ecrans-communs.scss.
+
+// --- La saisie du code -------------------------------------------------------
+.comptoir {
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.saisie {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+// Le champ est volontairement GRAND et a chasse fixe.
+//
+// Il se lit a un metre, par-dessus un comptoir, pendant qu'un client epelle.
+// L'espacement des lettres separe visuellement les deux groupes de quatre —
+// c'est ce qui permet de relire sa saisie sans la dechiffrer.
+.champ-code {
+  flex: 1 1 14rem;
+  max-width: 20rem;
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+// --- La remise faite ---------------------------------------------------------
+.succes {
+  display: flex;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.5rem;
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
+  background: color-mix(in srgb, var(--success) 7%, var(--verre-fond));
+}
+
+.succes__icone { color: var(--success); font-size: 1.15rem; margin-top: 0.1rem; }
+.succes__titre { font-weight: 600; margin: 0 0 0.3rem; }
+
+.succes__texte {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--texte-attenue);
+  line-height: 1.55;
+}
+
+// --- Ce que le code designe --------------------------------------------------
+.resultat { padding: 1.5rem; }
+
+.resultat__entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.resultat__label {
+  margin: 0 0 0.25rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.resultat__numero {
+  margin: 0;
+  font-size: 1.35rem;
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
+}
+
+// Deja remis. Ambre et non rouge : ce n'est pas une panne, c'est une
+// information dont l'agent a besoin pour repondre au client qui insiste.
+.deja {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 7%, transparent);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+// --- Les colis a sortir ------------------------------------------------------
+.colis {
+  list-style: none;
+  margin: 0.5rem 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.colis__ligne {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+}
+
+.colis__icone { color: var(--texte-attenue); font-size: 0.95rem; }
+
+.colis__numero {
+  flex: 1;
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
+  font-weight: 600;
+}
+
+// --- Le refus ----------------------------------------------------------------
+.refus {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--champ-bordure);
+}

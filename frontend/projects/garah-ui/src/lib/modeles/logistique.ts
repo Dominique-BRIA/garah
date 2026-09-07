@@ -211,14 +211,75 @@ export interface EvenementExpedition {
   readonly dateHeure: string;
 }
 
-/** Le code que le client presente au comptoir. */
+/**
+ * Le suivi tel qu'un inconnu peut le lire.
+ *
+ * Un numero de suivi circule par SMS, par WhatsApp, sur un bordereau
+ * photographie : il ne prouve rien sur l'identite de celui qui le presente.
+ * On donne donc le trajet — ou, quand — et rien d'autre. Ni le contenu, ni le
+ * destinataire, ni l'agent qui a scanne.
+ */
+export interface Suivi {
+  readonly numeroSuivi: string;
+  readonly statut: StatutColis;
+  readonly etapes: readonly EtapeSuivi[];
+}
+
+export interface EtapeSuivi {
+  readonly type: TypeEvenement;
+  /** Le NOM du lieu, jamais son identifiant. Nul si le lieu a ete supprime. */
+  readonly lieu: string | null;
+  readonly ville: string | null;
+  readonly observation: string | null;
+  readonly dateHeure: string;
+}
+
+/**
+ * Le code que le client presente au comptoir.
+ *
+ * `codeRetrait` est nul partout SAUF a la preparation : le presenter suffit a
+ * repartir avec la marchandise, donc le serveur ne le renvoie qu'une fois.
+ */
 export interface Retrait {
   readonly id: number;
   readonly expeditionId: number;
   readonly clientId: number;
-  readonly codeRetrait: string;
+  readonly codeRetrait: string | null;
   readonly statut: string;
   readonly dateRetrait: string | null;
+}
+
+/**
+ * Ce que le code designe, avant toute remise.
+ *
+ * Voir avant de remettre : sans cette etape, confirmer serait un geste
+ * aveugle — le code serait valide, mais rien ne dirait quels colis sortir.
+ */
+export interface Comptoir {
+  readonly retrait: Retrait;
+  readonly expedition: Expedition;
+  /** Deja remis : l'agent doit le voir AVANT de cliquer, pas apres. */
+  readonly dejaRemis: boolean;
+}
+
+/**
+ * Le format d'un code : deux groupes de quatre, sans caractere ambigu.
+ *
+ * Ni I, ni O, ni 0, ni 1, ni 8, ni B : le code est lu a voix haute, recopie
+ * a la main, parfois epele au telephone.
+ */
+export const FORMAT_CODE_RETRAIT = /^[ACDEFGHJKLMNPQRSTUVWXYZ2345679]{4}-[ACDEFGHJKLMNPQRSTUVWXYZ2345679]{4}$/;
+
+/**
+ * Met un code saisi a la main sous sa forme canonique.
+ *
+ * L'agent tape vite, souvent sans le tiret, parfois en minuscules. Refuser
+ * « acde2345 » alors que le code est « ACDE-2345 » ferait recommencer la
+ * saisie pour rien — devant un client qui attend.
+ */
+export function normaliserCodeRetrait(saisie: string): string {
+  const brut = saisie.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  return brut.length > 4 ? `${brut.slice(0, 4)}-${brut.slice(4)}` : brut;
 }
 
 export function libelleStatutExpedition(statut: string): string {

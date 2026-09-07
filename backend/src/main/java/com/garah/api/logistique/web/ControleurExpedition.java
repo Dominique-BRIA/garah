@@ -5,10 +5,12 @@ import com.garah.api.logistique.domaine.ServiceExpedition;
 import com.garah.api.logistique.domaine.StatutExpedition;
 import com.garah.api.logistique.domaine.VueParcoursColis;
 import com.garah.api.logistique.domaine.TypeEvenement;
+import com.garah.api.logistique.domaine.VueComptoir;
 import com.garah.api.logistique.domaine.VueEvenement;
 import com.garah.api.logistique.domaine.VueExpedition;
 import com.garah.api.logistique.domaine.VueLigneColis;
 import com.garah.api.logistique.domaine.VueRetrait;
+import com.garah.api.logistique.domaine.VueSuivi;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -164,12 +166,14 @@ public class ControleurExpedition {
      * destinataire, ni l'identité de l'agent qui a scanné
      * ({@link VueEvenement#publique}). C'est exactement ce qu'affiche
      * n'importe quel transporteur, et pour la même raison.</p>
+     *
+     * <p>La réponse nomme les lieux au lieu de les numéroter : la liste des
+     * lieux demande une authentification, et « lieu 12 » ne répond à personne.
+     * Voir {@link VueSuivi}.</p>
      */
     @GetMapping("/suivi/{numeroSuivi}")
-    public List<VueEvenement> suivi(@PathVariable String numeroSuivi) {
-        return expeditions.suivrePar(numeroSuivi).stream()
-                .map(VueEvenement::publique)
-                .toList();
+    public VueSuivi suivi(@PathVariable String numeroSuivi) {
+        return expeditions.suiviPublic(numeroSuivi);
     }
 
     // -------------------------------------------------------------------------
@@ -182,13 +186,31 @@ public class ControleurExpedition {
      * <p>Le code n'est renvoyé qu'ici, à destination du client propriétaire.
      * Partout ailleurs il est masqué : le présenter suffit à repartir avec la
      * marchandise.</p>
+     *
+     * <p><b>Sans corps de requête</b> : le destinataire se déduit de la
+     * commande rattachée à l'expédition ({@code ServiceExpedition}). Il n'y a
+     * rien à saisir, donc rien à se tromper en saisissant.</p>
      */
     @PostMapping("/{id}/retrait")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('RETRAIT_CONSULTER')")
-    public VueRetrait preparerRetrait(@PathVariable Long id,
-                                      @Valid @RequestBody DemandeRetrait demande) {
-        return VueRetrait.de(expeditions.preparerRetrait(id, demande.clientId()));
+    public VueRetrait preparerRetrait(@PathVariable Long id) {
+        return VueRetrait.de(expeditions.preparerRetrait(id));
+    }
+
+    /**
+     * Le comptoir : ce que le code désigne, avant toute remise.
+     *
+     * <p>C'est un {@code POST} bien qu'il ne modifie rien, et c'est
+     * délibéré : le code doit voyager dans le <b>corps</b>. En {@code GET}, il
+     * finirait dans l'URL — donc dans les journaux du serveur, dans
+     * l'historique du navigateur et dans l'en-tête {@code Referer}. Un secret
+     * n'a rien à y faire.</p>
+     */
+    @PostMapping("/retraits/recherche")
+    @PreAuthorize("hasAuthority('RETRAIT_CONFIRMER')")
+    public VueComptoir chercherRetrait(@Valid @RequestBody DemandeCodeRetrait demande) {
+        return expeditions.auComptoir(demande.codeRetrait());
     }
 
     /**
@@ -244,10 +266,6 @@ public class ControleurExpedition {
             @NotNull(message = "Le lieu est obligatoire.") Long lieuId,
             @NotNull(message = "Le type d'événement est obligatoire.") TypeEvenement type,
             @Size(max = 500, message = "Observation trop longue.") String observation) {
-    }
-
-    public record DemandeRetrait(
-            @NotNull(message = "Le client est obligatoire.") Long clientId) {
     }
 
     public record DemandeCodeRetrait(

@@ -13,6 +13,8 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.Year;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * L'acheminement des marchandises.
@@ -178,6 +180,28 @@ public class ServiceExpedition {
      * {@code 0}, {@code 1}, {@code 8}, {@code B}) : il sera lu à voix haute,
      * recopié à la main, parfois épelé au téléphone. Un « 0 » confondu avec
      * un « O » fait revenir le client le lendemain.</p>
+     *
+     * <p>🎯 <b>Le destinataire ne se saisit pas, il se déduit.</b> L'agent qui
+     * prépare un retrait a sous les yeux une expédition, pas un identifiant de
+     * client. Le lui faire taper n'ajouterait aucune information — mais une
+     * faute de frappe préparerait le retrait de quelqu'un d'autre, et le code
+     * partirait au mauvais destinataire.</p>
+     */
+    @Transactional
+    public RetraitMarchandise preparerRetrait(Long expeditionId) {
+        Long clientId = expeditions.clientDe(expeditionId)
+                .orElseThrow(() -> new RegleMetierViolee("EXPEDITION_SANS_DESTINATAIRE",
+                        "Cette expédition n'est rattachée à aucune commande : "
+                        + "impossible de savoir à qui remettre la marchandise."));
+        return preparerRetrait(expeditionId, clientId);
+    }
+
+    /**
+     * Le même geste, avec un destinataire imposé.
+     *
+     * <p>Réservé aux tests et aux reprises de données. <b>Aucune route web ne
+     * l'expose</b> : côté back-office, le destinataire se déduit toujours de la
+     * commande.</p>
      */
     @Transactional
     public RetraitMarchandise preparerRetrait(Long expeditionId, Long clientId) {
@@ -193,6 +217,33 @@ public class ServiceExpedition {
         }
 
         return retraits.save(new RetraitMarchandise(expeditionId, clientId, genererCode()));
+    }
+
+    /**
+     * Ce que le code désigne, sans rien remettre encore.
+     *
+     * <p>🎯 <b>Voir avant de remettre.</b> Confirmer un retrait sans savoir
+     * quels colis il concerne serait un geste aveugle : le code serait validé,
+     * mais rien ne garantirait que la bonne marchandise est sortie du
+     * rayonnage.</p>
+     *
+     * <p>La méthode est en lecture seule et ne change aucun statut. Elle peut
+     * donc être appelée autant de fois que l'agent se trompe de touche — un
+     * code mal tapé ne consomme rien.</p>
+     */
+    @Transactional(readOnly = true)
+    public VueComptoir auComptoir(String codeRetrait) {
+        RetraitMarchandise retrait = retraits.findByCodeRetrait(codeRetrait)
+                .orElseThrow(() -> new RegleMetierViolee("CODE_INVALIDE",
+                        "Aucun retrait ne correspond à ce code."));
+
+        // chargerAvecColis : la vue liste les colis, et getColis() est
+        // paresseux — hors transaction, la liste arriverait vide.
+        Expedition expedition = expeditions.chargerAvecColis(retrait.getExpeditionId())
+                .orElseThrow(() -> new RegleMetierViolee("EXPEDITION_INTROUVABLE",
+                        "L'expédition de ce retrait est introuvable."));
+
+        return VueComptoir.de(retrait, expedition);
     }
 
     /**
@@ -252,6 +303,42 @@ public class ServiceExpedition {
         Colis paquet = colis.findByNumeroSuivi(numeroSuivi)
                 .orElseThrow(() -> RessourceIntrouvable.de("Colis", numeroSuivi));
         return parcours(paquet.getId());
+    }
+
+    /**
+     * Le suivi public : le trajet, avec des noms de lieux plutôt que des
+     * numéros.
+     *
+     * <p>Les lieux sont chargés en <b>une seule requête</b> pour tout le
+     * trajet, pas un appel par étape. Un colis qui a traversé six points de
+     * transit ferait sinon sept requêtes pour afficher sept lignes — et cette
+     * route est publique, donc appelable en rafale.</p>
+     */
+    @Transactional(readOnly = true)
+    public VueSuivi suiviPublic(String numeroSuivi) {
+        Colis paquet = colis.findByNumeroSuivi(numeroSuivi)
+                .orElseThrow(() -> RessourceIntrouvable.de("Colis", numeroSuivi));
+
+        List<EvenementExpedition> trajet = parcours(paquet.getId());
+
+        Map<Long, Lieu> parId = lieux.findAllById(
+                        trajet.stream().map(EvenementExpedition::getLieuId).distinct().toList())
+                .stream()
+                .collect(Collectors.toMap(Lieu::getId, l -> l));
+
+        List<VueSuivi.Etape> etapes = trajet.stream()
+                .map(e -> {
+                    Lieu lieu = parId.get(e.getLieuId());
+                    return new VueSuivi.Etape(
+                            e.getType().name(),
+                            lieu == null ? null : lieu.getNom(),
+                            lieu == null ? null : lieu.getVille(),
+                            e.getObservation(),
+                            e.getDateHeure());
+                })
+                .toList();
+
+        return new VueSuivi(paquet.getNumeroSuivi(), paquet.getStatut().name(), etapes);
     }
 
     private String genererNumero() {

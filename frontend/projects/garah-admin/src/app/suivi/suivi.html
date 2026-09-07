@@ -1,0 +1,72 @@
+<div class="suivi">
+  <button type="button" class="bascule-theme" (click)="theme.basculer()">
+    <gu-icone [nom]="theme.sombreEffectif() ? 'sun' : 'moon'" />
+    @if (theme.sombreEffectif()) { Clair } @else { Sombre }
+  </button>
+
+  <header class="entete-marque">
+    <!-- Décoratif : le nom est écrit juste en dessous. -->
+    <gu-marque class="embleme" taille="3.5rem" />
+    <h1 class="titre">Suivi de colis</h1>
+    <p class="accroche">
+      Saisissez le numéro figurant sur votre bordereau ou reçu par message.
+    </p>
+  </header>
+
+  <form class="recherche" (ngSubmit)="soumettre()" novalidate>
+    <input class="gu-champ champ-numero" name="numero"
+           autocomplete="off" spellcheck="false" maxlength="40"
+           placeholder="Numéro de suivi"
+           aria-label="Numéro de suivi"
+           [ngModel]="saisie()" (ngModelChange)="saisie.set($event)" />
+
+    <button type="submit" class="gu-btn gu-btn--primaire"
+            [disabled]="!saisie().trim() || chargement()">
+      @if (chargement()) { Recherche… } @else { Suivre }
+    </button>
+  </form>
+
+  @if (erreur(); as m) {
+    <div class="gu-carte panneau etat" role="alert">
+      <gu-icone nom="magnifying-glass" class="etat__icone" />
+      <p class="etat__titre">{{ m }}</p>
+    </div>
+  }
+
+  @if (suivi(); as s) {
+    <section class="gu-carte panneau">
+      <p class="colis__label">Colis</p>
+      <p class="colis__numero">{{ s.numeroSuivi }}</p>
+
+      @if (s.etapes.length === 0) {
+        <!-- Un colis créé mais jamais scanné. Dire « en préparation » plutôt
+             que rien : une page vide se lit comme une panne. -->
+        <p class="attenue">
+          Ce colis est enregistré, mais n’a pas encore quitté son point de
+          départ. Revenez d’ici quelques heures.
+        </p>
+      } @else {
+        <ol class="parcours">
+          @for (e of recentesDabord(); track e.dateHeure; let premier = $first) {
+            <li class="etape" [class.etape--actuelle]="premier"
+                [class.etape--anomalie]="estAnomalie(e.type)">
+              <span class="etape__puce" aria-hidden="true"></span>
+
+              <div class="etape__corps">
+                <p class="etape__titre">{{ libelle(e.type) }}</p>
+                <p class="etape__lieu">{{ ou(e) }}</p>
+                <p class="etape__date">{{ dateHeure(e.dateHeure) }}</p>
+
+                @if (e.observation) {
+                  <p class="etape__note">{{ e.observation }}</p>
+                } @else if (premier) {
+                  <p class="etape__note attenue">{{ explication(e.type) }}</p>
+                }
+              </div>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+  }
+</div>

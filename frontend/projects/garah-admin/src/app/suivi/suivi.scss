@@ -1,0 +1,220 @@
+// =============================================================================
+// Le suivi public d'un colis
+// =============================================================================
+// Meme traitement de fond que l'ecran de connexion : ce sont les deux seules
+// pages qu'on atteint sans compte, et elles doivent se ressembler.
+//
+// L'alignement est en revanche EN HAUT, pas centre : le parcours d'un colis
+// qui a traverse six points de transit deborde de l'ecran, et une mise en page
+// centree le ferait sauter a chaque etape supplementaire.
+// =============================================================================
+
+.suivi {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3.5rem 1.5rem 4rem;
+  text-align: center;
+
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--primary) 16%, transparent) 0%, transparent 55%),
+    radial-gradient(circle at 85% 90%, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 50%),
+    var(--fond);
+}
+
+// La grille de fond, masquee vers les bords pour rester une texture.
+.suivi::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--verre-bordure) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--verre-bordure) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, black 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, black 0%, transparent 75%);
+  pointer-events: none;
+}
+
+.bascule-theme {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 9999px;
+  border: 1px solid var(--verre-bordure);
+  background: var(--verre-fond);
+  backdrop-filter: blur(12px);
+  color: var(--texte);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { border-color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// --- L'en-tete ---------------------------------------------------------------
+.entete-marque {
+  position: relative;
+  margin-bottom: 1.75rem;
+}
+
+.embleme { margin: 0 auto 1rem; }
+
+.titre {
+  font-size: clamp(1.7rem, 6vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--texte);
+}
+
+.accroche {
+  color: var(--texte-attenue);
+  font-size: 0.95rem;
+  max-width: 30rem;
+  margin: 0.6rem auto 0;
+  line-height: 1.55;
+}
+
+// --- La recherche ------------------------------------------------------------
+.recherche {
+  position: relative;
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 30rem;
+  margin-bottom: 1.75rem;
+}
+
+// A chasse fixe : un numero de suivi se recopie caractere par caractere depuis
+// un SMS, et une police proportionnelle rend un 1 et un l indiscernables.
+.champ-numero {
+  flex: 1;
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
+  letter-spacing: 0.04em;
+}
+
+// --- Le panneau --------------------------------------------------------------
+.panneau {
+  position: relative;
+  width: 100%;
+  max-width: 34rem;
+  padding: 1.75rem;
+  text-align: left;
+}
+
+.colis__label {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.colis__numero {
+  margin: 0 0 1.5rem;
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', monospace;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.attenue { color: var(--texte-attenue); line-height: 1.6; margin: 0; }
+
+// --- Le parcours -------------------------------------------------------------
+.parcours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+// Le trait vertical qui relie les etapes est porte par chaque .etape, pas par
+// la liste : le dernier element l'interrompt, sinon il depasserait sous la
+// derniere puce.
+.etape {
+  position: relative;
+  padding: 0 0 1.6rem 1.75rem;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0.31rem;
+    top: 0.85rem;
+    bottom: 0;
+    width: 1px;
+    background: var(--champ-bordure);
+  }
+
+  &:last-child { padding-bottom: 0; }
+  &:last-child::before { display: none; }
+}
+
+.etape__puce {
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid var(--champ-bordure);
+  background: var(--fond);
+}
+
+// La derniere etape est la reponse a la question posee. Elle porte la couleur,
+// les precedentes restent grises : tout colorer reviendrait a ne rien
+// distinguer.
+.etape--actuelle {
+  .etape__puce {
+    border-color: var(--primary);
+    background: var(--primary);
+  }
+
+  .etape__titre { color: var(--texte); font-weight: 700; }
+}
+
+.etape--anomalie {
+  .etape__puce { border-color: var(--warning); background: var(--warning); }
+  .etape__titre { color: var(--warning); }
+}
+
+.etape__titre {
+  margin: 0 0 0.15rem;
+  font-weight: 600;
+  color: var(--texte-attenue);
+}
+
+.etape__lieu { margin: 0; font-size: 0.92rem; }
+
+.etape__date {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--texte-attenue);
+}
+
+.etape__note {
+  margin: 0.4rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+// --- L'etat vide / l'erreur --------------------------------------------------
+.etat {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: left;
+}
+
+.etat__icone { color: var(--texte-attenue); font-size: 1.1rem; }
+.etat__titre { margin: 0; font-weight: 600; line-height: 1.5; }
