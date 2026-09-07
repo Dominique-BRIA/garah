@@ -1,0 +1,201 @@
+// La fiche expedition. Motifs communs dans styles.scss.
+
+.retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texte-attenue);
+  text-decoration: none;
+
+  &:hover { color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.retour__fleche { transform: rotate(180deg); font-size: 0.7rem; }
+
+.entete h1 { font-size: 1.6rem; font-family: var(--police-mono); }
+.actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+.attenue { color: var(--texte-attenue); }
+.petit-badge { margin-left: 0.4rem; font-size: 0.6rem; }
+
+.vide {
+  margin: 0.5rem 0 0;
+  color: var(--texte-attenue);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.obligatoire { color: var(--warning); font-weight: 600; }
+
+// --- Le code de retrait ------------------------------------------------------
+//
+// Gros et espace : il sera dicte au telephone, recopie a la main, parfois
+// epele. Un code en petit corps se lit mal et se recopie faux.
+.code-retrait {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
+  background: color-mix(in srgb, var(--success) 7%, var(--verre-fond));
+}
+
+.code-retrait__titre { margin: 0 0 0.25rem; font-weight: 600; }
+
+.code-retrait__aide {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--texte-attenue);
+}
+
+.code-retrait__valeur {
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--success);
+}
+
+// --- Les colis ---------------------------------------------------------------
+.colis { margin-bottom: 1.25rem; }
+
+.colis__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.colis__numero { font-size: 0.95rem; font-weight: 600; }
+
+.lien-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.encart {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-douce);
+
+  .gu-libelle:not(:first-child) { margin-top: 0.75rem; }
+}
+
+.choix-evenement {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.carte-choix {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); }
+
+  // Sorti de la VUE, pas du FLUX : retire du flux, le champ ne serait plus
+  // atteignable au clavier.
+  input[type='radio'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.carte-choix--actif {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+}
+
+.carte-choix__titre { font-weight: 600; font-size: 0.84rem; }
+.carte-choix__aide { font-size: 0.74rem; color: var(--texte-attenue); line-height: 1.35; }
+
+// --- Le parcours -------------------------------------------------------------
+//
+// Une frise verticale : les etapes se lisent dans l'ordre ou elles se sont
+// produites. Un tableau donnerait la meme information sans la SUITE, or c'est
+// la suite qui raconte le voyage.
+.parcours {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1.1rem;
+  border-left: 2px solid var(--verre-bordure);
+}
+
+.etape {
+  position: relative;
+  padding: 0 0 1.1rem 0.9rem;
+
+  &:last-child { padding-bottom: 0; }
+}
+
+.etape__point {
+  position: absolute;
+  left: -1.42rem;
+  top: 0.32rem;
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--fond);
+}
+
+// Une anomalie ARRETE le colis. Elle ne se lit pas comme une etape ordinaire.
+.etape--anomalie .etape__point { background: var(--danger); }
+.etape--anomalie .etape__type { color: var(--danger); }
+
+.etape__tete {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.etape__type { font-weight: 600; font-size: 0.88rem; }
+.etape__lieu { font-size: 0.82rem; color: var(--texte-attenue); }
+
+.etape__date {
+  margin: 0.15rem 0 0;
+  font-size: 0.76rem;
+  color: var(--texte-attenue);
+  font-variant-numeric: tabular-nums;
+}
+
+.etape__observation {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}

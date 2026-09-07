@@ -1,0 +1,122 @@
+<header class="entete">
+  <div>
+    <h1>Expéditions</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (filtreApplique(); as q) {
+        {{ total() }} résultat(s) pour « {{ q }} »
+      } @else if (libelleStatut(); as s) {
+        {{ total() }} expédition(s) — {{ s }}
+      } @else { {{ total() }} expédition(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <div class="champ-recherche">
+      <gu-icone nom="magnifying-glass" class="loupe" />
+      <!-- La recherche porte sur les DEUX numéros. Quand un client appelle, il
+           donne celui de sa commande : il n'a jamais vu celui de l'expédition. -->
+      <input type="search" class="gu-champ" placeholder="Expédition ou commande"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             (keyup.enter)="chercher()" name="recherche"
+             aria-label="Rechercher une expédition" />
+    </div>
+
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<nav class="filtres" aria-label="Filtrer par statut">
+  <button type="button" class="filtre" [class.filtre--actif]="statut() === ''"
+          (click)="filtrer('')">Toutes</button>
+
+  @for (s of statuts; track s.code) {
+    <button type="button" class="filtre"
+            [class.filtre--actif]="statut() === s.code"
+            [class.filtre--action]="s.attendUneAction"
+            (click)="filtrer(s.code)">
+      {{ s.libelle }}
+    </button>
+  }
+</nav>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="box-open" class="etat__icone" />
+    @if (filtreApplique()) {
+      <p class="etat__titre">Rien ne correspond à « {{ filtreApplique() }} »</p>
+      <p class="etat__aide">La recherche porte sur le numéro d’expédition et sur celui de commande.</p>
+    } @else if (libelleStatut(); as s) {
+      <p class="etat__titre">Aucune expédition « {{ s }} »</p>
+      <p class="etat__aide">Rien n’attend d’action de ce côté.</p>
+    } @else {
+      <p class="etat__titre">Aucune expédition</p>
+      <!-- L'état vide dit d'où viennent les expéditions. Sans cette phrase,
+           on cherche un bouton « Nouvelle expédition » qui n'existe pas —
+           et pour cause : elle naît d'une commande payée, pas d'un clic. -->
+      <p class="etat__aide">
+        Une expédition naît d’une commande payée, à préparer. Elle ne se
+        crée pas depuis cet écran.
+      </p>
+    }
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Expédition</th>
+          <th>Commande</th>
+          <th>Destination</th>
+          <th class="droite">Colis</th>
+          <th>Statut</th>
+          <th>Créée</th>
+          <th>Partie</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of liste(); track e.id) {
+          <tr class="cliquable" [routerLink]="['/expeditions', e.id]"
+              [class.attend]="attend(e.statut)">
+            <td><code>{{ e.numero }}</code></td>
+            <td>
+              @if (e.commandeNumero) {
+                <code class="attenue">{{ e.commandeNumero }}</code>
+              } @else {
+                <!-- La commande a disparu ; l'expédition reste. Elle décrit un
+                     mouvement physique qui a bien eu lieu. -->
+                <span class="attenue">commande supprimée</span>
+              }
+            </td>
+            <td>{{ destination(e) }}</td>
+            <td class="droite nombre">{{ e.nombreColis }}</td>
+            <td>
+              <span class="gu-badge" [class]="badge(e.statut)">{{ libelle(e.statut) }}</span>
+            </td>
+            <td class="attenue">{{ dateLisible(e.dateCreation) }}</td>
+            <td class="attenue">{{ dateLisible(e.dateExpedition) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="changerPage($event)" />
+}

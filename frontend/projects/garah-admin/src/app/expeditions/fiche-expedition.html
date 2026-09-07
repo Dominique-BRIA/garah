@@ -1,0 +1,220 @@
+@if (erreur() && !expedition()) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ erreur() }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement() && !expedition()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (expedition(); as e) {
+
+  <a routerLink="/expeditions" class="retour">
+    <gu-icone nom="chevron-right" class="retour__fleche" /> Toutes les expéditions
+  </a>
+
+  <header class="entete">
+    <div>
+      <h1>{{ e.numero }}</h1>
+      <p class="sous-titre">
+        Créée le {{ dateHeure(e.dateCreation) }}
+        @if (e.dateExpedition) { · partie le {{ dateHeure(e.dateExpedition) }} }
+      </p>
+    </div>
+
+    <div class="actions">
+      <!-- Le statut est une PROJECTION, recalculée depuis les événements des
+           colis. Ce n'est pas lui la vérité — c'est le parcours ci-dessous. -->
+      <span class="gu-badge" [class]="badge(e.statut)">{{ libelle(e.statut) }}</span>
+
+      @if (session.peut('EXPEDITION_PREPARER') && !formColis() && colisOuvert() === null) {
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="ouvrirColis()">
+          <gu-icone nom="plus" /> Ajouter un colis
+        </button>
+      }
+
+      @if (retraitPossible() && session.peut('RETRAIT_CONSULTER')) {
+        <button type="button" class="gu-btn gu-btn--primaire"
+                (click)="preparerRetrait()" [disabled]="action() !== null">
+          @if (action() === 'retrait') {
+            <gu-icone nom="circle-notch" tourne />
+          }
+          Préparer le retrait
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (erreur(); as m) {
+    <p class="alerte" role="alert">{{ m }}</p>
+  }
+
+  <!-- Le code de retrait, une fois engendré. Gros et lisible : il sera dicté
+       au téléphone, recopié à la main, parfois épelé. -->
+  @if (retrait(); as r) {
+    <div class="gu-carte code-retrait">
+      <div>
+        <p class="code-retrait__titre">Code de retrait</p>
+        <p class="code-retrait__aide">
+          À communiquer au client. C’est la seule preuve de la remise.
+        </p>
+      </div>
+      <code class="code-retrait__valeur">{{ r.codeRetrait }}</code>
+    </div>
+  }
+
+  @if (formColis()) {
+    <form class="gu-carte encart" (ngSubmit)="ajouterColis()" novalidate>
+      <label class="gu-libelle" for="suivi">Numéro de suivi</label>
+      <input id="suivi" name="numeroSuivi" class="gu-champ" maxlength="40"
+             placeholder="Laisser vide pour l’engendrer"
+             [ngModel]="numeroSuivi()" (ngModelChange)="numeroSuivi.set($event)" />
+      <!-- Vide = engendré. Un numéro saisi à la main serait un numéro inventé,
+           qu'aucun bordereau ne porterait. -->
+      <p class="aide">
+        Laissé vide, il est engendré — sans caractère ambigu, pour être lu
+        et recopié sans erreur.
+      </p>
+
+      @if (erreurForm(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
+        <button type="submit" class="gu-btn gu-btn--primaire" [disabled]="action() !== null">
+          @if (action() === 'colis') {
+            <gu-icone nom="circle-notch" tourne /> Ajout…
+          } @else { Ajouter le colis }
+        </button>
+      </div>
+    </form>
+  }
+
+  @if (e.colis.length === 0) {
+    <div class="gu-carte etat">
+      <gu-icone nom="box-open" class="etat__icone" />
+      <p class="etat__titre">Aucun colis</p>
+      <p class="etat__aide">
+        Une expédition sans colis ne peut pas partir. Ajoutez-en un, puis
+        rangez-y les articles de la commande.
+      </p>
+    </div>
+  } @else {
+    @for (c of e.colis; track c.id) {
+      <section class="gu-carte colis">
+        <header class="colis__entete">
+          <div>
+            <code class="colis__numero">{{ c.numeroSuivi }}</code>
+            <span class="gu-badge gu-badge--neutre petit-badge">{{ c.statut }}</span>
+            @if (c.poidsKg) { <span class="attenue">{{ c.poidsKg }} kg</span> }
+          </div>
+
+          @if (session.peut('TRANSIT_ENREGISTRER_DEPART')
+               && colisOuvert() === null && !formColis()) {
+            <button type="button" class="lien-action" (click)="ouvrirEvenement(c.id)">
+              <gu-icone nom="plus" /> Enregistrer une étape
+            </button>
+          }
+        </header>
+
+        <!-- Le formulaire d'étape, sous le colis qu'il concerne. Ailleurs, on
+             ne saurait plus quel colis on est en train de faire avancer. -->
+        @if (colisOuvert() === c.id) {
+          <form class="encart" (ngSubmit)="enregistrerEvenement()" novalidate>
+            <span class="gu-libelle">Que s’est-il passé ?</span>
+            <div class="choix-evenement">
+              @for (t of typesEvenement; track t.code) {
+                <label class="carte-choix" [class.carte-choix--actif]="typeEvenement() === t.code">
+                  <input type="radio" name="type" [value]="t.code"
+                         [ngModel]="typeEvenement()" (ngModelChange)="typeEvenement.set($event)" />
+                  <span class="carte-choix__titre">{{ t.libelle }}</span>
+                  <span class="carte-choix__aide">{{ t.explication }}</span>
+                </label>
+              }
+            </div>
+
+            <label class="gu-libelle" for="lieu">Où</label>
+            @if (lieux().length === 0) {
+              <p class="aide">
+                Aucun lieu actif. <a routerLink="/lieux">Créez-en un d’abord.</a>
+              </p>
+            } @else {
+              <select id="lieu" name="lieu" class="gu-champ"
+                      [ngModel]="lieuId()" (ngModelChange)="lieuId.set($event)">
+                @for (l of lieux(); track l.id) {
+                  <option [ngValue]="l.id">{{ l.nom }} · {{ l.ville }}</option>
+                }
+              </select>
+            }
+
+            <label class="gu-libelle" for="obs">
+              Observation
+              @if (observationObligatoire()) { <span class="obligatoire">— obligatoire</span> }
+            </label>
+            <input id="obs" name="observation" class="gu-champ" maxlength="500"
+                   [ngModel]="observation()" (ngModelChange)="observation.set($event)" />
+            @if (observationObligatoire()) {
+              <!-- Une anomalie BLOQUE le colis. Sans description, personne ne
+                   saura pourquoi il est resté à Bertoua, ni comment le
+                   débloquer. -->
+              <p class="aide">
+                Une anomalie bloque le colis. Décrivez-la, sinon personne ne
+                saura pourquoi il s’est arrêté.
+              </p>
+            }
+
+            @if (erreurForm(); as m) {
+              <p class="alerte" role="alert">{{ m }}</p>
+            }
+
+            <div class="boutons">
+              <button type="button" class="gu-btn gu-btn--secondaire petit"
+                      (click)="fermer()">Annuler</button>
+              <button type="submit" class="gu-btn gu-btn--primaire petit"
+                      [disabled]="action() !== null || lieuId() === null
+                                  || (observationObligatoire() && !observation().trim())">
+                @if (action() === 'evenement') {
+                  <gu-icone nom="circle-notch" tourne /> Enregistrement…
+                } @else { Enregistrer l’étape }
+              </button>
+            </div>
+          </form>
+        }
+
+        <!-- Le parcours. C'est LUI la vérité, pas le statut au-dessus. -->
+        @if (!session.peut('EXPEDITION_CONSULTER_HISTORIQUE')) {
+          <p class="vide">Votre compte n’a pas le droit de consulter le parcours.</p>
+        } @else if (evenementsDe(c.id); as p) {
+          @if (p.evenements.length === 0) {
+            <p class="vide">Aucune étape enregistrée. Le colis n’a pas encore bougé.</p>
+          } @else {
+            <ol class="parcours">
+              @for (ev of p.evenements; track ev.id) {
+                <li class="etape" [class.etape--anomalie]="estAnomalie(ev.type)">
+                  <span class="etape__point" aria-hidden="true"></span>
+                  <div class="etape__corps">
+                    <p class="etape__tete">
+                      <span class="etape__type">{{ typeLisible(ev.type) }}</span>
+                      <span class="etape__lieu">{{ nomLieu(ev.lieuId) }}</span>
+                    </p>
+                    <p class="etape__date">{{ dateHeure(ev.dateHeure) }}</p>
+                    @if (ev.observation) {
+                      <p class="etape__observation">{{ ev.observation }}</p>
+                    }
+                  </div>
+                </li>
+              }
+            </ol>
+          }
+        } @else {
+          <!-- Une absence doit se DIRE. Un bloc qui disparaît fait croire à
+               une fonctionnalité manquante. -->
+          <p class="vide">Le parcours de ce colis n’a pas pu être lu.</p>
+        }
+      </section>
+    }
+  }
+}
