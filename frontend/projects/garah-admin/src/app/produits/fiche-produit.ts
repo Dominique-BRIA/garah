@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import {
   Categorie,
   DetailProduit,
+  EtatStock,
   Icone,
   Manques,
   OptionCategorie,
@@ -30,7 +31,18 @@ type Formulaire =
   | { readonly quoi: 'variante-creation' }
   | { readonly quoi: 'variante-edition'; readonly varianteId: number }
   | { readonly quoi: 'palier-creation'; readonly varianteId: number }
-  | { readonly quoi: 'palier-prix'; readonly varianteId: number; readonly palierId: number };
+  | { readonly quoi: 'palier-prix'; readonly varianteId: number; readonly palierId: number }
+  /*
+   * Les trois gestes de stock. Ils se ressemblent — un nombre et un texte —
+   * et ne veulent PAS dire la meme chose :
+   *   reception   ce qui vient d'arriver, a AJOUTER
+   *   inventaire  ce qu'on a REELLEMENT compte
+   *   seuil       a partir de quand prevenir
+   * Les confondre ferait passer un inventaire de 8 pour une livraison de 8.
+   */
+  | { readonly quoi: 'stock-reception'; readonly varianteId: number }
+  | { readonly quoi: 'stock-inventaire'; readonly varianteId: number }
+  | { readonly quoi: 'stock-seuil'; readonly varianteId: number };
 
 @Component({
   selector: 'ga-fiche-produit',
@@ -69,6 +81,11 @@ export class FicheProduit {
   protected readonly quantiteMin = signal(1);
   protected readonly quantiteMax = signal<number | null>(null);
   protected readonly prix = signal<number | null>(null);
+
+  // --- Le stock de chaque déclinaison ---
+  protected readonly stocks = signal<readonly EtatStock[]>([]);
+  protected readonly quantiteStock = signal<number | null>(null);
+  protected readonly motifStock = signal('');
 
   constructor() {
     // `input.required` n'est pas lisible dans le constructeur : on charge au
@@ -112,6 +129,7 @@ export class FicheProduit {
       next: (p) => {
         this.produit.set(p);
         this.chargerVariantes();
+        this.chargerStock();
       },
       error: (e: unknown) => {
         this.chargement.set(false);
@@ -133,6 +151,33 @@ export class FicheProduit {
         this.chargement.set(false);
       },
     });
+  }
+
+  /**
+   * Le stock de chaque déclinaison.
+   *
+   * <p>🎯 C'est en regardant un produit qu'on se demande combien il en reste.
+   * Obliger à quitter la fiche, ouvrir l'inventaire et y retrouver la
+   * déclinaison, c'est séparer deux questions qu'on se pose ensemble.</p>
+   *
+   * <p>Chargé sans bloquer : la fiche reste utilisable si le stock manque, et
+   * un compte sans {@code STOCK_CONSULTER} ne déclenche même pas l'appel — il
+   * répondrait 403 à chaque ouverture.</p>
+   */
+  protected chargerStock(): void {
+    if (!this.session.peut('STOCK_CONSULTER')) {
+      return;
+    }
+
+    this.http.get<EtatStock[]>(`/api/stock/produits/${this.id()}`).subscribe({
+      next: (etats) => this.stocks.set(etats),
+      error: () => this.stocks.set([]),
+    });
+  }
+
+  /** Le stock d'une déclinaison, ou `null` s'il n'a pas pu être lu. */
+  protected stockDe(varianteId: number): EtatStock | null {
+    return this.stocks().find((s) => s.varianteId === varianteId) ?? null;
   }
 
   /**
@@ -203,6 +248,76 @@ export class FicheProduit {
     this.prix.set(null);
     this.erreurForm.set(null);
     this.formulaire.set({ quoi: 'palier-creation', varianteId: v.id });
+  }
+
+  /**
+   * Ouvre l'un des trois gestes de stock.
+   *
+   * <p>⚠️ Ils prennent tous un nombre, et ce nombre ne veut pas dire la même
+   * chose :</p>
+   * <ul>
+   *   <li><b>réception</b> — ce qui vient d'arriver, à <b>ajouter</b> ;</li>
+   *   <li><b>inventaire</b> — ce qu'on a <b>réellement compté</b> ;</li>
+   *   <li><b>seuil</b> — à partir de quand prévenir.</li>
+   * </ul>
+   *
+   * <p>Les deux premiers pré-remplissent différemment, et c'est délibéré : une
+   * réception part vide (on saisit ce qu'on reçoit), un inventaire part du
+   * disponible courant (on corrige ce qui est affiché).</p>
+   */
+  protected ouvrirStock(
+    quoi: 'stock-reception' | 'stock-inventaire' | 'stock-seuil',
+    v: Variante,
+  ): void {
+    const etat = this.stockDe(v.id);
+
+    this.quantiteStock.set(
+      quoi === 'stock-reception' ? null
+        : quoi === 'stock-inventaire' ? (etat?.disponible ?? 0)
+        : (etat?.seuilAlerte ?? 0),
+    );
+    this.motifStock.set('');
+    this.erreurForm.set(null);
+    this.formulaire.set({ quoi, varianteId: v.id });
+  }
+
+  protected enregistrerStock(varianteId: number): void {
+    const f = this.formulaire();
+    if (!f || this.action() || !f.quoi.startsWith('stock-')) {
+      return;
+    }
+
+    this.action.set('stock');
+    this.erreurForm.set(null);
+
+    const appel =
+      f.quoi === 'stock-reception'
+        ? this.http.post<EtatStock>(`/api/stock/${varianteId}/entrees`, {
+            quantite: this.quantiteStock(),
+            commentaire: this.motifStock().trim(),
+          })
+        : f.quoi === 'stock-inventaire'
+          ? this.http.post<EtatStock>(`/api/stock/${varianteId}/ajustements`, {
+              quantiteReelle: this.quantiteStock(),
+              motif: this.motifStock().trim(),
+            })
+          : this.http.put<EtatStock>(`/api/stock/${varianteId}/seuil`, {
+              seuilAlerte: this.quantiteStock(),
+            });
+
+    appel.subscribe({
+      next: () => {
+        this.action.set(null);
+        this.fermer();
+        // On recharge tout le stock du produit plutôt que de reposer la seule
+        // réponse : elle ne porte pas la désignation, qui vient du catalogue.
+        this.chargerStock();
+      },
+      error: (e: unknown) => {
+        this.action.set(null);
+        this.erreurForm.set(message(e, 'Le stock n’a pas pu être enregistré.'));
+      },
+    });
   }
 
   protected ouvrirPrix(v: Variante, palier: PalierPrix): void {
@@ -281,6 +396,7 @@ export class FicheProduit {
           this.action.set(null);
           this.fermer();
           this.chargerVariantes();
+        this.chargerStock();
         },
         error: (e: unknown) => {
           this.action.set(null);

@@ -359,6 +359,145 @@
                 </form>
               }
             </div>
+
+            <!-- ---------------- Le stock de CETTE déclinaison ----------------
+                 C'est en regardant un produit qu'on se demande combien il en
+                 reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
+                 retrouver la déclinaison, c'est séparer deux questions qu'on
+                 se pose ensemble. -->
+            @if (session.peut('STOCK_CONSULTER')) {
+              @if (stockDe(v.id); as s) {
+                <div class="stock" [class.stock--rupture]="s.sousLeSeuil">
+                  <div class="stock__entete">
+                    <span class="stock__titre">Stock</span>
+
+                    @if (formulaire() === null) {
+                      <span class="stock__gestes">
+                        @if (session.peut('STOCK_ENTREE_ENREGISTRER')) {
+                          <button type="button" class="lien-action"
+                                  (click)="ouvrirStock('stock-reception', v)">
+                            <gu-icone nom="plus" /> Réception
+                          </button>
+                        }
+                        @if (session.peut('STOCK_AJUSTER')) {
+                          <button type="button" class="lien-action"
+                                  (click)="ouvrirStock('stock-inventaire', v)">Inventaire</button>
+                          <button type="button" class="lien-action"
+                                  (click)="ouvrirStock('stock-seuil', v)">Seuil</button>
+                        }
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Les trois compteurs ensemble. Séparés, on croirait
+                       qu'une réservation a fait disparaître la marchandise. -->
+                  <dl class="stock__compteurs">
+                    <div>
+                      <dt>Disponible</dt>
+                      <dd [class.stock__rupture]="s.sousLeSeuil">{{ s.disponible }}</dd>
+                    </div>
+                    <div>
+                      <dt>Réservé</dt>
+                      <dd>{{ s.reserve }}</dd>
+                    </div>
+                    @if (s.endommage > 0) {
+                      <div>
+                        <dt>Endommagé</dt>
+                        <dd class="stock__abime">{{ s.endommage }}</dd>
+                      </div>
+                    }
+                    <div>
+                      <dt>Seuil d’alerte</dt>
+                      <dd class="stock__seuil">{{ s.seuilAlerte }}</dd>
+                    </div>
+                  </dl>
+
+                  @if (s.sousLeSeuil) {
+                    <p class="stock__alerte">
+                      @if (s.disponible === 0) {
+                        Rien à vendre. Une réception est nécessaire.
+                      } @else {
+                        Sous le seuil d’alerte. À réapprovisionner.
+                      }
+                    </p>
+                  }
+
+                  @if (ouvert('stock-reception', v.id) || ouvert('stock-inventaire', v.id)
+                       || ouvert('stock-seuil', v.id)) {
+                    <form class="encart" (ngSubmit)="enregistrerStock(v.id)" novalidate>
+                      @if (ouvert('stock-reception', v.id)) {
+                        <label class="gu-libelle" [for]="'qs-' + v.id">Quantité reçue</label>
+                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="1"
+                               class="gu-champ"
+                               [ngModel]="quantiteStock()"
+                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                        <p class="aide">Ce qui vient d’arriver, à ajouter au disponible.</p>
+
+                        <label class="gu-libelle" [for]="'ms-' + v.id">Commentaire</label>
+                        <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ"
+                               maxlength="500" placeholder="Livraison du fournisseur"
+                               [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
+
+                      } @else if (ouvert('stock-inventaire', v.id)) {
+                        <label class="gu-libelle" [for]="'qs-' + v.id">
+                          Quantité réellement comptée
+                        </label>
+                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
+                               class="gu-champ"
+                               [ngModel]="quantiteStock()"
+                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                        <!-- On envoie le CONSTAT, jamais l'écart : la quantité
+                             théorique a pu bouger depuis le comptage. -->
+                        <p class="aide">
+                          Ce que vous avez sous les yeux, pas l’écart. Le serveur
+                          calcule la différence au moment où il enregistre.
+                        </p>
+
+                        <label class="gu-libelle" [for]="'ms-' + v.id">Motif</label>
+                        <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ" required
+                               maxlength="500" placeholder="Inventaire du 7 septembre"
+                               [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
+                        <p class="aide">
+                          Obligatoire. Un ajustement sans explication est un trou
+                          que personne ne saura combler six mois plus tard.
+                        </p>
+
+                      } @else {
+                        <label class="gu-libelle" [for]="'qs-' + v.id">Seuil d’alerte</label>
+                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
+                               class="gu-champ"
+                               [ngModel]="quantiteStock()"
+                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                        <!-- À zéro, l'alerte ne se déclenche qu'à la rupture,
+                             c'est-à-dire trop tard : la marchandise met des
+                             jours à venir de Douala. -->
+                        <p class="aide">
+                          À partir de quelle quantité prévenir. À zéro, vous ne
+                          serez alerté qu’une fois à court.
+                        </p>
+                      }
+
+                      @if (erreurForm(); as m) {
+                        <p class="alerte" role="alert">{{ m }}</p>
+                      }
+
+                      <div class="boutons">
+                        <button type="button" class="gu-btn gu-btn--secondaire petit"
+                                (click)="fermer()">Annuler</button>
+                        <button type="submit" class="gu-btn gu-btn--primaire petit"
+                                [disabled]="action() !== null || quantiteStock() === null
+                                            || (ouvert('stock-inventaire', v.id)
+                                                && !motifStock().trim())">
+                          @if (action() === 'stock') {
+                            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+                          } @else { Enregistrer }
+                        </button>
+                      </div>
+                    </form>
+                  }
+                </div>
+              }
+            }
           </article>
         }
       }

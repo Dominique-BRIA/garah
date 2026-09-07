@@ -68,6 +68,15 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
     List<Stock> sousLeSeuil();
 
     /**
+     * Les stocks de plusieurs declinaisons, en <b>une</b> requete.
+     *
+     * <p>Sert a la fiche produit : elle affiche toutes ses declinaisons d un
+     * coup, et interroger le stock ligne par ligne ferait une requete par
+     * declinaison affichee.</p>
+     */
+    List<Stock> findByVarianteIdIn(Collection<Long> varianteIds);
+
+    /**
      * La liste du back-office.
      *
      * <p>{@code varianteIds} nul = aucun filtre. Quand une recherche est en

@@ -1,6 +1,7 @@
 package com.garah.api.stock.domaine;
 
 import com.garah.api.catalogue.domaine.DesignationVariante;
+import com.garah.api.catalogue.domaine.Variante;
 import com.garah.api.catalogue.infra.VarianteRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
@@ -260,6 +261,50 @@ public class ServiceStock {
     @Transactional(readOnly = true)
     public List<EtatStock> alertes() {
         return enrichir(stocks.sousLeSeuil());
+    }
+
+    /**
+     * Le stock de toutes les déclinaisons d'un produit.
+     *
+     * <p>C'est ce que la fiche produit affiche. Sans cette route, la quantité
+     * ne vivrait que sur l'écran de stock — or c'est en regardant un produit
+     * qu'on se demande combien il en reste, pas en parcourant un inventaire.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<EtatStock> pourProduit(Long produitId) {
+        List<Long> ids = variantes.findByProduitId(produitId).stream()
+                .map(Variante::getId)
+                .toList();
+
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return enrichir(stocks.findByVarianteIdIn(ids));
+    }
+
+    /**
+     * Règle le seuil d'alerte.
+     *
+     * <p>À zéro — la valeur par défaut — l'alerte ne se déclenche qu'à la
+     * rupture, c'est-à-dire trop tard : la marchandise met des jours à venir
+     * de Douala. Un seuil à cinq prévient pendant qu'il reste de quoi vendre.</p>
+     *
+     * <p>Pas de verrou ici, contrairement aux mouvements : le seuil n'entre
+     * dans aucun calcul de disponibilité, deux écritures concurrentes ne
+     * peuvent pas faire vendre deux fois le même article.</p>
+     */
+    @Transactional
+    public EtatStock definirSeuil(Long varianteId, int seuil) {
+        if (seuil < 0) {
+            throw new RegleMetierViolee("SEUIL_INVALIDE",
+                    "Un seuil d'alerte ne peut pas être négatif.");
+        }
+
+        Stock stock = stocks.findByVarianteId(varianteId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Stock de la variante", varianteId));
+
+        stock.setSeuilAlerte(seuil);
+        return EtatStock.de(stock);
     }
 
     /**

@@ -64,10 +64,41 @@ public class ControleurStock {
                 PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, 100)));
     }
 
+    /**
+     * Le stock de toutes les déclinaisons d'un produit.
+     *
+     * <p>C'est en regardant un produit qu'on se demande combien il en reste,
+     * pas en parcourant un inventaire. Sans cette route, la quantité ne
+     * vivrait que sur l'écran de stock — et il faudrait quitter la fiche,
+     * chercher la déclinaison, revenir.</p>
+     */
+    @GetMapping("/produits/{produitId}")
+    @PreAuthorize("hasAuthority('STOCK_CONSULTER')")
+    public List<EtatStock> pourProduit(@PathVariable Long produitId) {
+        return stock.pourProduit(produitId);
+    }
+
     @GetMapping("/{varianteId}")
     @PreAuthorize("hasAuthority('STOCK_CONSULTER')")
     public EtatStock etat(@PathVariable Long varianteId) {
         return stock.etat(varianteId);
+    }
+
+    /**
+     * Règle le seuil d'alerte.
+     *
+     * <p>À zéro — la valeur par défaut — l'alerte ne se déclenche qu'à la
+     * rupture, c'est-à-dire trop tard : la marchandise met des jours à venir
+     * de Douala. Un seuil à cinq prévient pendant qu'il reste de quoi vendre.</p>
+     *
+     * <p>Gardé par {@code STOCK_AJUSTER} : régler un seuil, c'est décider
+     * quand l'équipe sera alertée. Ce n'est pas de la consultation.</p>
+     */
+    @PutMapping("/{varianteId}/seuil")
+    @PreAuthorize("hasAuthority('STOCK_AJUSTER')")
+    public EtatStock definirSeuil(@PathVariable Long varianteId,
+                                  @Valid @RequestBody DemandeSeuil demande) {
+        return stock.definirSeuil(varianteId, demande.seuilAlerte());
     }
 
     /**
@@ -152,6 +183,18 @@ public class ControleurStock {
 
             @Size(max = 500, message = "Commentaire trop long.")
             String commentaire) {
+    }
+
+    /**
+     * Le seuil a partir duquel l'equipe est prevenue.
+     *
+     * <p>Zero est une valeur legitime : « previens-moi quand il n'y en a
+     * plus ». Elle est simplement rarement la bonne — la marchandise met des
+     * jours a venir de Douala.</p>
+     */
+    public record DemandeSeuil(
+            @Min(value = 0, message = "Un seuil d'alerte ne peut pas etre negatif.")
+            int seuilAlerte) {
     }
 
     public record DemandeAjustement(
