@@ -23,6 +23,7 @@ export * from './lib/modeles/equipe';
 
 // --- Les listes ---
 export * from './lib/liste/bascule-vue';
+export * from './lib/liste/pagination';
 
 // --- Les icones ---
 export * from './lib/icones/icone';

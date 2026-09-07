@@ -3,10 +3,19 @@
     <h1>Produits</h1>
     <p class="sous-titre">
       @if (chargement()) { Chargement… }
-      @else { {{ total() }} produit(s) au catalogue }
+      @else if (filtreApplique(); as q) {
+        {{ total() }} résultat(s) pour « {{ q }} »
+      } @else { {{ total() }} produit(s) au catalogue }
     </p>
   </div>
   <div class="actions">
+    <div class="champ-recherche">
+      <gu-icone nom="magnifying-glass" class="loupe" />
+      <input type="search" class="gu-champ" placeholder="Nom ou référence"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             (keyup.enter)="chercher()" aria-label="Rechercher un produit" />
+    </div>
+
     <button type="button" class="gu-btn gu-btn--secondaire"
             (click)="charger()" [disabled]="chargement()">
       <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
@@ -29,6 +38,18 @@
   <div class="gu-carte etat">
     <gu-icone nom="circle-notch" tourne class="etat__icone" />
     <p class="etat__titre">Chargement du catalogue…</p>
+  </div>
+} @else if (produits().length === 0 && filtreApplique()) {
+  <!-- Une recherche sans résultat n'est PAS un catalogue vide. Proposer
+       « créez votre premier produit » à quelqu'un qui en a trois cents mais
+       cherche mal, c'est répondre à côté. -->
+  <div class="gu-carte etat">
+    <gu-icone nom="magnifying-glass" class="etat__icone" />
+    <p class="etat__titre">Aucun produit ne correspond à « {{ filtreApplique() }} »</p>
+    <p class="etat__aide">La recherche porte sur le nom et la référence.</p>
+    <button type="button" class="gu-btn gu-btn--secondaire" (click)="effacer()">
+      Effacer la recherche
+    </button>
   </div>
 } @else if (produits().length === 0) {
   <!-- L'état vide dit ce qu'il faut FAIRE, en langage metier.
@@ -116,4 +137,12 @@
       </a>
     }
   </div>
+}
+
+<!-- La pagination vient de la librairie : huit ecrans de liste vont suivre,
+     et la recopier huit fois serait se condamner a corriger huit fois le
+     jour ou elle se trompe d'une unite. -->
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="changerPage($event)" />
 }

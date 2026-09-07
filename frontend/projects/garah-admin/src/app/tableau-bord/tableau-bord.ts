@@ -50,7 +50,12 @@ export class TableauBord {
       teinte: 'indigo',
       permission: 'PRODUIT_CONSULTER',
       lien: '/produits',
-      source: () => this.compterPage('/api/produits?taille=1'),
+      // ⚠️ La route d'ADMINISTRATION, pas le catalogue public. Ce dernier ne
+      // renvoie que les produits publiés : la carte annonçait « 1 produit »
+      // alors que la liste juste à côté en montrait quatre, dont trois
+      // brouillons. Deux chiffres différents pour la même chose font douter
+      // des deux.
+      source: () => this.compterPage('/api/produits/administration?taille=1'),
     },
     {
       cle: 'marchands',

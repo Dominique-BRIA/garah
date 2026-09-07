@@ -1,11 +1,13 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   BasculeVue,
   Icone,
   Page,
+  Pagination,
   ReponseErreur,
   ResumeProduit,
   ServiceSession,
@@ -13,9 +15,17 @@ import {
   montantLisible,
 } from 'garah-ui';
 
+/**
+ * Vingt-quatre par page.
+ *
+ * <p>Trois rangées de huit en vue « cartes » sur un écran large, et une
+ * réponse qui reste légère sur une connexion mobile.</p>
+ */
+const TAILLE_PAGE = 24;
+
 @Component({
   selector: 'ga-produits',
-  imports: [Icone, RouterLink, BasculeVue],
+  imports: [FormsModule, Icone, RouterLink, BasculeVue, Pagination],
   templateUrl: './produits.html',
   styleUrl: './produits.scss',
 })
@@ -38,6 +48,22 @@ export class Produits {
   protected readonly chargement = signal(true);
   protected readonly erreur = signal<string | null>(null);
 
+  protected readonly page = signal(0);
+  protected readonly totalPages = signal(0);
+  protected readonly taille = TAILLE_PAGE;
+
+  /** Le texte saisi. Il ne part au serveur qu'à la validation. */
+  protected readonly recherche = signal('');
+
+  /**
+   * Ce qui filtre RÉELLEMENT la liste affichée.
+   *
+   * <p>Distinct de {@link recherche} : sans cette seconde valeur, vider le
+   * champ de saisie modifierait aussitôt le message « aucun résultat pour… »
+   * alors que la liste, elle, montrerait toujours l'ancien filtre.</p>
+   */
+  protected readonly filtreApplique = signal('');
+
   constructor() {
     this.charger();
   }
@@ -46,20 +72,58 @@ export class Produits {
     this.chargement.set(true);
     this.erreur.set(null);
 
+    const q = this.filtreApplique();
+    const parametres = new URLSearchParams({
+      page: String(this.page()),
+      taille: String(TAILLE_PAGE),
+    });
+    if (q) {
+      parametres.set('recherche', q);
+    }
+
     // ⚠️ La route d'ADMINISTRATION, pas le catalogue public. Ce dernier ne
     // renvoie que les produits publiés : la liste de gestion cachait donc
     // exactement les brouillons sur lesquels il restait du travail.
-    this.http.get<Page<ResumeProduit>>('/api/produits/administration?page=0&taille=24').subscribe({
-      next: (page) => {
-        this.produits.set(page.content);
-        this.total.set(page.page.totalElements);
-        this.chargement.set(false);
-      },
-      error: (e: unknown) => {
-        this.chargement.set(false);
-        this.erreur.set(message(e));
-      },
-    });
+    this.http
+      .get<Page<ResumeProduit>>(`/api/produits/administration?${parametres}`)
+      .subscribe({
+        next: (page) => {
+          this.produits.set(page.content);
+          this.total.set(page.page.totalElements);
+          this.totalPages.set(page.page.totalPages);
+          this.chargement.set(false);
+        },
+        error: (e: unknown) => {
+          this.chargement.set(false);
+          this.erreur.set(message(e));
+        },
+      });
+  }
+
+  /**
+   * Lance la recherche.
+   *
+   * <p>Retour à la première page : rester sur la page 4 d'un résultat qui n'en
+   * compte plus qu'une afficherait une liste vide, et personne ne penserait à
+   * regarder le numéro de page.</p>
+   */
+  protected chercher(): void {
+    this.filtreApplique.set(this.recherche().trim());
+    this.page.set(0);
+    this.charger();
+  }
+
+  protected effacer(): void {
+    this.recherche.set('');
+    this.chercher();
+  }
+
+  protected changerPage(page: number): void {
+    this.page.set(page);
+    this.charger();
+    // La liste change entièrement sous les yeux : sans ce retour en haut, on
+    // se retrouve au milieu de la page suivante sans avoir vu son début.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /** « 5 000 FCFA », ou un tiret si le produit n'a pas encore de prix. */
