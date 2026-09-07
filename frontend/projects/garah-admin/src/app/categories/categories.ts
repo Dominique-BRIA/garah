@@ -28,6 +28,9 @@ export class Categories {
   protected readonly nom = signal('');
   protected readonly parentId = signal<number | null>(null);
 
+  /** La catégorie en cours de renommage, ou `null` si l'on en crée une. */
+  protected readonly enEdition = signal<Categorie | null>(null);
+
   /**
    * L'arbre aplati, avec le niveau de chaque nœud.
    *
@@ -69,10 +72,23 @@ export class Categories {
   }
 
   protected ouvrirFormulaire(parent: number | null): void {
+    this.enEdition.set(null);
     this.nom.set('');
     this.parentId.set(parent);
     this.erreurFormulaire.set(null);
     this.formulaireOuvert.set(true);
+  }
+
+  protected ouvrirEdition(c: Categorie): void {
+    this.enEdition.set(c);
+    this.nom.set(c.nom);
+    this.erreurFormulaire.set(null);
+    this.formulaireOuvert.set(true);
+  }
+
+  protected fermer(): void {
+    this.formulaireOuvert.set(false);
+    this.enEdition.set(null);
   }
 
   protected enregistrer(): void {
@@ -82,23 +98,41 @@ export class Categories {
     this.enregistrement.set(true);
     this.erreurFormulaire.set(null);
 
-    this.http
-      .post<Categorie>('/api/categories', {
-        nom: this.nom().trim(),
-        parentId: this.parentId(),
-        ordre: 0,
-      })
-      .subscribe({
-        next: () => {
-          this.enregistrement.set(false);
-          this.formulaireOuvert.set(false);
-          this.charger();
-        },
-        error: (e: unknown) => {
-          this.enregistrement.set(false);
-          this.erreurFormulaire.set(message(e, 'La catégorie n’a pas pu être créée.'));
-        },
-      });
+    const existant = this.enEdition();
+
+    // ⚠️ Le parent n'est pas modifiable ici. Déplacer une branche impose de
+    // revérifier la profondeur ET l'absence de cycle pour toute la
+    // descendance : ce n'est pas la même opération qu'une faute de frappe
+    // corrigée, et le serveur ignore le parent en modification.
+    const requete = existant
+      ? this.http.put<Categorie>(`/api/categories/${existant.id}`, {
+          nom: this.nom().trim(),
+          ordre: existant.ordre,
+        })
+      : this.http.post<Categorie>('/api/categories', {
+          nom: this.nom().trim(),
+          parentId: this.parentId(),
+          ordre: 0,
+        });
+
+    requete.subscribe({
+      next: () => {
+        this.enregistrement.set(false);
+        this.fermer();
+        this.charger();
+      },
+      error: (e: unknown) => {
+        this.enregistrement.set(false);
+        this.erreurFormulaire.set(
+          message(
+            e,
+            existant
+              ? 'La catégorie n’a pas pu être renommée.'
+              : 'La catégorie n’a pas pu être créée.',
+          ),
+        );
+      },
+    });
   }
 
   protected basculerActivation(c: Categorie): void {

@@ -8,6 +8,13 @@
  * Les prix sont TTC : la TVA en est extraite, pas ajoutee.
  */
 export interface PalierPrix {
+  /**
+   * L'identifiant de la ligne tarifaire.
+   *
+   * Il sert a DESIGNER un palier pour en changer le prix ou le retirer. Sans
+   * lui, corriger une faute de frappe imposerait de refaire toute la grille.
+   */
+  readonly id: number;
   readonly quantiteMin: number;
   readonly quantiteMax: number | null;
   readonly prixUnitaire: number;

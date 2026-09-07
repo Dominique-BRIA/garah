@@ -160,4 +160,27 @@ public class ServiceTarification {
 
         return PalierPrix.de(tarifications.save(nouveau));
     }
+
+    /**
+     * Retire un palier de la grille.
+     *
+     * <p><b>Aucun {@code DELETE}.</b> On ferme le palier à aujourd'hui, comme
+     * {@link #changerPrix}. Une ligne supprimée pour de bon rendrait la
+     * question « quel prix s'appliquait le 12 mars ? » sans réponse, alors
+     * qu'une commande de mars peut encore être contestée aujourd'hui.</p>
+     *
+     * <p>La borne haute de la période est exclusive ({@code dateFin > jour}
+     * dans {@code paliersEnVigueur}) : fermer à aujourd'hui fait donc
+     * disparaître le palier <b>immédiatement</b> de la grille, pas demain.
+     * C'est aussi ce qui libère la plage de quantités pour un nouveau palier
+     * sans heurter la contrainte d'exclusion.</p>
+     */
+    @Transactional
+    public void supprimerPalier(Long tarificationId) {
+        Tarification palier = tarifications.findById(tarificationId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Palier de prix", tarificationId));
+
+        palier.setDateFin(LocalDate.now());
+        tarifications.save(palier);
+    }
 }

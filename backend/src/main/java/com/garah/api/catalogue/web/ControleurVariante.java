@@ -42,6 +42,62 @@ public class ControleurVariante {
         return variantes.ajouter(produitId, demande.sku(), demande.libelle());
     }
 
+    /** Corrige le SKU et l'intitule d'une declinaison. */
+    @PutMapping("/{varianteId}")
+    @PreAuthorize("hasAuthority('VARIANTE_MODIFIER')")
+    public VueVariante modifier(@PathVariable Long produitId,
+                                @PathVariable Long varianteId,
+                                @Valid @RequestBody DemandeVariante demande) {
+        return variantes.modifier(varianteId, demande.sku(), demande.libelle());
+    }
+
+    /*
+     * Activation et desactivation sur la MEME route, distinguees par le verbe.
+     *
+     * Deux permissions differentes les gardent (VARIANTE_ACTIVER,
+     * VARIANTE_DESACTIVER) : c'est deja le motif retenu pour la publication
+     * d'un produit, et le referentiel les avait separees des le depart. Une
+     * route unique avec un booleen dans le corps ne pourrait pas les
+     * distinguer avant d'avoir lu ce corps — donc apres le controle d'acces.
+     */
+    @PostMapping("/{varianteId}/activation")
+    @PreAuthorize("hasAuthority('VARIANTE_ACTIVER')")
+    public VueVariante activer(@PathVariable Long produitId, @PathVariable Long varianteId) {
+        return variantes.changerStatut(varianteId, true);
+    }
+
+    @DeleteMapping("/{varianteId}/activation")
+    @PreAuthorize("hasAuthority('VARIANTE_DESACTIVER')")
+    public VueVariante desactiver(@PathVariable Long produitId, @PathVariable Long varianteId) {
+        return variantes.changerStatut(varianteId, false);
+    }
+
+    /**
+     * Change le prix d'un palier existant.
+     *
+     * <p>Seul le <b>prix</b> se modifie, pas les quantites. Deplacer les
+     * bornes d'un palier revient a redecouper la grille : cela peut en faire
+     * chevaucher deux autres, ou ouvrir un trou de quantites sans prix. Pour
+     * changer un decoupage, on retire le palier et on en pose un autre — deux
+     * gestes explicites plutot qu'un seul aux effets invisibles.</p>
+     */
+    @PutMapping("/{varianteId}/paliers/{palierId}")
+    @PreAuthorize("hasAuthority('PRIX_MODIFIER')")
+    public VueVariante changerPrix(@PathVariable Long produitId,
+                                   @PathVariable Long varianteId,
+                                   @PathVariable Long palierId,
+                                   @Valid @RequestBody DemandePrix demande) {
+        return variantes.changerPrix(varianteId, palierId, demande.prixUnitaire());
+    }
+
+    @DeleteMapping("/{varianteId}/paliers/{palierId}")
+    @PreAuthorize("hasAuthority('PRIX_SUPPRIMER')")
+    public VueVariante supprimerPalier(@PathVariable Long produitId,
+                                       @PathVariable Long varianteId,
+                                       @PathVariable Long palierId) {
+        return variantes.supprimerPalier(varianteId, palierId);
+    }
+
     /**
      * Pose ou remplace un palier de quantite.
      *
@@ -89,6 +145,14 @@ public class ControleurVariante {
              * TVA en est extraite : activer un taux ne fait donc bondir aucun
              * prix affiche.
              */
+            @NotNull(message = "Le prix est obligatoire.")
+            @DecimalMin(value = "0", message = "Le prix ne peut pas etre negatif.")
+            @Digits(integer = 13, fraction = 2, message = "Prix mal forme.")
+            BigDecimal prixUnitaire) {
+    }
+
+    /** Le nouveau prix d'un palier existant. Les quantites n'y figurent pas. */
+    public record DemandePrix(
             @NotNull(message = "Le prix est obligatoire.")
             @DecimalMin(value = "0", message = "Le prix ne peut pas etre negatif.")
             @Digits(integer = 13, fraction = 2, message = "Prix mal forme.")

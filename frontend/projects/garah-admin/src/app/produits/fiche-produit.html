@@ -27,6 +27,12 @@
     <div class="actions">
       <span class="gu-badge" [class]="badge(p.statut)">{{ p.statut }}</span>
 
+      @if (session.peut('PRODUIT_MODIFIER') && !ouvert('produit')) {
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="ouvrirProduit()">
+          <gu-icone nom="pen" /> Modifier
+        </button>
+      }
+
       @if (p.statut !== 'PUBLIE' && session.peut('PRODUIT_PUBLIER')) {
         <button type="button" class="gu-btn gu-btn--primaire"
                 (click)="publier()" [disabled]="!publiable() || action() !== null">
@@ -42,6 +48,46 @@
 
   @if (erreur(); as m) {
     <p class="alerte" role="alert">{{ m }}</p>
+  }
+
+  <!-- ---------------- La fiche, en modification ---------------- -->
+  @if (ouvert('produit')) {
+    <form class="gu-carte fiche-edition" (ngSubmit)="enregistrerProduit()" novalidate>
+      <label class="gu-libelle" for="nom">Nom</label>
+      <input id="nom" name="nom" class="gu-champ" required maxlength="200"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+
+      <label class="gu-libelle" for="cat">Catégorie</label>
+      <select id="cat" name="categorie" class="gu-champ"
+              [ngModel]="categorieId()" (ngModelChange)="categorieId.set($event)">
+        @for (c of categories(); track c.id) {
+          <option [ngValue]="c.id">{{ decalage(c.niveau) }}{{ c.nom }}</option>
+        }
+      </select>
+
+      <label class="gu-libelle" for="desc">Description</label>
+      <textarea id="desc" name="description" class="gu-champ" rows="4" maxlength="5000"
+                [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea>
+
+      <p class="aide">
+        La référence et l’adresse de la page ne changent pas : des liens et des
+        bordereaux s’y réfèrent déjà.
+      </p>
+
+      @if (erreurForm(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="action() !== null || !nom() || categorieId() === null">
+          @if (action() === 'produit') {
+            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else { Enregistrer }
+        </button>
+      </div>
+    </form>
   }
 
   <!-- Ce qui manque pour publier, DIT AVANT le clic.
@@ -66,29 +112,48 @@
     <!-- ---------------- Déclinaisons et prix ---------------- -->
     <section class="gu-carte">
       <header class="section-entete">
-        <h2>Déclinaisons</h2>
-        @if (session.peut('VARIANTE_CREER')) {
+        <div>
+          <h2>Déclinaisons</h2>
+          <!-- Sans cette ligne, « déclinaison » se confond avec « palier de
+               prix » : les deux vivent dans le même bloc, et rien ne dit
+               lequel porte quoi. -->
+          <p class="aide sous-section">
+            Taille, couleur, conditionnement. Chacune se vend séparément et
+            porte ses propres prix.
+          </p>
+        </div>
+        @if (session.peut('VARIANTE_CREER') && formulaire() === null) {
           <button type="button" class="gu-btn gu-btn--secondaire petit"
-                  (click)="formVariante.set(!formVariante())">Ajouter</button>
+                  (click)="ouvrirCreationVariante()">
+            <gu-icone nom="plus" /> Ajouter
+          </button>
         }
       </header>
 
-      @if (formVariante()) {
+      @if (ouvert('variante-creation')) {
         <form class="encart" (ngSubmit)="ajouterVariante()" novalidate>
-          <label class="gu-libelle" for="sku">Référence de la déclinaison</label>
-          <input id="sku" name="sku" class="gu-champ" required maxlength="50"
-                 [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
-
           <label class="gu-libelle" for="lib">Intitulé</label>
           <input id="lib" name="libelle" class="gu-champ" required maxlength="200"
                  placeholder="Taille 42 — Blanc"
                  [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
 
+          <label class="gu-libelle" for="sku">Référence</label>
+          <input id="sku" name="sku" class="gu-champ" required maxlength="50"
+                 placeholder="CHEM-OXF-01-42"
+                 [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
+          <p class="aide">Le code lu sur un bordereau. Il doit être unique.</p>
+
+          @if (erreurForm(); as m) {
+            <p class="alerte" role="alert">{{ m }}</p>
+          }
+
           <div class="boutons">
             <button type="button" class="gu-btn gu-btn--secondaire petit"
-                    (click)="formVariante.set(false)">Annuler</button>
+                    (click)="fermer()">Annuler</button>
             <button type="submit" class="gu-btn gu-btn--primaire petit"
-                    [disabled]="action() !== null || !sku() || !libelle()">Ajouter</button>
+                    [disabled]="action() !== null || !sku() || !libelle()">
+              Créer la déclinaison
+            </button>
           </div>
         </form>
       }
@@ -100,73 +165,199 @@
         </p>
       } @else {
         @for (v of variantes(); track v.id) {
-          <article class="variante">
+          <article class="variante" [class.variante--inactive]="v.statut !== 'ACTIVE'">
             <div class="variante__entete">
               <div>
                 <span class="variante__libelle">{{ v.libelle }}</span>
                 <code>{{ v.sku }}</code>
+                @if (v.parDefaut) {
+                  <span class="gu-badge gu-badge--neutre petit-badge">par défaut</span>
+                }
+                @if (v.statut !== 'ACTIVE') {
+                  <span class="gu-badge gu-badge--alerte petit-badge">inactive</span>
+                }
               </div>
-              @if (session.peut('PRIX_CREER')) {
-                <button type="button" class="gu-btn gu-btn--secondaire petit"
-                        (click)="ouvrirPalier(v.id)">Prix</button>
+
+              @if (formulaire() === null) {
+                <div class="variante__actions">
+                  @if (session.peut('VARIANTE_MODIFIER')) {
+                    <button type="button" class="icone-action" (click)="ouvrirEditionVariante(v)"
+                            aria-label="Modifier cette déclinaison" title="Modifier">
+                      <gu-icone nom="pen" />
+                    </button>
+                  }
+                  @if (v.statut === 'ACTIVE' && session.peut('VARIANTE_DESACTIVER')) {
+                    <button type="button" class="icone-action" (click)="basculerVariante(v)"
+                            [disabled]="action() !== null"
+                            aria-label="Désactiver cette déclinaison" title="Désactiver">
+                      <gu-icone nom="eye-slash" />
+                    </button>
+                  }
+                  @if (v.statut !== 'ACTIVE' && session.peut('VARIANTE_ACTIVER')) {
+                    <button type="button" class="icone-action" (click)="basculerVariante(v)"
+                            [disabled]="action() !== null"
+                            aria-label="Activer cette déclinaison" title="Activer">
+                      <gu-icone nom="eye" />
+                    </button>
+                  }
+                </div>
               }
             </div>
 
-            @if (v.paliers.length === 0) {
-              <p class="vide petit-texte">Aucun prix défini.</p>
-            } @else {
-              <ul class="paliers">
-                @for (palier of v.paliers; track palier.quantiteMin) {
-                  <li>
-                    <span>
-                      @if (palier.quantiteMax) {
-                        {{ palier.quantiteMin }} à {{ palier.quantiteMax }}
-                      } @else {
-                        {{ palier.quantiteMin }} et plus
-                      }
-                    </span>
-                    <strong>{{ palier.prixUnitaire }} {{ palier.devise }}</strong>
-                  </li>
+            @if (ouvert('variante-edition', v.id)) {
+              <form class="encart" (ngSubmit)="enregistrerVariante(v.id)" novalidate>
+                <label class="gu-libelle" [for]="'lib-' + v.id">Intitulé</label>
+                <input [id]="'lib-' + v.id" name="libelle" class="gu-champ" required maxlength="200"
+                       [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
+
+                <label class="gu-libelle" [for]="'sku-' + v.id">Référence</label>
+                <input [id]="'sku-' + v.id" name="sku" class="gu-champ" required maxlength="50"
+                       [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
+
+                @if (erreurForm(); as m) {
+                  <p class="alerte" role="alert">{{ m }}</p>
                 }
-              </ul>
-            }
-
-            @if (formPalier() === v.id) {
-              <form class="encart" (ngSubmit)="definirPalier()" novalidate>
-                <div class="duo">
-                  <div>
-                    <label class="gu-libelle" for="qmin">À partir de</label>
-                    <input id="qmin" name="qmin" type="number" min="1" class="gu-champ"
-                           [ngModel]="quantiteMin()" (ngModelChange)="quantiteMin.set(+$event)" />
-                  </div>
-                  <div>
-                    <label class="gu-libelle" for="qmax">Jusqu’à</label>
-                    <input id="qmax" name="qmax" type="number" min="1" class="gu-champ"
-                           placeholder="illimité"
-                           [ngModel]="quantiteMax()"
-                           (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
-                  </div>
-                </div>
-                <p class="aide">Laisser vide pour « et au-delà ».</p>
-
-                <label class="gu-libelle" for="prix">Prix unitaire (FCFA, TTC)</label>
-                <input id="prix" name="prix" type="number" min="0" class="gu-champ"
-                       [ngModel]="prix()" (ngModelChange)="prix.set($event === '' ? null : +$event)" />
 
                 <div class="boutons">
                   <button type="button" class="gu-btn gu-btn--secondaire petit"
-                          (click)="formPalier.set(null)">Annuler</button>
+                          (click)="fermer()">Annuler</button>
                   <button type="submit" class="gu-btn gu-btn--primaire petit"
-                          [disabled]="action() !== null || prix() === null">Enregistrer</button>
+                          [disabled]="action() !== null || !sku() || !libelle()">Enregistrer</button>
                 </div>
               </form>
             }
+
+            <!-- La grille tarifaire de CETTE déclinaison -->
+            <div class="grille">
+              <div class="grille__entete">
+                <span class="grille__titre">Prix par quantité</span>
+                @if (session.peut('PRIX_CREER') && formulaire() === null && !grilleFermee(v)) {
+                  <button type="button" class="lien-action" (click)="ouvrirCreationPalier(v)">
+                    <gu-icone nom="plus" /> Ajouter un prix
+                  </button>
+                }
+              </div>
+
+              @if (v.paliers.length === 0) {
+                <p class="vide petit-texte">
+                  Aucun prix. Le tarif dépend de la quantité commandée : un prix
+                  pour 1 à 6, un autre au-delà.
+                </p>
+              } @else {
+                <ul class="paliers">
+                  @for (palier of v.paliers; track palier.id) {
+                    <li>
+                      <span class="paliers__plage">
+                        @if (palier.quantiteMax) {
+                          {{ palier.quantiteMin }} à {{ palier.quantiteMax }}
+                        } @else {
+                          {{ palier.quantiteMin }} et plus
+                        }
+                      </span>
+                      <strong>{{ montant(palier.prixUnitaire, palier.devise) }}</strong>
+
+                      @if (formulaire() === null) {
+                        <span class="paliers__actions">
+                          @if (session.peut('PRIX_MODIFIER')) {
+                            <button type="button" class="icone-action"
+                                    (click)="ouvrirPrix(v, palier)"
+                                    aria-label="Modifier ce prix" title="Modifier le prix">
+                              <gu-icone nom="pen" />
+                            </button>
+                          }
+                          @if (session.peut('PRIX_SUPPRIMER')) {
+                            <button type="button" class="icone-action icone-action--danger"
+                                    (click)="supprimerPalier(v.id, palier.id)"
+                                    [disabled]="action() !== null"
+                                    aria-label="Retirer ce prix" title="Retirer">
+                              <gu-icone nom="trash" />
+                            </button>
+                          }
+                        </span>
+                      }
+                    </li>
+
+                    @if (ouvert('palier-prix', v.id, palier.id)) {
+                      <li class="paliers__edition">
+                        <form (ngSubmit)="enregistrerPrix(v.id, palier.id)" novalidate>
+                          <label class="gu-libelle" [for]="'p-' + palier.id">
+                            Prix unitaire pour
+                            @if (palier.quantiteMax) {
+                              {{ palier.quantiteMin }} à {{ palier.quantiteMax }}
+                            } @else {
+                              {{ palier.quantiteMin }} et plus
+                            }
+                            (FCFA, TTC)
+                          </label>
+                          <input [id]="'p-' + palier.id" name="prix" type="number" min="1"
+                                 class="gu-champ"
+                                 [ngModel]="prix()"
+                                 (ngModelChange)="prix.set($event === '' ? null : +$event)" />
+
+                          @if (erreurForm(); as m) {
+                            <p class="alerte" role="alert">{{ m }}</p>
+                          }
+
+                          <div class="boutons">
+                            <button type="button" class="gu-btn gu-btn--secondaire petit"
+                                    (click)="fermer()">Annuler</button>
+                            <button type="submit" class="gu-btn gu-btn--primaire petit"
+                                    [disabled]="action() !== null || !prix()">Enregistrer</button>
+                          </div>
+                        </form>
+                      </li>
+                    }
+                  }
+                </ul>
+
+                @if (grilleFermee(v) && session.peut('PRIX_CREER')) {
+                  <p class="aide">
+                    Le dernier palier n’a pas de limite haute. Retirez-le pour
+                    prolonger la grille.
+                  </p>
+                }
+              }
+
+              @if (ouvert('palier-creation', v.id)) {
+                <form class="encart" (ngSubmit)="definirPalier(v.id)" novalidate>
+                  <div class="duo">
+                    <div>
+                      <label class="gu-libelle" [for]="'qmin-' + v.id">À partir de</label>
+                      <input [id]="'qmin-' + v.id" name="qmin" type="number" min="1"
+                             class="gu-champ"
+                             [ngModel]="quantiteMin()"
+                             (ngModelChange)="quantiteMin.set(+$event)" />
+                    </div>
+                    <div>
+                      <label class="gu-libelle" [for]="'qmax-' + v.id">Jusqu’à</label>
+                      <input [id]="'qmax-' + v.id" name="qmax" type="number" min="1"
+                             class="gu-champ" placeholder="illimité"
+                             [ngModel]="quantiteMax()"
+                             (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
+                    </div>
+                  </div>
+                  <p class="aide">Laisser vide pour « et au-delà ».</p>
+
+                  <label class="gu-libelle" [for]="'prix-' + v.id">Prix unitaire (FCFA, TTC)</label>
+                  <input [id]="'prix-' + v.id" name="prix" type="number" min="1" class="gu-champ"
+                         [ngModel]="prix()"
+                         (ngModelChange)="prix.set($event === '' ? null : +$event)" />
+
+                  @if (erreurForm(); as m) {
+                    <p class="alerte" role="alert">{{ m }}</p>
+                  }
+
+                  <div class="boutons">
+                    <button type="button" class="gu-btn gu-btn--secondaire petit"
+                            (click)="fermer()">Annuler</button>
+                    <button type="submit" class="gu-btn gu-btn--primaire petit"
+                            [disabled]="action() !== null || !prix()">Ajouter le prix</button>
+                  </div>
+                </form>
+              }
+            </div>
           </article>
         }
-      }
-
-      @if (erreurForm(); as m) {
-        <p class="alerte" role="alert">{{ m }}</p>
       }
     </section>
 

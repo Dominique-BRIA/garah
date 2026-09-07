@@ -70,6 +70,24 @@ public class ControleurProduit {
     }
 
     /**
+     * Corrige une fiche produit.
+     *
+     * <p>Un {@code PUT} et non un {@code PATCH} : le formulaire du back-office
+     * envoie la fiche entière, telle qu'elle est à l'écran. Un {@code PATCH}
+     * demanderait de distinguer « champ absent » de « champ vidé », et cette
+     * distinction est exactement l'endroit où une description finit par être
+     * effacée sans que personne ne l'ait demandé.</p>
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PRODUIT_MODIFIER')")
+    public DetailProduit modifier(@PathVariable Long id,
+                                  @Valid @RequestBody DemandeModificationProduit demande,
+                                  @AuthenticationPrincipal Jwt jeton) {
+        return catalogue.modifierProduit(id, demande.nom(), demande.description(),
+                demande.categorieId(), demande.tauxTva(), Long.valueOf(jeton.getSubject()));
+    }
+
+    /**
      * La permission est écrite avec le code exact de {@code cas_utilisation}.
      *
      * <p>Aucune traduction entre la base, le jeton et cette annotation :

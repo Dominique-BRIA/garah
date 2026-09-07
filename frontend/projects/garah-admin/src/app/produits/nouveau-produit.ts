@@ -7,16 +7,11 @@ import {
   DetailProduit,
   Icone,
   Marchand,
+  OptionCategorie,
   Page,
   ReponseErreur,
+  aplatirCategories,
 } from 'garah-ui';
-
-/** Une catégorie aplatie, avec son niveau, pour la liste déroulante. */
-interface OptionCategorie {
-  readonly id: number;
-  readonly nom: string;
-  readonly niveau: number;
-}
 
 @Component({
   selector: 'ga-nouveau-produit',
@@ -89,7 +84,7 @@ export class NouveauProduit {
 
     this.http.get<Categorie[]>('/api/categories').subscribe({
       next: (arbre) => {
-        const plates = aplatir(arbre, 0);
+        const plates = aplatirCategories(arbre);
         this.categories.set(plates);
         if (plates.length === 1) {
           this.categorieId.set(plates[0].id);
@@ -135,13 +130,6 @@ export class NouveauProduit {
   protected decalage(niveau: number): string {
     return '— '.repeat(niveau);
   }
-}
-
-function aplatir(noeuds: readonly Categorie[], niveau: number): OptionCategorie[] {
-  return noeuds.flatMap((c) => [
-    { id: c.id, nom: c.nom, niveau },
-    ...aplatir(c.enfants, niveau + 1),
-  ]);
 }
 
 function message(e: unknown, repli: string): string {

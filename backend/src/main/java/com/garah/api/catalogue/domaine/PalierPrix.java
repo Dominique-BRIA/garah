@@ -11,17 +11,22 @@ import java.math.BigDecimal;
  * 10 et +    11 500 FCFA
  * </pre>
  *
+ * @param id l'identifiant de la ligne de tarification. Il est exposé parce que
+ *           le back-office doit pouvoir <b>désigner</b> un palier pour en
+ *           changer le prix ou le retirer. Sans lui, la seule façon de
+ *           corriger une erreur de saisie serait de retaper toute la grille.
  * @param quantiteMax {@code null} signifie « et au-delà »
  * @param prixUnitaire toujours <b>TTC</b> (D-11)
  */
 public record PalierPrix(
+        Long id,
         int quantiteMin,
         Integer quantiteMax,
         BigDecimal prixUnitaire,
         String devise) {
 
     public static PalierPrix de(Tarification t) {
-        return new PalierPrix(t.getQuantiteMin(), t.getQuantiteMax(),
+        return new PalierPrix(t.getId(), t.getQuantiteMin(), t.getQuantiteMax(),
                 t.getPrixUnitaire(), t.getDevise());
     }
 

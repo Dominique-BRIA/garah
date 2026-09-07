@@ -52,6 +52,21 @@ public class ControleurCategorie {
                 demande.ordre() == null ? 0 : demande.ordre());
     }
 
+    /**
+     * Renomme une categorie et change sa place dans la fratrie.
+     *
+     * <p>{@code parentId} est ignore s'il est envoye : deplacer une branche
+     * demande de revalider la profondeur et l'absence de cycle pour toute la
+     * descendance. C'est une autre operation.</p>
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('CATEGORIE_PRODUIT_GERER')")
+    public VueCategorie renommer(@PathVariable Long id,
+                                 @Valid @RequestBody DemandeCategorie demande) {
+        return categories.renommer(id, demande.nom(),
+                demande.ordre() == null ? 0 : demande.ordre());
+    }
+
     @PostMapping("/{id}/activation")
     @PreAuthorize("hasAuthority('CATEGORIE_PRODUIT_GERER')")
     public VueCategorie activer(@PathVariable Long id) {

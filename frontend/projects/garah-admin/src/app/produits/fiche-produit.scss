@@ -23,7 +23,23 @@
 
 .entete h1 { font-size: 1.6rem; }
 
-.actions { display: flex; align-items: center; gap: 0.75rem; }
+.actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+// --- La fiche en modification ------------------------------------------------
+.fiche-edition {
+  display: flex;
+  flex-direction: column;
+  max-width: 42rem;
+  margin-bottom: 1.5rem;
+
+  .gu-libelle:not(:first-child) { margin-top: 1rem; }
+
+  textarea.gu-champ {
+    resize: vertical;
+    min-height: 5rem;
+    font-family: inherit;
+  }
+}
 
 // --- Les prérequis de publication --------------------------------------------
 .prerequis {
@@ -60,12 +76,19 @@
 
 .section-entete {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 1.15rem;
 
   h2 { font-size: 1.05rem; }
+}
+
+// La ligne qui dit ce qu'est une déclinaison. Sans elle, le mot se confond
+// avec « palier de prix » : les deux vivent dans le même bloc.
+.sous-section {
+  margin: 0.3rem 0 0;
+  max-width: 26rem;
 }
 
 .vide {
@@ -78,10 +101,16 @@
 
 // --- Déclinaisons ------------------------------------------------------------
 .variante {
-  padding: 0.9rem 0;
+  padding: 1rem 0;
   border-top: 1px solid var(--verre-bordure);
 
   &:first-of-type { border-top: none; padding-top: 0; }
+}
+
+// Une déclinaison désactivée reste lisible mais recule : elle ne se vend plus,
+// elle ne doit plus attirer l'œil autant que les autres.
+.variante--inactive {
+  opacity: 0.6;
 }
 
 .variante__entete {
@@ -94,6 +123,77 @@
 
 .variante__libelle { font-weight: 600; margin-right: 0.5rem; }
 
+.petit-badge {
+  margin-left: 0.4rem;
+  font-size: 0.6rem;
+}
+
+.variante__actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+
+// Un bouton d'icône : pas de fond au repos, pour ne pas transformer chaque
+// ligne en une rangée de boutons qui se disputent l'attention.
+.icone-action {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--texte-attenue);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover:not(:disabled) { background: var(--surface-douce); color: var(--primary); }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+}
+
+.icone-action--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+// --- La grille tarifaire d'une déclinaison -----------------------------------
+.grille {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--verre-bordure);
+}
+
+.grille__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.grille__titre {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.lien-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
 .paliers {
   list-style: none;
   margin: 0.4rem 0 0;
@@ -102,9 +202,9 @@
 
   li {
     display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.35rem 0.6rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.35rem 0.5rem;
     border-radius: var(--radius-sm);
     color: var(--texte-attenue);
   }
@@ -117,6 +217,21 @@
     // colonne des montants ondule d'une ligne à l'autre.
     font-variant-numeric: tabular-nums;
   }
+}
+
+// La plage pousse le prix et les actions à droite.
+.paliers__plage { flex: 1; }
+
+.paliers__actions { display: flex; gap: 0.15rem; flex-shrink: 0; }
+
+// La ligne d'édition d'un prix occupe toute la largeur, sous celle qu'elle
+// modifie — jamais ailleurs, sinon on ne sait plus quel prix on change.
+.paliers__edition {
+  display: block !important;
+  background: none !important;
+  padding: 0 !important;
+
+  form { display: flex; flex-direction: column; }
 }
 
 // --- Les formulaires en ligne ------------------------------------------------

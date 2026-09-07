@@ -91,6 +91,23 @@ public class ServiceCategorie {
         return VueCategorie.plate(categories.save(categorie));
     }
 
+    /**
+     * Renomme une catégorie et change sa place dans la fratrie.
+     *
+     * <p>Le parent, lui, n'est pas modifiable ici. Déplacer une branche d'un
+     * arbre demande de revérifier la profondeur <b>et</b> l'absence de cycle
+     * pour toute la descendance, pas seulement pour le nœud déplacé : c'est
+     * une autre opération, et la mélanger à un renommage ferait passer un
+     * déplacement pour une correction de faute de frappe.</p>
+     */
+    @Transactional
+    public VueCategorie renommer(Long id, String nom, int ordre) {
+        CategorieProduit categorie = charger(id);
+        categorie.renommer(nom.strip());
+        categorie.setOrdre(ordre);
+        return VueCategorie.plate(categorie);
+    }
+
     @Transactional
     public VueCategorie changerStatut(Long id, String statut) {
         if (!"ACTIVE".equals(statut) && !"INACTIVE".equals(statut)) {

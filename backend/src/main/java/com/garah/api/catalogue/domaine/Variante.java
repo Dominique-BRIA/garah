@@ -85,6 +85,7 @@ public class Variante {
     public String getStatut() { return statut; }
     public Set<ValeurAttribut> getValeurs() { return valeurs; }
 
+    public void setSku(String sku) { this.sku = sku; }
     public void setLibelle(String libelle) { this.libelle = libelle; }
     public void setPoidsKg(BigDecimal poids) { this.poidsKg = poids; }
     public void setStatut(String statut) { this.statut = statut; }

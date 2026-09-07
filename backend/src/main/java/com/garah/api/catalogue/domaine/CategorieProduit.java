@@ -51,5 +51,14 @@ public class CategorieProduit {
     public String getStatut() { return statut; }
 
     public void setOrdre(int ordre) { this.ordre = ordre; }
+
+    /**
+     * Renomme la catégorie <b>sans toucher au slug</b>.
+     *
+     * <p>Le slug est l'adresse publique de la catégorie. Le recalculer à
+     * chaque renommage casserait tous les liens déjà partagés — et un nom se
+     * corrige souvent, une adresse jamais.</p>
+     */
+    public void renommer(String nom) { this.nom = nom; }
     public void setStatut(String statut) { this.statut = statut; }
 }

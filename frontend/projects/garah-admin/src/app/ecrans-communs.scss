@@ -161,3 +161,13 @@ code {
 .gu-tableau tbody tr.cliquable {
   cursor: pointer;
 }
+
+// Plusieurs boutons dans une colonne d'action : ils restent sur une ligne tant
+// que la place le permet, et passent l'un sous l'autre plutot que de deborder
+// la cellule.
+.cellule-actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}

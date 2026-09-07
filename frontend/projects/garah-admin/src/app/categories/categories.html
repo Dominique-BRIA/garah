@@ -65,16 +65,22 @@
             </td>
             <td class="droite">
               @if (session.peut('CATEGORIE_PRODUIT_GERER')) {
-                @if (ligne.niveau < 2) {
+                <div class="cellule-actions">
                   <button type="button" class="gu-btn gu-btn--secondaire petit"
-                          (click)="ouvrirFormulaire(ligne.categorie.id)">
-                    Sous-catégorie
+                          (click)="ouvrirEdition(ligne.categorie)">
+                    <gu-icone nom="pen" /> Renommer
                   </button>
-                }
-                <button type="button" class="gu-btn gu-btn--secondaire petit"
-                        (click)="basculerActivation(ligne.categorie)">
-                  @if (ligne.categorie.statut === 'ACTIVE') { Désactiver } @else { Activer }
-                </button>
+                  @if (ligne.niveau < 2) {
+                    <button type="button" class="gu-btn gu-btn--secondaire petit"
+                            (click)="ouvrirFormulaire(ligne.categorie.id)">
+                      Sous-catégorie
+                    </button>
+                  }
+                  <button type="button" class="gu-btn gu-btn--secondaire petit"
+                          (click)="basculerActivation(ligne.categorie)">
+                    @if (ligne.categorie.statut === 'ACTIVE') { Désactiver } @else { Activer }
+                  </button>
+                </div>
               }
             </td>
           </tr>
@@ -85,27 +91,39 @@
 }
 
 @if (formulaireOuvert()) {
-  <div class="voile" (click)="formulaireOuvert.set(false)" aria-hidden="true"></div>
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
 
-  <aside class="panneau" role="dialog" aria-modal="true" aria-label="Nouvelle catégorie">
-    <h2>Nouvelle catégorie</h2>
+  <aside class="panneau" role="dialog" aria-modal="true"
+         [attr.aria-label]="enEdition() ? 'Renommer la catégorie' : 'Nouvelle catégorie'">
+    @if (enEdition()) {
+      <h2>Renommer</h2>
+    } @else {
+      <h2>Nouvelle catégorie</h2>
+    }
 
     <form (ngSubmit)="enregistrer()" novalidate>
       <label class="gu-libelle" for="nom">Nom</label>
       <input id="nom" name="nom" class="gu-champ" required maxlength="150"
              [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
 
-      <label class="gu-libelle" for="parent">Catégorie parente</label>
-      <select id="parent" name="parent" class="gu-champ"
-              [ngModel]="parentId()" (ngModelChange)="parentId.set($event)">
-        <option [ngValue]="null">Aucune (catégorie principale)</option>
-        @for (ligne of parentsPossibles(); track ligne.categorie.id) {
-          <option [ngValue]="ligne.categorie.id">
-            {{ '— '.repeat(ligne.niveau) }}{{ ligne.categorie.nom }}
-          </option>
-        }
-      </select>
-      <p class="aide">Trois niveaux au maximum.</p>
+      <!-- La catégorie parente ne se choisit qu'à la création : déplacer une
+           branche existante est une autre opération, aux conséquences bien
+           plus larges qu'un changement de nom. -->
+      @if (!enEdition()) {
+        <label class="gu-libelle" for="parent">Catégorie parente</label>
+        <select id="parent" name="parent" class="gu-champ"
+                [ngModel]="parentId()" (ngModelChange)="parentId.set($event)">
+          <option [ngValue]="null">Aucune (catégorie principale)</option>
+          @for (ligne of parentsPossibles(); track ligne.categorie.id) {
+            <option [ngValue]="ligne.categorie.id">
+              {{ '— '.repeat(ligne.niveau) }}{{ ligne.categorie.nom }}
+            </option>
+          }
+        </select>
+        <p class="aide">Trois niveaux au maximum.</p>
+      } @else {
+        <p class="aide">L’adresse publique de la catégorie ne change pas.</p>
+      }
 
       @if (erreurFormulaire(); as m) {
         <p class="alerte" role="alert">{{ m }}</p>
@@ -113,11 +131,13 @@
 
       <div class="boutons">
         <button type="button" class="gu-btn gu-btn--secondaire"
-                (click)="formulaireOuvert.set(false)">Annuler</button>
+                (click)="fermer()">Annuler</button>
         <button type="submit" class="gu-btn gu-btn--primaire"
                 [disabled]="enregistrement() || !nom()">
           @if (enregistrement()) {
             <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else if (enEdition()) {
+            Enregistrer
           } @else { Créer }
         </button>
       </div>

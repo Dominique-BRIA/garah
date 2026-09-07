@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -206,6 +207,41 @@ public class ServiceCatalogue {
 
         produit.changerStatut(StatutProduit.PUBLIE);
         return produit;
+    }
+
+    /**
+     * Corrige la fiche d'un produit.
+     *
+     * <p><b>Le slug ne bouge pas.</b> Il est calculé une fois, à la création,
+     * et {@link Produit} n'expose volontairement aucun moyen de le changer.
+     * C'est l'adresse publique du produit : la recalculer à chaque
+     * renommage transformerait tout lien déjà partagé — dans une conversation
+     * WhatsApp, dans un devis, dans un moteur de recherche — en page
+     * introuvable. Un titre se corrige souvent ; une adresse, jamais.</p>
+     *
+     * <p>La <b>référence</b> ne bouge pas non plus, pour une autre raison :
+     * c'est elle qui identifie le produit chez le marchand et sur les
+     * bordereaux. La changer désynchroniserait l'entrepôt du catalogue.</p>
+     */
+    @Transactional
+    public DetailProduit modifierProduit(Long produitId, String nom, String description,
+                                         Long categorieId, BigDecimal tauxTva, Long modifiePar) {
+        Produit produit = produits.findById(produitId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId));
+
+        if (categorieId != null && !categorieId.equals(produit.getCategorie().getId())) {
+            produit.setCategorie(categories.findById(categorieId)
+                    .orElseThrow(() -> RessourceIntrouvable.de("Catégorie", categorieId)));
+        }
+
+        produit.setNom(nom);
+        produit.setDescription(description);
+        if (tauxTva != null) {
+            produit.setTauxTva(tauxTva);
+        }
+        produit.setModifiePar(modifiePar);
+
+        return DetailProduit.de(produit, urlsMedias::urlPublique);
     }
 
     @Transactional

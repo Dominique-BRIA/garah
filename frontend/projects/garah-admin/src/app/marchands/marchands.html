@@ -1,4 +1,4 @@
-[disabled]="enregistrement() || !nom()"<header class="entete">
+<header class="entete">
   <div>
     <h1>Marchands</h1>
     <p class="sous-titre">
@@ -84,12 +84,20 @@
               </span>
             </td>
             <td class="droite">
-              @if (session.peut('MARCHAND_DESACTIVER')) {
-                <button type="button" class="gu-btn gu-btn--secondaire petit"
-                        (click)="basculerActivation(m)">
-                  @if (m.statut === 'ACTIF') { Désactiver } @else { Activer }
-                </button>
-              }
+              <div class="cellule-actions">
+                @if (session.peut('MARCHAND_MODIFIER')) {
+                  <button type="button" class="gu-btn gu-btn--secondaire petit"
+                          (click)="ouvrirEdition(m)">
+                    <gu-icone nom="pen" /> Modifier
+                  </button>
+                }
+                @if (session.peut('MARCHAND_DESACTIVER')) {
+                  <button type="button" class="gu-btn gu-btn--secondaire petit"
+                          (click)="basculerActivation(m)">
+                    @if (m.statut === 'ACTIF') { Désactiver } @else { Activer }
+                  </button>
+                }
+              </div>
             </td>
           </tr>
         }
@@ -98,25 +106,36 @@
   </div>
 }
 
-<!-- Le formulaire de création, en panneau latéral -->
+<!-- Le formulaire, en panneau latéral. Le même pour créer et pour modifier. -->
 @if (formulaireOuvert()) {
-  <div class="voile" (click)="formulaireOuvert.set(false)" aria-hidden="true"></div>
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
 
-  <aside class="panneau" role="dialog" aria-modal="true" aria-label="Nouveau marchand">
-    <h2>Nouveau marchand</h2>
+  <aside class="panneau" role="dialog" aria-modal="true"
+         [attr.aria-label]="enEdition() ? 'Modifier le marchand' : 'Nouveau marchand'">
+    @if (enEdition(); as m) {
+      <h2>Modifier {{ m.nom }}</h2>
+      <p class="aide">Code {{ m.code }} — engendré à la création, il ne change pas.</p>
+    } @else {
+      <h2>Nouveau marchand</h2>
+    }
 
     <form (ngSubmit)="enregistrer()" novalidate>
       <label class="gu-libelle" for="nom">Nom</label>
       <input id="nom" name="nom" class="gu-champ" required maxlength="150"
              [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
 
-      <label class="gu-libelle" for="type">Type</label>
-      <select id="type" name="type" class="gu-champ"
-              [ngModel]="type()" (ngModelChange)="type.set($event)">
-        <option value="EXTERNE">Partenaire</option>
-        <option value="INTERNE">GARAH</option>
-      </select>
-      <p class="aide">Détermine la commission. Ne pourra plus être modifié.</p>
+      <!-- Le type détermine la commission : il se choisit une fois, à la
+           création. L'afficher grisé en modification laisserait croire qu'un
+           réglage manque ; on ne le montre pas. -->
+      @if (!enEdition()) {
+        <label class="gu-libelle" for="type">Type</label>
+        <select id="type" name="type" class="gu-champ"
+                [ngModel]="type()" (ngModelChange)="type.set($event)">
+          <option value="EXTERNE">Partenaire</option>
+          <option value="INTERNE">GARAH</option>
+        </select>
+        <p class="aide">Détermine la commission. Ne pourra plus être modifié.</p>
+      }
 
       <label class="gu-libelle" for="pays">Pays</label>
       <select id="pays" name="pays" class="gu-champ"
@@ -140,11 +159,13 @@
 
       <div class="boutons">
         <button type="button" class="gu-btn gu-btn--secondaire"
-                (click)="formulaireOuvert.set(false)">Annuler</button>
+                (click)="fermer()">Annuler</button>
         <button type="submit" class="gu-btn gu-btn--primaire"
                 [disabled]="enregistrement() || !nom()">
           @if (enregistrement()) {
             <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else if (enEdition()) {
+            Enregistrer
           } @else { Créer }
         </button>
       </div>

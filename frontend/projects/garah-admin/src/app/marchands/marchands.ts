@@ -37,8 +37,13 @@ export class Marchands {
     return libellePays(code);
   }
 
-  // --- Le formulaire de création ---
+  // --- Le formulaire, en création ou en modification ---
+  //
+  // Un seul panneau pour les deux. Les champs sont les mêmes, les règles de
+  // saisie aussi : en dédoubler un serait se condamner à corriger chaque
+  // libellé deux fois.
   protected readonly formulaireOuvert = signal(false);
+  protected readonly enEdition = signal<Marchand | null>(null);
   protected readonly enregistrement = signal(false);
   protected readonly erreurFormulaire = signal<string | null>(null);
 
@@ -75,6 +80,7 @@ export class Marchands {
   }
 
   protected ouvrirFormulaire(): void {
+    this.enEdition.set(null);
     this.nom.set('');
     this.pays.set('CM');
     this.type.set('EXTERNE');
@@ -84,6 +90,22 @@ export class Marchands {
     this.formulaireOuvert.set(true);
   }
 
+  protected ouvrirEdition(marchand: Marchand): void {
+    this.enEdition.set(marchand);
+    this.nom.set(marchand.nom);
+    this.pays.set(marchand.pays);
+    this.type.set(marchand.type);
+    this.telephone.set(marchand.telephone ?? '');
+    this.email.set(marchand.email ?? '');
+    this.erreurFormulaire.set(null);
+    this.formulaireOuvert.set(true);
+  }
+
+  protected fermer(): void {
+    this.formulaireOuvert.set(false);
+    this.enEdition.set(null);
+  }
+
   protected enregistrer(): void {
     if (this.enregistrement()) {
       return;
@@ -91,31 +113,46 @@ export class Marchands {
     this.enregistrement.set(true);
     this.erreurFormulaire.set(null);
 
-    this.http
-      .post<Marchand>('/api/marchands', {
-        // Aucun code : il est ENGENDRÉ par le serveur (MAR-00042). Le laisser
-        // saisir produisait « 202020 » — une valeur qui ne dit rien et qu'on
-        // devait inventer a chaque fois.
-        nom: this.nom().trim(),
-        type: this.type(),
-        pays: this.pays(),
-        // Chaîne vide plutôt qu'omission : le backend accepte les deux, mais
-        // envoyer `undefined` retirerait la clé du JSON et rendrait le contrat
-        // implicite. Ce qui est optionnel doit se voir.
-        telephone: this.telephone().trim(),
-        email: this.email().trim(),
-      })
-      .subscribe({
-        next: () => {
-          this.enregistrement.set(false);
-          this.formulaireOuvert.set(false);
-          this.charger();
-        },
-        error: (e: unknown) => {
-          this.enregistrement.set(false);
-          this.erreurFormulaire.set(message(e, 'Le marchand n’a pas pu être créé.'));
-        },
-      });
+    const existant = this.enEdition();
+
+    const corps = {
+      // Aucun code : il est ENGENDRÉ par le serveur (MAR-00042). Le laisser
+      // saisir produisait « 202020 » — une valeur qui ne dit rien et qu'on
+      // devait inventer a chaque fois.
+      nom: this.nom().trim(),
+      pays: this.pays(),
+      // Chaîne vide plutôt qu'omission : le backend accepte les deux, mais
+      // envoyer `undefined` retirerait la clé du JSON et rendrait le contrat
+      // implicite. Ce qui est optionnel doit se voir.
+      telephone: this.telephone().trim(),
+      email: this.email().trim(),
+    };
+
+    // ⚠️ `type` n'est envoyé qu'à la CRÉATION. Il détermine la commission :
+    // le changer après coup modifierait la règle de partage sur un compte qui
+    // a déjà vendu, et le serveur ne l'accepte d'ailleurs pas en modification.
+    const requete = existant
+      ? this.http.put<Marchand>(`/api/marchands/${existant.id}`, corps)
+      : this.http.post<Marchand>('/api/marchands', { ...corps, type: this.type() });
+
+    requete.subscribe({
+      next: () => {
+        this.enregistrement.set(false);
+        this.fermer();
+        this.charger();
+      },
+      error: (e: unknown) => {
+        this.enregistrement.set(false);
+        this.erreurFormulaire.set(
+          message(
+            e,
+            existant
+              ? 'Le marchand n’a pas pu être enregistré.'
+              : 'Le marchand n’a pas pu être créé.',
+          ),
+        );
+      },
+    });
   }
 
   /**
