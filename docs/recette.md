@@ -92,6 +92,56 @@
 
 ---
 
+## 4 bis. Les itinéraires *(lot 4)*
+
+Testable **sans commande** : un itinéraire ne dépend que des lieux.
+
+| # | Geste | Attendu | Point de vigilance |
+|---|---|---|---|
+| 4b.1 | Ouvrir **Itinéraires** | Écran vide avec son explication | Il faut au moins un entrepôt et un point de récupération (section 0) |
+| 4b.2 | Nouveau trajet, départ Douala, arrivée Bangui, sans étape | Créé — le trajet direct est un cas normal | Un trajet sans étape ne doit **pas** disparaître de la liste |
+| 4b.3 | Ajouter deux points de passage, Bertoua puis Garoua-Boulaï | Numérotés 1 et 2 automatiquement | Le rang ne se saisit jamais |
+| 4b.4 | Chercher Bangui dans la liste des points de passage | **Absent** : c'est déjà l'arrivée | Le serveur refuserait aussi, mais après le clic |
+| 4b.5 | **Monter** la seconde étape | L'ordre s'inverse à l'écran, **sans requête** | ⚠️ C'est le point sensible : une requête par déplacement heurterait la contrainte de rang (I-34) |
+| 4b.6 | Annuler | Le trajet enregistré n'a pas bougé | Réordonner localement permet d'annuler sans rien casser |
+| 4b.7 | Rouvrir, inverser, **enregistrer** | L'ordre est inversé en base | C'est le remplacement en bloc qui rend ça possible |
+| 4b.8 | Renseigner 8 h sur une étape et rien sur l'autre | Colonne délai : **tiret** | Un total partiel annoncerait un délai intenable |
+| 4b.9 | Renseigner les deux (8 et 6) | « 14 h » | |
+| 4b.10 | Mettre 30 et 30 | « 2 j 12 h » | « 60 h » oblige à compter |
+| 4b.11 | Retirer un trajet | Il reste dans la liste, badge gris | Désactiver, jamais supprimer : des expéditions le référencent |
+
+---
+
+## 4 ter. L'expédition et le retrait *(lot 4)*
+
+> ⚠️ **Toute cette section exige une commande payée**, et rien dans le
+> back-office n'en crée. Voir la section 6. Les gestes sont décrits ici pour le
+> jour où la vitrine existera — ou pour une commande insérée à la main.
+
+| # | Geste | Attendu | Point de vigilance |
+|---|---|---|---|
+| 4t.1 | Fiche commande payée → **Acheminement** | Bouton « Nouvelle expédition » | Absent sur une commande impayée ou déjà retirée |
+| 4t.2 | Ouvrir le formulaire | **Aucun champ « destination »** | 🎯 Elle se déduit du point choisi par le client. Un champ ici permettrait d'expédier ailleurs que là où il a payé |
+| 4t.3 | Choisir un départ | Seuls entrepôts et points de transit sont proposés | Rien ne part d'un comptoir de retrait |
+| 4t.4 | Créer | Redirection vers la fiche expédition, **vide** | Le geste suivant — ranger les colis — est là-bas |
+| 4t.5 | Revenir à la commande | L'expédition apparaît dans Acheminement | Sans cette liste, on expédierait deux fois |
+| 4t.6 | Ajouter un colis, puis Départ, puis Arrivée au point de récupération | Statut **DISPONIBLE** | Le statut est une projection recalculée depuis les événements |
+| 4t.7 | Fiche expédition → **Préparer le retrait** | Un code `XXXX-XXXX` s'affiche | Ni I, ni O, ni 0, ni 1 : il sera épelé au téléphone |
+| 4t.8 | Préparer une seconde fois | Refus : déjà préparé | |
+| 4t.9 | **Retraits** → taper le code en minuscules, sans tiret | Le champ le reformate seul | L'agent tape vite, devant un client qui attend |
+| 4t.10 | **Vérifier** | Les colis à sortir s'affichent | 🎯 Cette étape est la seule qui protège du mauvais paquet. Sans elle, confirmer serait aveugle |
+| 4t.11 | Vérifier deux fois de suite | Rien ne change | Regarder ne consomme rien |
+| 4t.12 | Taper un code inexistant | « Aucun retrait ne correspond » | |
+| 4t.13 | **Refuser** sans motif | Bouton désactivé | Le service client lira ce motif |
+| 4t.14 | **Confirmer la remise** | Message vert, champ vidé | Un écran qui garde le retrait précédent invite à confirmer deux fois |
+| 4t.15 | Retaper le même code | « Déjà remise le … » **avant** tout clic | Situation courante au comptoir : l'agent a besoin de la date pour répondre |
+| 4t.16 | Ouvrir `/suivi` **déconnecté** | La page s'affiche | Seule page atteignable sans compte |
+| 4t.17 | Saisir le numéro de suivi du colis | Le trajet, **lieux nommés**, plus récent en premier | Ni destinataire, ni contenu, ni agent : un numéro circule par SMS |
+| 4t.18 | Recharger `/suivi/GRH…` | La recherche se relance seule | Arriver par un lien partagé ne doit pas faire resaisir |
+| 4t.19 | Saisir un numéro inventé | « Vérifiez les caractères saisis » | Pas « erreur technique » : le cas courant est un chiffre mal recopié |
+
+---
+
 ## 5. L'équipe et les droits
 
 | # | Geste | Attendu |
@@ -116,9 +166,16 @@ Ce n'est pas une panne, c'est l'état du projet.
 |---|---|
 | **Passer une commande** | `POST /api/commandes` transforme le **panier d'un client**. Le back-office n'a pas de panier, et un administrateur n'est pas un client. Il faut la vitrine (lot 10) ou un `INSERT` manuel. |
 | Les écrans **Commandes** et **Paiements** | Ils fonctionnent, mais resteront vides tant qu'aucune commande n'existe. Vérifier seulement qu'ils affichent leur état vide sans erreur. |
-| Le **suivi de colis** | Dépend d'une expédition, donc d'une commande. |
+| Toute la chaîne **expédition → retrait** | Une expédition part d'une commande. Les écrans existent et sont complets ; ils ne peuvent rien montrer tant qu'aucune commande n'a été passée. Même barrage que ci-dessus. |
 | La **vérification d'e-mail** | Les variables `GARAH_MAIL_*` ne sont pas posées sur Render. Le compte se crée, le courriel ne part pas. |
 | Le **téléversement de logo / photo de profil** | Colonnes prêtes depuis V23, routes non écrites. Reporté. |
+
+> ⚠️ **Le vrai déblocage du projet est là.** Cinq lignes de ce tableau ont la
+> même cause : rien ne crée de commande. Le catalogue, le stock, la logistique
+> et le retrait sont écrits et testés côté serveur, mais la recette manuelle
+> s'arrête au même mur à chaque lot. Tant que la vitrine (lot 10) n'existe pas,
+> le seul moyen de dérouler la chaîne de bout en bout est un `INSERT` manuel de
+> commande — ou les tests d'intégration, qui la déroulent déjà en entier.
 
 ---
 

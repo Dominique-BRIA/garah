@@ -86,7 +86,7 @@ profil — colonnes `logo_cle` et `photo_cle` créées en V23, aucune route.
 
 ---
 
-## Lot 3 — Les déclinaisons structurées 🎯 *à faire — priorité*
+## Lot 3 — Les déclinaisons structurées ✅ *fait*
 
 > **C'est le lot qui règle la confusion actuelle.** Voir l'analyse en annexe :
 > le modèle de GARAH est déjà celui d'Amazon, mais l'interface ne s'en sert pas.
@@ -109,21 +109,31 @@ ne leur rattache pas de valeurs.
 
 ---
 
-## Lot 4 — Logistique
+## Lot 4 — Logistique ✅ *fait*
 
 Le plus gros lot du back-office. C'est l'axe **Douala → Bertoua → Bangui**.
 
 | Fonctionnalité | Intention | Attention |
 |---|---|---|
-| Lieux : points de transit et de récupération | `ControleurLieu` n'a que des `GET` — **impossible d'ajouter un point**. | Sans cette route, aucune commande ne peut être passée : le point de récupération est obligatoire. |
-| Itinéraires | Une suite d'étapes types entre deux villes. | |
+| Lieux : points de transit et de récupération | `ControleurLieu` n'avait que des `GET` — **impossible d'ajouter un point**. | Sans cette route, aucune commande ne peut être passée : le point de récupération est obligatoire. |
+| Itinéraires | Un **modèle** de trajet, réutilisable. Il sert à ne pas resaisir le même chemin et à annoncer un délai. | ⚠️ Ce n'est **pas** une contrainte : le colis peut s'en écarter, et rien ne l'en empêche. Une route coupée, ça arrive — et un contrôle qui refuse la réalité fait saisir n'importe quoi d'autre. |
+| Étapes d'itinéraire remplacées **en bloc** | La contrainte I-34 refuse deux étapes de même rang, **même transitoirement**. | Réordonner rang par rang traverse forcément cet état. Une route « monter cette étape » réussirait ou échouerait selon l'ordre des clics. |
 | Expéditions et colis | Une expédition groupe des colis ; un colis porte des lignes de commande. | Un colis peut contenir des articles de plusieurs commandes. |
+| Création de l'expédition depuis la **fiche commande** | C'est là qu'on décide qu'une commande payée doit partir. | La destination **ne se saisit pas** : le client l'a choisie et payée. Un champ « destination » permettrait d'expédier ailleurs qu'à l'endroit facturé. |
 | **Événements datés**, pas un statut | « Réceptionné à Bertoua le 12/03 à 14 h par David ». | Une colonne `statut` écrasée perd le parcours dès que le colis repart. C'est la règle fondatrice n°1. |
-| Suivi public par numéro | `/suivi/:numero`, **sans compte**. | Un client qui doit se connecter pour savoir où est son colis appellera au téléphone. |
-| Retrait : confirmation et refus | Le retrait clôt le parcours. | |
+| Suivi public par numéro | `/suivi/:numero`, **sans compte**, hors de la coque. | Le numéro **est** dans l'URL — il se partage, c'est son rôle. La réponse ne porte ni destinataire, ni contenu, ni agent : un numéro circule par SMS. |
+| Comptoir : **voir**, puis remettre | Saisir le code, voir les colis qu'il désigne, les sortir, confirmer. | 🎯 Fusionner recherche et confirmation « pour gagner un clic » rendrait la remise **aveugle** : le code validé, la marchandise au hasard. |
+| Retrait : confirmation et refus | Le retrait clôt le parcours. Un refus se motive. | Le code voyage dans le **corps**, jamais dans l'URL : journaux, historique, en-tête `Referer`. |
 
-**Backend manquant :** `GET /api/expeditions` (liste), création et modification
-de lieux, gestion des itinéraires.
+> **Trois fois le même défaut, corrigé trois fois.** Le `clientId` du retrait,
+> la destination de l'expédition, le nom des lieux dans le suivi : chaque fois,
+> l'information existait déjà en base et l'interface la redemandait — ou la
+> rendait illisible. La règle qui s'en dégage vaut pour les lots suivants :
+> **ce que le système sait déjà ne se saisit pas.**
+
+**Ce qui reste hors de portée :** dérouler la chaîne à la main. Une expédition
+part d'une commande, et rien dans le back-office n'en crée. Voir `recette.md`
+section 6 — c'est la vitrine (lot 10) qui débloquera la recette manuelle.
 
 ---
 
