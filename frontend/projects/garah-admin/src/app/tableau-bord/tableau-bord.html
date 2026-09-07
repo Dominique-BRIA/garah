@@ -60,7 +60,7 @@
           </span>
 
           @if (carte.lien) {
-            <a [routerLink]="carte.lien" class="indicateur__lien">
+            <a [routerLink]="carte.lien" [queryParams]="carte.parametres" class="indicateur__lien">
               Voir la liste <gu-icone nom="arrow-right" />
             </a>
           }

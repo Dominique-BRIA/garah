@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
@@ -75,8 +75,28 @@ export class Reclamations {
     return code ? libelleStatutReclamation(code) : null;
   });
 
+  /**
+   * Le filtre initial, lu dans l'URL.
+   *
+   * <p>La carte « Réclamations à traiter » du tableau de bord compte les
+   * dossiers <b>ouverts</b>. Y mener sans porter le filtre ferait chercher,
+   * dans une liste de deux cents lignes, les quatre que le chiffre
+   * annonçait.</p>
+   *
+   * <p>Lu <b>une fois</b>, au démarrage, et non par abonnement : les clics sur
+   * les onglets ne réécrivent pas l'URL, donc rien ne pousserait de nouvelle
+   * valeur — et s'abonner ferait croire le contraire à qui lit ce code.</p>
+   */
+  readonly statutInitial = input<string | undefined>(undefined, { alias: 'statut' });
+
   constructor() {
-    this.charger();
+    queueMicrotask(() => {
+      const depuisUrl = this.statutInitial();
+      if (depuisUrl && STATUTS_RECLAMATION.some((s) => s.code === depuisUrl)) {
+        this.statut.set(depuisUrl as StatutReclamation);
+      }
+      this.charger();
+    });
   }
 
   protected charger(): void {

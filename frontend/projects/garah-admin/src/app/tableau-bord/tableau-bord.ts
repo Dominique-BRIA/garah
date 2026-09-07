@@ -15,6 +15,15 @@ interface Indicateur {
   readonly permission: string;
   /** Où mène « Voir la liste ». Vide = pas encore d'écran. */
   readonly lien?: string;
+  /**
+   * Les paramètres de l'URL, s'il en faut.
+   *
+   * <p>⚠️ Ils ne se mettent <b>pas</b> dans {@link #lien}. Un `?` écrit dans
+   * une chaîne passée à `routerLink` est encodé comme un morceau de chemin :
+   * la navigation partirait vers `/reclamations%3Fstatut=OUVERTE`, qui
+   * n'existe pas.</p>
+   */
+  readonly parametres?: Readonly<Record<string, string>>;
   /** L'appel qui donne le nombre. */
   readonly source: () => Observable<number | null>;
 }
@@ -101,7 +110,8 @@ export class TableauBord {
       // exactement ce que la carte vient de compter. Ouvrir sur « toutes »
       // ferait chercher, dans une liste de deux cents lignes, les quatre que
       // le chiffre annonçait.
-      lien: '/reclamations?statut=OUVERTE',
+      lien: '/reclamations',
+      parametres: { statut: 'OUVERTE' },
       source: () => this.compterListe('/api/sav/reclamations/a-traiter'),
     },
   ];
