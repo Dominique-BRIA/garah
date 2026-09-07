@@ -108,12 +108,37 @@ export class Produits {
 
   protected readonly nbSelectionnes = computed(() => this.selection().size);
 
-  /** Toutes les lignes visibles sont-elles cochées ? */
+  /**
+   * 🎯 <b>Seul un BROUILLON peut partir à la corbeille.</b>
+   *
+   * <p>Un produit publié, même retiré de la vitrine, a pu être vu, mis au
+   * panier, négocié. Son chemin est l'<b>archivage</b>, qui le sort du
+   * catalogue en préservant les commandes qui le citent.</p>
+   *
+   * <p>Le serveur refuse de toute façon par un 409. Mais laisser cocher une
+   * ligne pour n'annoncer le refus qu'après le clic, c'est faire découvrir
+   * par une erreur ce qu'on savait déjà avant.</p>
+   */
+  protected estSupprimable(produit: ResumeProduit): boolean {
+    return produit.statut === 'BROUILLON';
+  }
+
+  /** Les brouillons de la page — les seules lignes cochables. */
+  private brouillonsVisibles(): readonly ResumeProduit[] {
+    return this.produits().filter((p) => this.estSupprimable(p));
+  }
+
+  /** Tous les brouillons visibles sont-ils cochés ? */
   protected readonly toutSelectionne = computed(() => {
-    const liste = this.produits();
+    const cochables = this.produits().filter((p) => p.statut === 'BROUILLON');
     const choisis = this.selection();
-    return liste.length > 0 && liste.every((p) => choisis.has(p.id));
+    return cochables.length > 0 && cochables.every((p) => choisis.has(p.id));
   });
+
+  /** Y a-t-il seulement quelque chose à cocher sur cette page ? */
+  protected readonly aDesCochables = computed(() =>
+    this.produits().some((p) => p.statut === 'BROUILLON'),
+  );
 
   protected readonly suppressionEnCours = signal(false);
 
@@ -148,7 +173,9 @@ export class Produits {
    * décocher à chaque changement de page serait tout aussi surprenant.</p>
    */
   protected basculerTout(): void {
-    const visibles = this.produits().map((p) => p.id);
+    // Les brouillons seulement : cocher une ligne qui ne peut pas partir
+    // ferait annoncer un refus après le clic, pour une règle connue avant.
+    const visibles = this.brouillonsVisibles().map((p) => p.id);
     const tout = this.toutSelectionne();
 
     this.selection.update((courant) => {
@@ -190,9 +217,16 @@ export class Produits {
     //    traduit une erreur HTTP. Une variable locale la masquerait, et
     //    l'appel `message(e)` du gestionnaire d'erreur ci-dessous tenterait
     //    d'appeler une chaîne de caractères.
+    // ⚠️ Le mot « définitivement » a disparu, et ce n'est pas un adoucissement.
+    //
+    // Il était devenu FAUX : le produit part à la corbeille et se restaure
+    // d'un clic. Une confirmation qui annonce plus grave qu'il n'est fait
+    // apprend à cliquer « oui » sans lire — et le jour où l'avertissement est
+    // vrai, dans la corbeille, personne ne le lit plus.
     const question = ids.length === 1
-      ? 'Supprimer définitivement ce produit ?'
-      : `Supprimer définitivement ces ${ids.length} produits ?`;
+      ? 'Mettre ce produit à la corbeille ?\n\nIl restera restaurable depuis la corbeille.'
+      : `Mettre ces ${ids.length} produits à la corbeille ?\n\n`
+        + 'Ils resteront restaurables depuis la corbeille.';
     if (!confirm(question)) {
       return;
     }

@@ -4,6 +4,7 @@ import com.garah.api.catalogue.domaine.DetailProduit;
 import com.garah.api.catalogue.domaine.ResumeProduit;
 import com.garah.api.catalogue.domaine.ServiceCatalogue;
 import com.garah.api.catalogue.domaine.StatutProduit;
+import com.garah.api.catalogue.domaine.VueCorbeille;
 import com.garah.api.commun.erreur.ErreurMetier;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -121,20 +122,21 @@ public class ControleurProduit {
     // -------------------------------------------------------------------------
 
     /**
-     * Supprime définitivement un produit — s'il n'a jamais servi.
+     * Met un brouillon à la corbeille. <b>Rien n'est effacé ici.</b>
      *
-     * <p>Le service refuse par un {@code 409} si le produit a été commandé,
-     * mis au panier ou négocié, en renvoyant vers l'archivage. C'est la règle
-     * que le référentiel porte depuis V14 : « Supprimer un produit jamais
-     * vendu ».</p>
+     * <p>Le produit disparaît de toutes les listes mais reste entier :
+     * déclinaisons, prix, photos. Il se restaure d'un clic, et ne s'efface
+     * qu'en vidant la corbeille.</p>
+     *
+     * <p>Refusé par un {@code 409} si le produit n'est <b>pas</b> un
+     * brouillon : un produit publié a pu être vu, mis au panier, négocié —
+     * son chemin est l'archivage, qui préserve les commandes qui le citent.</p>
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('PRODUIT_SUPPRIMER')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void supprimer(@PathVariable Long id) {
-        // Les fichiers sont retirés APRÈS la transaction : le service rend les
-        // clés, le contrôleur déclenche le nettoyage.
-        catalogue.supprimerFichiers(catalogue.supprimerProduit(id));
+        catalogue.mettreALaCorbeille(id);
     }
 
     /**
@@ -164,7 +166,7 @@ public class ControleurProduit {
 
         for (Long id : demande.ids()) {
             try {
-                catalogue.supprimerFichiers(catalogue.supprimerProduit(id));
+                catalogue.mettreALaCorbeille(id);
                 supprimes.add(id);
             } catch (ErreurMetier e) {
                 refuses.add(new Refus(id, e.getCode(), e.getMessage()));
@@ -186,6 +188,56 @@ public class ControleurProduit {
     }
 
     public record Refus(Long id, String code, String message) {
+    }
+
+    // -------------------------------------------------------------------------
+    // La corbeille
+    // -------------------------------------------------------------------------
+
+    /**
+     * Ce qui attend dans la corbeille, du plus récemment jeté au plus ancien.
+     *
+     * <p>Gardée par {@code PRODUIT_SUPPRIMER} et non {@code PRODUIT_CONSULTER} :
+     * ce n'est pas une vue du catalogue, c'est l'antichambre de l'effacement.
+     * Qui n'a pas le droit de jeter n'a pas de raison de voir ce qui a été
+     * jeté.</p>
+     */
+    @GetMapping("/corbeille")
+    @PreAuthorize("hasAuthority('PRODUIT_SUPPRIMER')")
+    public Page<VueCorbeille> corbeille(@RequestParam(defaultValue = "0") int page,
+                                        @RequestParam(defaultValue = "24") int taille) {
+        return catalogue.corbeille(PageRequest.of(
+                Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)));
+    }
+
+    /**
+     * Sort un produit de la corbeille.
+     *
+     * <p>Il retrouve son statut d'avant, intact — un brouillon revient
+     * brouillon.</p>
+     */
+    @PostMapping("/corbeille/{id}/restauration")
+    @PreAuthorize("hasAuthority('PRODUIT_SUPPRIMER')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restaurer(@PathVariable Long id) {
+        catalogue.restaurerProduit(id);
+    }
+
+    /**
+     * Efface pour de bon. <b>Il n'y a pas de retour après celle-ci.</b>
+     *
+     * <p>⚠️ La route porte {@code /corbeille/} dans son chemin, et ce n'est pas
+     * cosmétique : on ne peut effacer définitivement que ce qui est <b>déjà</b>
+     * dans la corbeille. Un identifiant erroné ne peut donc pas détruire un
+     * produit en vente — la requête ne le trouverait pas.</p>
+     */
+    @DeleteMapping("/corbeille/{id}")
+    @PreAuthorize("hasAuthority('PRODUIT_SUPPRIMER')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void viderUn(@PathVariable Long id) {
+        // Les fichiers sont retirés APRÈS la transaction : le service rend les
+        // clés, le contrôleur déclenche le nettoyage.
+        catalogue.supprimerFichiers(catalogue.viderDeLaCorbeille(id));
     }
 
     /**

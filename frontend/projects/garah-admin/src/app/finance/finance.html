@@ -1,0 +1,224 @@
+<header class="entete">
+  <div>
+    <h1>Marchands à payer</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else { {{ total() }} marchand(s) — soldes recalculés à l’instant }
+    </p>
+  </div>
+
+  <button type="button" class="gu-btn gu-btn--secondaire"
+          (click)="charger()" [disabled]="chargement()">
+    <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+  </button>
+</header>
+
+<!-- 🎯 La phrase qui explique tout le module. Sans elle, on cherche où est
+     stocké le solde — et on finit par en stocker un. -->
+<p class="aide entete__note">
+  Un solde est la somme des écritures, refaite à chaque affichage. Ouvrez un
+  marchand pour voir les lignes qui le justifient.
+</p>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="money-bill-wave" class="etat__icone" />
+    <p class="etat__titre">Aucun marchand</p>
+    <p class="etat__aide">Créez un marchand pour qu’un solde puisse exister.</p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Marchand</th>
+          <th>Code</th>
+          <th>Statut</th>
+          <th class="droite">Solde dû</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of liste(); track m.marchandId) {
+          <tr class="cliquable" (click)="ouvrir(m)" [class.du]="m.solde > 0">
+            <td class="nom">{{ m.nom }}</td>
+            <td><code class="attenue">{{ m.code }}</code></td>
+            <td>
+              <span class="gu-badge"
+                    [class]="m.statut === 'ACTIF' ? 'gu-badge--succes' : 'gu-badge--neutre'">
+                {{ m.statut }}
+              </span>
+            </td>
+            <!-- « 0 » et non un tiret : un marchand sans vente a un solde nul,
+                 ce n'est pas une donnée manquante. -->
+            <td class="droite montant">{{ montantLisible(m.solde, m.devise) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="allerA($event)" />
+}
+
+<!-- ==================================================================== -->
+<!-- Le détail qui justifie le solde                                       -->
+<!-- ==================================================================== -->
+@if (ouvert(); as m) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau panneau--large" role="dialog" aria-modal="true"
+         [attr.aria-label]="'Compte de ' + m.nom">
+    <header class="compte__entete">
+      <div>
+        <h2>{{ m.nom }}</h2>
+        <p class="aide"><code>{{ m.code }}</code></p>
+      </div>
+      <div class="compte__solde">
+        <p class="compte__label">Solde dû</p>
+        <p class="compte__montant">{{ montantLisible(m.solde, m.devise) }}</p>
+      </div>
+    </header>
+
+    @if (erreurDetail(); as msg) {
+      <p class="alerte" role="alert">{{ msg }}</p>
+    }
+
+    @if (reglable() && !formReglement()) {
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirReglement()">
+          Régler ce marchand
+        </button>
+      </div>
+    }
+
+    <!-- ⚠️ DEUX TEMPS, et ils ne se fondent pas. Préparer inscrit
+         l'intention ; confirmer acte le versement réel avec sa référence.
+         Les fusionner ferait qu'un virement raté laisserait quand même une
+         dette soldée dans nos livres. -->
+    @if (formReglement()) {
+      <section class="reglement">
+        @if (!prepare()) {
+          <p class="gu-libelle">Préparer un règlement</p>
+
+          <label class="gu-libelle" for="montant">Montant</label>
+          <input id="montant" name="montant" type="number" min="1" class="gu-champ"
+                 [ngModel]="montant()"
+                 (ngModelChange)="montant.set($event === '' ? null : +$event)" />
+          <p class="aide">
+            Pré-rempli au solde entier. On ne verse jamais plus qu’on ne doit.
+          </p>
+
+          <label class="gu-libelle" for="moyen">Moyen</label>
+          <select id="moyen" name="moyen" class="gu-champ"
+                  [ngModel]="moyen()" (ngModelChange)="moyen.set($event)">
+            <option value="VIREMENT">Virement</option>
+            <option value="MTN_MOMO">MTN MoMo</option>
+            <option value="ORANGE_MONEY">Orange Money</option>
+            <option value="ESPECES">Espèces</option>
+          </select>
+
+          <div class="boutons">
+            <button type="button" class="gu-btn gu-btn--primaire"
+                    (click)="preparer()"
+                    [disabled]="!montant() || montant()! <= 0 || action() !== null">
+              @if (action() === 'preparation') { <gu-icone nom="circle-notch" tourne /> }
+              Préparer
+            </button>
+            <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermerFormulaire()">
+              Annuler
+            </button>
+          </div>
+          <p class="aide">
+            Préparer n’envoie aucun argent et ne change pas le solde.
+          </p>
+        } @else if (prepare(); as r) {
+          <p class="gu-libelle">Règlement {{ r.numero }}</p>
+          <p class="reglement__rappel">
+            <span class="gu-badge" [class]="badgeReglement(r.statut)">
+              {{ libelleReglement(r.statut) }}
+            </span>
+            {{ montantLisible(r.montant) }}
+          </p>
+
+          <label class="gu-libelle" for="reference">Référence du versement</label>
+          <input id="reference" name="reference" class="gu-champ" maxlength="100"
+                 placeholder="Numéro de transaction, avis de virement…"
+                 [ngModel]="reference()" (ngModelChange)="reference.set($event)" />
+          <!-- Obligatoire, et pas par formalisme : c'est elle seule qui
+               arbitre « je n'ai jamais été payé » six mois plus tard. -->
+          <p class="aide">
+            Obligatoire. C’est la seule preuve si le marchand conteste plus tard.
+          </p>
+
+          <div class="boutons">
+            <button type="button" class="gu-btn gu-btn--primaire"
+                    (click)="confirmer()"
+                    [disabled]="!reference().trim() || action() !== null">
+              @if (action() === 'confirmation') { <gu-icone nom="circle-notch" tourne /> }
+              L’argent est parti
+            </button>
+            <button type="button" class="gu-btn gu-btn--danger"
+                    (click)="annulerReglement()" [disabled]="action() !== null">
+              Annuler ce règlement
+            </button>
+          </div>
+        }
+      </section>
+    }
+
+    <p class="gu-libelle">Ce qui justifie ce solde</p>
+
+    @if (!session.peut('HISTORIQUE_FINANCIER_MARCHAND_CONSULTER')) {
+      <p class="vide">Votre compte n’a pas le droit de consulter l’historique financier.</p>
+    } @else if (chargementDetail()) {
+      <div class="etat">
+        <gu-icone nom="circle-notch" tourne class="etat__icone" />
+        <p class="etat__titre">Chargement…</p>
+      </div>
+    } @else if (ecritures().length === 0) {
+      <p class="vide">
+        Aucune écriture. Ce marchand n’a encore rien vendu — son solde est
+        donc nul, et c’est normal.
+      </p>
+    } @else {
+      <ul class="ecritures">
+        @for (e of ecritures(); track e.id) {
+          <li class="ecriture">
+            <div class="ecriture__tete">
+              <span class="ecriture__type">{{ libelleType(e.type) }}</span>
+              <!-- Le signe seul se confond avec un tiret dans une colonne de
+                   montants : on colore aussi. -->
+              <span class="ecriture__montant" [class.ecriture__montant--sortant]="sortante(e)">
+                {{ montantLisible(e.montant, e.devise) }}
+              </span>
+            </div>
+            <p class="ecriture__libelle">{{ e.libelle }}</p>
+            <p class="ecriture__date">{{ dateHeure(e.dateEcriture) }}</p>
+          </li>
+        }
+      </ul>
+      <p class="aide">
+        Les cinquante plus récentes. Une écriture ne se corrige jamais : on en
+        ajoute une qui l’annule.
+      </p>
+    }
+
+    <div class="boutons">
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Fermer</button>
+    </div>
+  </aside>
+}

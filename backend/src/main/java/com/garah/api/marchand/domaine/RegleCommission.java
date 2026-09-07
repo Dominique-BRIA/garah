@@ -68,4 +68,16 @@ public class RegleCommission {
     public LocalDate getDateFin() { return dateFin; }
 
     public void setDateFin(LocalDate dateFin) { this.dateFin = dateFin; }
+
+    /**
+     * Décale le début — pour annoncer un taux à l'avance.
+     *
+     * <p>Une règle datée du futur est <b>légitime</b> : « à partir du 1er
+     * janvier, la commission passe à 8 % » se paramètre en décembre. Elle
+     * apparaît dans la liste sans s'appliquer, ce qui est exactement ce qu'on
+     * veut voir avant qu'elle prenne effet.</p>
+     */
+    public void commencerLe(LocalDate dateDebut) {
+        this.dateDebut = dateDebut;
+    }
 }

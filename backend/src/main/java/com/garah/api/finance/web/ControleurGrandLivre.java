@@ -1,6 +1,7 @@
 package com.garah.api.finance.web;
 
 import com.garah.api.finance.domaine.ServiceGrandLivre;
+import com.garah.api.finance.domaine.SoldeMarchand;
 import com.garah.api.finance.domaine.VueEcriture;
 import com.garah.api.finance.domaine.VueReglement;
 import jakarta.validation.Valid;
@@ -37,6 +38,25 @@ public class ControleurGrandLivre {
 
     public ControleurGrandLivre(ServiceGrandLivre grandLivre) {
         this.grandLivre = grandLivre;
+    }
+
+    /**
+     * Qui doit-on payer, et combien.
+     *
+     * <p>C'est la question du début de mois, et rien n'y répondait : il fallait
+     * <b>connaître</b> un marchand pour demander son solde, donc les parcourir
+     * un par un.</p>
+     *
+     * <p>Déclarée avant {@code /{marchandId}/solde} par lisibilité seulement —
+     * Spring classe un segment littéral avant une variable, l'ordre ici ne
+     * change rien.</p>
+     */
+    @GetMapping("/soldes")
+    @PreAuthorize("hasAuthority('DETTE_MARCHAND_CONSULTER')")
+    public Page<SoldeMarchand> soldes(@RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "25") int taille) {
+        return grandLivre.soldes(
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, 100)));
     }
 
     /** Le solde courant d'un marchand — la somme de ses écritures. */

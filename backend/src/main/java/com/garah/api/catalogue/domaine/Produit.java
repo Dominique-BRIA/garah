@@ -20,6 +20,29 @@ import java.util.List;
  */
 @Entity
 @Table(name = "produit")
+/*
+ * 🎯 LA CORBEILLE S'APPLIQUE A TOUTES LES REQUETES, D'UN SEUL COUP.
+ *
+ * `@SQLRestriction` ajoute cette condition a CHAQUE lecture JPA du produit :
+ * les listes, les recherches, `findById`, et les jointures depuis les autres
+ * entites. Sans elle, il faudrait ecrire « AND date_suppression IS NULL »
+ * dans chacune des requetes du depot — et il suffirait d'en oublier UNE pour
+ * qu'un produit supprime reapparaisse quelque part, sans que personne ne
+ * sache par ou.
+ *
+ * ⚠️ DEUX CONSEQUENCES A CONNAITRE :
+ *
+ *   1. `findById` ne trouve plus un produit en corbeille. La corbeille se lit
+ *      donc en SQL natif (`ProduitRepository.corbeille`), qui echappe a cette
+ *      restriction. Ce n'est pas un contournement : c'est le seul endroit du
+ *      code qui a le droit de voir ces lignes.
+ *
+ *   2. Elle ne s'applique PAS aux requetes natives deja ecrites. Celle du
+ *      stock (`aDejaServi`) interroge ligne_commande et n'est pas concernee ;
+ *      toute nouvelle requete native listant des produits devra, elle, poser
+ *      la condition a la main.
+ */
+@org.hibernate.annotations.SQLRestriction("date_suppression IS NULL")
 public class Produit {
 
     @Id
@@ -76,6 +99,20 @@ public class Produit {
 
     @Column(name = "date_modification")
     private Instant dateModification;
+
+    /**
+     * Non nulle = dans la corbeille (V27).
+     *
+     * <p>Volontairement <b>distincte du statut</b>. Un brouillon mis à la
+     * corbeille reste un brouillon et le redevient tel quel s'il est
+     * restauré. Les fondre en un statut {@code SUPPRIME} ferait perdre l'état
+     * d'origine, et obligerait à une seconde colonne pour s'en souvenir.</p>
+     *
+     * <p>Une date plutôt qu'un booléen : elle permet d'afficher « supprimé il
+     * y a trois jours » et de purger automatiquement au-delà d'un délai.</p>
+     */
+    @Column(name = "date_suppression")
+    private Instant dateSuppression;
 
     @OneToMany(mappedBy = "produit", fetch = FetchType.LAZY,
                cascade = CascadeType.ALL, orphanRemoval = true)
@@ -163,6 +200,28 @@ public class Produit {
     public StatutProduit getStatut() { return statut; }
     public Long getCreePar() { return creePar; }
     public Instant getDateCreation() { return dateCreation; }
+    public Instant getDateSuppression() { return dateSuppression; }
+
+    /**
+     * Met à la corbeille.
+     *
+     * <p>⚠️ <b>Le statut n'est pas touché.</b> C'est ce qui permet de rendre
+     * au produit son état exact à la restauration : un brouillon revient
+     * brouillon. Le passer à {@code ARCHIVE} au passage — le réflexe — le
+     * rendrait irrécupérable, {@code ARCHIVE} étant terminal.</p>
+     */
+    public void mettreALaCorbeille() {
+        this.dateSuppression = Instant.now();
+    }
+
+    /** Sort de la corbeille et retrouve son statut d'avant, intact. */
+    public void restaurer() {
+        this.dateSuppression = null;
+    }
+
+    public boolean estDansLaCorbeille() {
+        return dateSuppression != null;
+    }
     public List<Variante> getVariantes() { return variantes; }
     public List<Media> getMedias() { return medias; }
 

@@ -1,0 +1,107 @@
+<a routerLink="/produits" class="retour">
+  <gu-icone nom="chevron-right" class="retour__fleche" /> Tous les produits
+</a>
+
+<header class="entete">
+  <div>
+    <h1>Corbeille</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (total() === 0) { Rien à jeter. }
+      @else { {{ total() }} produit(s) en attente. }
+    </p>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<!-- L'avertissement est posé EN HAUT, avant la liste, et pas à côté de chaque
+     bouton. Répété quinze fois il ne se lit plus ; ici il cadre l'écran. -->
+<div class="gu-carte avertissement">
+  <gu-icone nom="triangle-exclamation" class="avertissement__icone" />
+  <div>
+    <p class="avertissement__titre">Rien n’est encore effacé</p>
+    <p class="avertissement__texte">
+      Ces produits sont retirés du catalogue mais restent entiers —
+      déclinaisons, prix et photos compris. Ils se restaurent d’un clic.
+      L’effacement définitif, lui, ne s’annule pas.
+    </p>
+  </div>
+</div>
+
+@if (erreur(); as m) {
+  <p class="alerte" role="alert">{{ m }}</p>
+}
+
+@if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (lignes().length === 0) {
+  <!-- Un état vide qui RASSURE au lieu de constater. Une corbeille vide est
+       la situation normale, pas un manque à combler. -->
+  <div class="gu-carte etat">
+    <gu-icone nom="trash" class="etat__icone" />
+    <p class="etat__titre">La corbeille est vide</p>
+    <p class="etat__aide">
+      Les brouillons que vous supprimez atterrissent ici avant d’être effacés
+      pour de bon.
+    </p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Produit</th>
+          <th>Référence</th>
+          <th>Catégorie</th>
+          <th>Statut</th>
+          <th>Supprimé</th>
+          <th class="droite">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (ligne of lignes(); track ligne.id) {
+          <tr [class.ligne--occupee]="enCours() === ligne.id">
+            <td class="nom">{{ ligne.nom }}</td>
+            <td><code>{{ ligne.reference }}</code></td>
+            <td>{{ ligne.categorieNom || '—' }}</td>
+            <!-- Le statut d'AVANT la mise à la corbeille : c'est celui que le
+                 produit retrouvera s'il est restauré. -->
+            <td><span class="gu-badge gu-badge--neutre">{{ ligne.statut }}</span></td>
+            <td class="attenue">{{ depuis(ligne.dateSuppression) }}</td>
+            <td class="droite">
+              <div class="cellule-actions">
+                <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+                        [disabled]="enCours() !== null"
+                        (click)="restaurer(ligne)"
+                        aria-label="Restaurer ce produit" title="Restaurer">
+                  <gu-icone nom="arrows-rotate" />
+                </button>
+
+                <!-- Le seul rouge de l'application qui efface vraiment. -->
+                <button type="button" class="gu-btn-icone gu-btn-icone--supprimer"
+                        [disabled]="enCours() !== null"
+                        (click)="effacer(ligne)"
+                        aria-label="Effacer définitivement ce produit"
+                        title="Effacer définitivement">
+                  <gu-icone nom="trash" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 (changement)="allerA($event)" />
+}

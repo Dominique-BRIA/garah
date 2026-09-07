@@ -1,0 +1,119 @@
+// La finance marchand. Motifs communs dans ecrans-communs.scss.
+
+.entete__note { margin: -0.5rem 0 1.25rem; }
+
+// Une ligne dont le solde est positif appelle un geste : on doit de l'argent.
+// Un filet a gauche, pas une couleur de fond — en debut de mois la moitie des
+// lignes est due, et tout peindre ne distinguerait plus rien.
+.du { border-left: 3px solid var(--primary); }
+
+.montant { font-variant-numeric: tabular-nums; font-weight: 600; }
+.attenue { color: var(--texte-attenue); }
+.nom { font-weight: 600; }
+
+.vide {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.86rem;
+  color: var(--texte-attenue);
+  line-height: 1.6;
+}
+
+// --- Le compte d'un marchand -------------------------------------------------
+// Plus large que les autres panneaux : on y lit un releve, pas un formulaire.
+.panneau--large { width: min(34rem, 100vw); }
+
+.compte__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h2 { margin-bottom: 0.2rem; }
+}
+
+.compte__solde { text-align: right; }
+
+.compte__label {
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.compte__montant {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+// --- Le reglement ------------------------------------------------------------
+// Encadre, et separe du releve : ce qu'on est en train de faire ne se lit pas
+// comme ce qui s'est deja passe.
+.reglement {
+  margin-bottom: 1.75rem;
+  padding: 1.15rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
+}
+
+.reglement__rappel {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+// --- Le releve ---------------------------------------------------------------
+.ecritures {
+  list-style: none;
+  margin: 0.5rem 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ecriture {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+}
+
+.ecriture__tete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ecriture__type { font-weight: 600; font-size: 0.88rem; }
+
+.ecriture__montant {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+// Ce qui sort de la dette : commission, retour, reglement. Le signe seul se
+// confond avec un tiret dans une colonne de montants.
+.ecriture__montant--sortant { color: var(--danger); }
+
+.ecriture__libelle {
+  margin: 0.3rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.ecriture__date {
+  margin: 0.2rem 0 0;
+  font-size: 0.74rem;
+  color: var(--texte-attenue);
+}
+
+.panneau .boutons { margin-top: 1rem; }

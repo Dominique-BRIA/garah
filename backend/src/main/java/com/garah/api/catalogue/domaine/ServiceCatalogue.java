@@ -575,26 +575,81 @@ public class ServiceCatalogue {
      *         l'appelant : voir {@link #supprimerFichiers}
      */
     @Transactional
-    public List<String> supprimerProduit(Long produitId) {
+    public void mettreALaCorbeille(Long produitId) {
         Produit produit = produits.findById(produitId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId));
 
-        if (variantes.aDejaServi(produitId)) {
-            throw new ConflitEtat("PRODUIT_DEJA_VENDU",
-                    "« " + produit.getNom() + " » a déjà été commandé, mis au panier "
-                    + "ou négocié : le supprimer viderait de leur objet des commandes "
-                    + "passées. Archivez-le pour le retirer du catalogue.");
+        // 🎯 SEUL UN BROUILLON PART A LA CORBEILLE.
+        //
+        // Un produit publié, même retiré de la vitrine, a pu être vu, mis au
+        // panier, négocié. Le chemin qui lui correspond est l'ARCHIVAGE : il
+        // sort du catalogue et l'historique reste entier. Ouvrir la corbeille
+        // aux produits publiés reviendrait à proposer deux gestes pour la même
+        // chose, dont un seul est correct.
+        if (produit.getStatut() != StatutProduit.BROUILLON) {
+            throw new ConflitEtat("PRODUIT_PAS_BROUILLON",
+                    "« " + produit.getNom() + " » n'est plus un brouillon : il a été "
+                    + "publié au moins une fois. Archivez-le pour le retirer du "
+                    + "catalogue — l'archivage préserve les commandes qui le citent.");
         }
 
-        // Les clés sont relevées AVANT la suppression : après, la ligne n'existe
+        produit.mettreALaCorbeille();
+        produits.save(produit);
+    }
+
+    /** Les produits en corbeille, du plus récemment jeté au plus ancien. */
+    @Transactional(readOnly = true)
+    public Page<VueCorbeille> corbeille(Pageable pagination) {
+        return produits.corbeille(pagination).map(l -> new VueCorbeille(
+                l.getId(), l.getReference(), l.getNom(),
+                l.getStatut(), l.getCategorieNom(), l.getDateSuppression()));
+    }
+
+    /**
+     * Sort un produit de la corbeille.
+     *
+     * <p>Il retrouve son statut d'avant, intact : un brouillon revient
+     * brouillon. C'est tout l'intérêt d'avoir gardé la corbeille séparée du
+     * statut.</p>
+     */
+    @Transactional
+    public void restaurerProduit(Long produitId) {
+        if (produits.restaurer(produitId) == 0) {
+            throw RessourceIntrouvable.de("Produit en corbeille", produitId);
+        }
+    }
+
+    /**
+     * Vide un produit de la corbeille — <b>définitivement</b>.
+     *
+     * <p>🎯 <b>Le contrôle « a déjà servi » reste posé ici, et il n'est pas
+     * redondant.</b> Un brouillon n'a en principe jamais été vendu — il n'a
+     * jamais été publié. Mais c'est un raisonnement sur la machine à états,
+     * pas une garantie : un import, une reprise de données, une transition
+     * ajoutée un jour suffiraient à le prendre en défaut. Ce qui coûte une
+     * requête protège ici des commandes qui perdraient leur objet.</p>
+     *
+     * @return les clés des fichiers à retirer du stockage, à la charge de
+     *         l'appelant : voir {@link #supprimerFichiers}
+     */
+    @Transactional
+    public List<String> viderDeLaCorbeille(Long produitId) {
+        String nom = produits.nomDansCorbeille(produitId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Produit en corbeille", produitId));
+
+        if (variantes.aDejaServi(produitId)) {
+            throw new ConflitEtat("PRODUIT_DEJA_VENDU",
+                    "« " + nom + " » a déjà été commandé, mis au panier ou négocié : "
+                    + "l'effacer viderait de leur objet des commandes passées. "
+                    + "Restaurez-le puis archivez-le.");
+        }
+
+        // Les clés sont relevées AVANT l'effacement : après, la ligne n'existe
         // plus et les fichiers resteraient sur le stockage sans que rien ne
         // permette de les retrouver.
-        List<String> cles = medias.findByProduitIdOrderByOrdreAsc(produitId).stream()
-                .map(Media::getCleObjet)
-                .filter(cle -> cle != null && !cle.isBlank())
-                .toList();
+        List<String> cles = produits.clesMediasDe(produitId);
 
-        produits.delete(produit);
+        produits.supprimerDefinitivement(produitId);
         return cles;
     }
 

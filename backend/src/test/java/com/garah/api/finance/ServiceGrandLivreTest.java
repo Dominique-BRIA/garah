@@ -39,6 +39,40 @@ class ServiceGrandLivreTest {
     }
 
     @Test
+    @DisplayName("la liste des soldes complète à zéro les marchands sans écriture")
+    void listeDesSoldes() {
+        // Un second marchand qui n'a RIEN vendu. C'est le cas que l'agrégat
+        // ne renvoie pas — et celui qui disparaîtrait d'une liste censée
+        // montrer tous les marchands.
+        Long muet = jdbc.queryForObject("""
+                INSERT INTO marchand (code, nom, type)
+                VALUES ('M-FIN-2', 'Marchand sans vente', 'EXTERNE') RETURNING id
+                """, Long.class);
+
+        grandLivre.enregistrerVente(marchandId, 900L,
+                new BigDecimal("150000.00"), new BigDecimal("15000.00"), "10 chemises");
+
+        // Ce test exécute réellement `soldesPar` : une @Query cassée
+        // n'échouerait qu'au moment où on l'appelle.
+        var page = grandLivre.soldes(PageRequest.of(0, 200));
+
+        SoldeMarchand actif = page.getContent().stream()
+                .filter(s -> s.marchandId().equals(marchandId))
+                .findFirst()
+                .orElseThrow();
+        assertThat(actif.solde()).isEqualByComparingTo("135000.00");
+        // Le nom, pas l'identifiant : « marchand 7 » ne dit à qui on doit.
+        assertThat(actif.nom()).isEqualTo("Marchand ABC");
+
+        SoldeMarchand sansVente = page.getContent().stream()
+                .filter(s -> s.marchandId().equals(muet))
+                .findFirst()
+                .orElseThrow();
+        // 🎯 Zéro, et PRÉSENT. Pas absent, pas « inconnu ».
+        assertThat(sansVente.solde()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
     @DisplayName("le cycle complet : vente, retour, règlement, solde à zéro")
     void cycleComplet() {
         // Vente de 10 chemises à 15 000, commission 10 %.

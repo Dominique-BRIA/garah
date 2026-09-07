@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface RegleCommissionRepository extends JpaRepository<RegleCommission, Long> {
@@ -39,4 +40,26 @@ public interface RegleCommissionRepository extends JpaRepository<RegleCommission
     List<RegleCommission> applicables(@Param("marchandId") Long marchandId,
                                       @Param("categorieId") Long categorieId,
                                       @Param("jour") LocalDate jour);
+
+    /**
+     * Le nom des categories citees par des regles, en UNE requete.
+     *
+     * <h2>Pourquoi {@code CategorieProduit} apparait dans une requete de
+     * marchand</h2>
+     *
+     * <p>Le domaine <b>catalogue depend deja de marchand</b> : un produit
+     * appartient a un marchand. Appeler catalogue depuis ici formerait un
+     * CYCLE, et {@code ArchitectureTest} refuserait le build.</p>
+     *
+     * <p>La requete, elle, ne cree aucune dependance de paquetage : le nom
+     * {@code CategorieProduit} n apparait que dans du HQL, jamais dans un
+     * {@code import}. C est le meme arbitrage que {@code ExpeditionRepository}
+     * pour les commandes, et il tient a un seul endroit — ici.</p>
+     */
+    @Query("SELECT c.id, c.nom FROM CategorieProduit c WHERE c.id IN :ids")
+    List<Object[]> nomsCategories(@Param("ids") Collection<Long> ids);
+
+    /** Meme arbitrage : verifier qu une categorie existe sans importer catalogue. */
+    @Query("SELECT count(c) FROM CategorieProduit c WHERE c.id = :id")
+    long compterCategorie(@Param("id") Long id);
 }

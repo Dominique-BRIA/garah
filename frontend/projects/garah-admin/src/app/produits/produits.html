@@ -34,6 +34,12 @@
     </button>
     <gu-bascule-vue [(vue)]="vue" cle="produits" />
 
+    @if (session.peut('PRODUIT_SUPPRIMER')) {
+      <a routerLink="/produits/corbeille" class="gu-btn gu-btn--secondaire">
+        <gu-icone nom="trash" /> Corbeille
+      </a>
+    }
+
     @if (session.peut('PRODUIT_CREER')) {
       <a routerLink="/produits/nouveau" class="gu-btn gu-btn--primaire">Nouveau produit</a>
     }
@@ -122,9 +128,12 @@
         <tr>
           @if (session.peut('PRODUIT_SUPPRIMER')) {
             <th class="colonne-case">
+              <!-- Désactivée quand la page ne contient aucun brouillon : une
+                   case qui ne coche rien laisse croire à une panne. -->
               <input type="checkbox" class="case" [checked]="toutSelectionne()"
+                     [disabled]="!aDesCochables()"
                      (change)="basculerTout()"
-                     aria-label="Tout sélectionner sur cette page" />
+                     aria-label="Sélectionner tous les brouillons de cette page" />
             </th>
           }
           <th>Produit</th>
@@ -146,10 +155,20 @@
                    produit au lieu de le sélectionner, et la sélection multiple
                    serait rigoureusement inutilisable. -->
               <td class="colonne-case" (click)="$event.stopPropagation()">
-                <input type="checkbox" class="case"
-                       [checked]="estSelectionne(produit.id)"
-                       (change)="basculerSelection(produit.id)"
-                       [attr.aria-label]="'Sélectionner ' + produit.nom" />
+                <!-- ⚠️ Seul un BROUILLON est cochable. Un produit publié a pu
+                     être vu, mis au panier, négocié : son chemin est
+                     l'archivage, pas la corbeille. Le `title` dit pourquoi la
+                     case est grise — sans lui, on la croit cassée. -->
+                @if (estSupprimable(produit)) {
+                  <input type="checkbox" class="case"
+                         [checked]="estSelectionne(produit.id)"
+                         (change)="basculerSelection(produit.id)"
+                         [attr.aria-label]="'Sélectionner ' + produit.nom" />
+                } @else {
+                  <input type="checkbox" class="case" disabled
+                         title="Seul un brouillon peut être supprimé. Ce produit a été publié : archivez-le."
+                         [attr.aria-label]="produit.nom + ' : publié, donc non supprimable'" />
+                }
               </td>
             }
             <td>

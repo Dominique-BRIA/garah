@@ -30,6 +30,9 @@ export const routes: Routes = [
       { path: 'categories', loadComponent: () => import('./categories/categories').then((m) => m.Categories) },
       { path: 'produits', loadComponent: () => import('./produits/produits').then((m) => m.Produits) },
       { path: 'produits/nouveau', loadComponent: () => import('./produits/nouveau-produit').then((m) => m.NouveauProduit) },
+      // ⚠️ AVANT 'produits/:id', pour la meme raison que 'produits/nouveau' :
+      //    place apres, ':id' capturerait le mot « corbeille ».
+      { path: 'produits/corbeille', loadComponent: () => import('./produits/corbeille').then((m) => m.Corbeille) },
       // ⚠️ APRES 'produits/nouveau'. Place avant, ':id' capturerait le mot
       //    « nouveau » et tenterait de charger un produit d'identifiant
       //    « nouveau » — 404 au lieu du formulaire.
@@ -60,6 +63,10 @@ export const routes: Routes = [
       // elles : elles vivent DANS une conversation, et les en sortir leur
       // ferait perdre leur contexte.
       { path: 'conversations', loadComponent: () => import('./serviceclient/conversations').then((m) => m.Conversations) },
+      // La finance marchand. « /finance » et non « /marchands/soldes » : la
+      // question posee ici est « qui doit-on payer ? », pas « qui sont nos
+      // marchands ? » — et ce ne sont pas les memes gens qui la posent.
+      { path: 'finance', loadComponent: () => import('./finance/finance').then((m) => m.Finance) },
       { path: 'lieux', loadComponent: () => import('./lieux/lieux').then((m) => m.Lieux) },
       // Les itineraires vivent dans le meme dossier que les lieux : un trajet
       // n'est rien d'autre qu'une suite de lieux, et on ne peut en definir un

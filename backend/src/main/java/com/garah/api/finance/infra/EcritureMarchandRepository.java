@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 
 public interface EcritureMarchandRepository extends JpaRepository<EcritureMarchand, Long> {
@@ -25,6 +26,26 @@ public interface EcritureMarchandRepository extends JpaRepository<EcritureMarcha
              WHERE e.marchandId = :marchandId AND e.devise = :devise
             """)
     BigDecimal solde(@Param("marchandId") Long marchandId, @Param("devise") String devise);
+
+    /**
+     * Le solde de PLUSIEURS marchands, en une requete.
+     *
+     * <p>La liste « qui doit-on payer ? » interroge sinon un solde par ligne :
+     * vingt-cinq requetes pour vingt-cinq marchands, sur une base distante.
+     * C est la regle du projet — une requete par page, jamais une par ligne.</p>
+     *
+     * <p>⚠️ Un marchand SANS aucune ecriture n apparait pas dans le resultat.
+     * Ce n est pas un oubli : il n a rien vendu, son solde est zero, et une
+     * jointure exterieure depuis marchand creerait ici une dependance de
+     * finance vers marchand. L appelant complete a zero.</p>
+     */
+    @Query("""
+            SELECT e.marchandId, SUM(e.montant) FROM EcritureMarchand e
+             WHERE e.marchandId IN :marchandIds AND e.devise = :devise
+             GROUP BY e.marchandId
+            """)
+    List<Object[]> soldesPar(@Param("marchandIds") Collection<Long> marchandIds,
+                             @Param("devise") String devise);
 
     Page<EcritureMarchand> findByMarchandIdOrderByDateEcritureDesc(Long marchandId,
                                                                    Pageable pagination);

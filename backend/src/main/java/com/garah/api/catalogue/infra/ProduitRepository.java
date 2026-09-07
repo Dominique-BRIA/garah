@@ -5,9 +5,12 @@ import com.garah.api.catalogue.domaine.StatutProduit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface ProduitRepository extends JpaRepository<Produit, Long> {
@@ -160,4 +163,109 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
              WHERE p.id = :id
             """)
     Optional<Produit> chargerAvecMedias(Long id);
+
+    // =========================================================================
+    // La corbeille (V27)
+    // =========================================================================
+    // 🎯 TOUT CE BLOC EST EN SQL NATIF, ET IL LE DOIT.
+    //
+    // `Produit` porte un @SQLRestriction("date_suppression IS NULL") : en JPA,
+    // un produit en corbeille N EXISTE PAS. `findById` ne le trouve pas, aucune
+    // liste ne le montre — c est precisement ce qu on veut partout ailleurs.
+    //
+    // Le SQL natif echappe a cette restriction. C est donc le seul endroit du
+    // code qui peut voir ces lignes, et c est voulu : la porte est unique et
+    // nommee, au lieu d etre un drapeau que chaque requete pourrait oublier.
+    //
+    // ⚠️ Consequence : ne JAMAIS ajouter ici une requete native qui liste des
+    //    produits sans poser explicitement sa condition sur date_suppression.
+    //    Elle verrait la corbeille, et personne ne comprendrait pourquoi.
+    // =========================================================================
+
+    /**
+     * Les produits en corbeille, du plus recemment jete au plus ancien.
+     *
+     * <p>L ordre n est pas cosmetique : on vient presque toujours chercher ce
+     * qu on vient de supprimer par erreur.</p>
+     */
+    @Query(value = """
+            SELECT p.id, p.reference, p.nom, p.statut, c.nom AS categorie_nom,
+                   p.date_suppression
+              FROM produit p
+              JOIN categorie_produit c ON c.id = p.categorie_id
+             WHERE p.date_suppression IS NOT NULL
+             ORDER BY p.date_suppression DESC
+            """,
+            countQuery = """
+            SELECT count(*) FROM produit WHERE date_suppression IS NOT NULL
+            """,
+            nativeQuery = true)
+    Page<LigneCorbeille> corbeille(Pageable pagination);
+
+    /**
+     * La projection de {@link #corbeille}.
+     *
+     * <p>⚠️ Une interface, et non un {@code Object[]} qu'on transtype. La
+     * premiere version lisait {@code (java.sql.Timestamp) ligne[5]} et
+     * echouait a l execution : le pilote PostgreSQL rend un {@link Instant}
+     * pour un {@code timestamptz}. Un transtypage sur un tableau ne se verifie
+     * a aucun moment de la compilation — ici, Spring Data fait la conversion
+     * et le type est tenu.</p>
+     */
+    interface LigneCorbeille {
+        Long getId();
+        String getReference();
+        String getNom();
+        String getStatut();
+        String getCategorieNom();
+        Instant getDateSuppression();
+    }
+
+    /** Le nom d un produit en corbeille, pour les messages. Vide s il n y est pas. */
+    @Query(value = """
+            SELECT nom FROM produit
+             WHERE id = :id AND date_suppression IS NOT NULL
+            """, nativeQuery = true)
+    Optional<String> nomDansCorbeille(@Param("id") Long id);
+
+    /**
+     * Sort un produit de la corbeille.
+     *
+     * <p>En UPDATE natif plutot qu en chargeant l entite : JPA ne peut pas la
+     * charger, la restriction la masque.</p>
+     *
+     * @return 1 si un produit a ete restaure, 0 s il n etait pas en corbeille
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE produit SET date_suppression = NULL
+             WHERE id = :id AND date_suppression IS NOT NULL
+            """, nativeQuery = true)
+    int restaurer(@Param("id") Long id);
+
+    /**
+     * Efface pour de bon.
+     *
+     * <p>⚠️ La condition {@code date_suppression IS NOT NULL} n est pas une
+     * precaution de style : elle rend impossible d effacer un produit ACTIF
+     * par cette porte. Sans elle, un identifiant errone supprimerait
+     * definitivement un produit en vente, sans passer par la corbeille.</p>
+     *
+     * <p>Les variantes, medias, tarifications et lignes de stock partent en
+     * cascade (V4, V5). Les fichiers du stockage, eux, sont a retirer par
+     * l appelant : la base ne les connait pas.</p>
+     */
+    @Modifying
+    @Query(value = """
+            DELETE FROM produit
+             WHERE id = :id AND date_suppression IS NOT NULL
+            """, nativeQuery = true)
+    int supprimerDefinitivement(@Param("id") Long id);
+
+    /** Les cles d objet des medias d un produit en corbeille, avant de l effacer. */
+    @Query(value = """
+            SELECT m.cle_objet FROM media m
+             WHERE m.produit_id = :id AND m.cle_objet IS NOT NULL
+            """, nativeQuery = true)
+    List<String> clesMediasDe(@Param("id") Long id);
 }

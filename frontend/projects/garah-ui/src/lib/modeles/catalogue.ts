@@ -158,3 +158,20 @@ export interface ResultatSuppression {
   readonly supprimes: readonly number[];
   readonly refuses: readonly Refus[];
 }
+
+/**
+ * Un produit en corbeille.
+ *
+ * ⚠️ Le `statut` est celui d'AVANT la mise a la corbeille, conserve intact :
+ * c'est celui que le produit retrouvera s'il est restaure. La corbeille est
+ * une dimension separee du statut, pas un statut de plus.
+ */
+export interface VueCorbeille {
+  readonly id: number;
+  readonly reference: string;
+  readonly nom: string;
+  readonly statut: StatutProduit;
+  readonly categorieNom: string | null;
+  /** Sert a dire « il y a trois jours », qui vaut mieux qu'une date brute. */
+  readonly dateSuppression: string;
+}

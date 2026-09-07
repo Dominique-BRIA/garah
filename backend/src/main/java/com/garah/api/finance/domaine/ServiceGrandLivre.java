@@ -4,6 +4,8 @@ import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.finance.infra.EcritureMarchandRepository;
+import com.garah.api.marchand.domaine.Marchand;
+import com.garah.api.marchand.infra.MarchandRepository;
 import com.garah.api.finance.infra.ReglementMarchandRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Year;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Le grand livre marchand.
@@ -30,10 +34,21 @@ public class ServiceGrandLivre {
     private final EcritureMarchandRepository ecritures;
     private final ReglementMarchandRepository reglements;
 
+    /**
+     * Pour LISTER les marchands avec leur solde, jamais pour les modifier.
+     *
+     * <p>La direction finance → marchand est libre : marchand ne connait pas
+     * finance, donc aucun cycle. C est le cas le plus simple des trois qu on a
+     * rencontres — ailleurs il a fallu un evenement ou du HQL seul.</p>
+     */
+    private final MarchandRepository marchands;
+
     public ServiceGrandLivre(EcritureMarchandRepository ecritures,
-                             ReglementMarchandRepository reglements) {
+                             ReglementMarchandRepository reglements,
+                             MarchandRepository marchands) {
         this.ecritures = ecritures;
         this.reglements = reglements;
+        this.marchands = marchands;
     }
 
     /**
@@ -115,6 +130,43 @@ public class ServiceGrandLivre {
     @Transactional(readOnly = true)
     public Page<EcritureMarchand> detail(Long marchandId, Pageable pagination) {
         return ecritures.findByMarchandIdOrderByDateEcritureDesc(marchandId, pagination);
+    }
+
+    /**
+     * Qui doit-on payer, et combien.
+     *
+     * <p>C'est la question qu'on se pose en début de mois, et rien n'y
+     * répondait : il fallait connaître un marchand pour demander son solde,
+     * donc les parcourir un par un.</p>
+     *
+     * <h2>Deux requêtes, quelle que soit la page</h2>
+     *
+     * <p>Une page de marchands, puis <b>tous leurs soldes d'un coup</b>.
+     * Appeler {@link #solde} par ligne ferait vingt-six requêtes pour
+     * vingt-cinq marchands — invisible en local avec trois lignes, très
+     * visible sur base distante.</p>
+     *
+     * <p>⚠️ Un marchand sans aucune écriture n'apparaît pas dans l'agrégat :
+     * il n'a rien vendu. Son solde vaut <b>zéro</b>, pas « inconnu », et c'est
+     * ici qu'on le complète — sinon il disparaîtrait d'une liste qui prétend
+     * montrer tous les marchands.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<SoldeMarchand> soldes(Pageable pagination) {
+        Page<Marchand> page = marchands.findAll(pagination);
+
+        if (page.isEmpty()) {
+            return page.map(m -> null);
+        }
+
+        Map<Long, BigDecimal> parMarchand = ecritures
+                .soldesPar(page.map(Marchand::getId).toList(), DEVISE)
+                .stream()
+                .collect(Collectors.toMap(l -> (Long) l[0], l -> (BigDecimal) l[1]));
+
+        return page.map(m -> new SoldeMarchand(
+                m.getId(), m.getCode(), m.getNom(), m.getStatut().name(),
+                parMarchand.getOrDefault(m.getId(), BigDecimal.ZERO), DEVISE));
     }
 
     // -------------------------------------------------------------------------
