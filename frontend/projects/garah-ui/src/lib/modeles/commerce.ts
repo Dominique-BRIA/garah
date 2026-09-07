@@ -157,6 +157,20 @@ export const STATUTS_PAIEMENT: readonly {
   { code: 'REMBOURSE', libelle: 'Remboursé', badge: 'gu-badge--info' },
 ];
 
+/**
+ * Les moyens proposes a la saisie, dans l'ordre ou on les rencontre ici.
+ *
+ * MTN MoMo et Orange Money d'abord : c'est par la que passe la quasi-totalite
+ * des paiements sur l'axe Douala – Bangui. Les mettre apres « Especes »
+ * obligerait a descendre une liste pour le cas le plus frequent.
+ */
+export const MOYENS_PAIEMENT: readonly MoyenPaiement[] = [
+  'MTN_MOMO',
+  'ORANGE_MONEY',
+  'ESPECES',
+  'VIREMENT',
+];
+
 /** Le libelle d'un moyen de paiement, tel qu'on le nomme au Cameroun. */
 export function libelleMoyen(moyen: string): string {
   switch (moyen) {

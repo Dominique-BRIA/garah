@@ -97,6 +97,11 @@ export class TableauBord {
       icone: 'life-ring',
       teinte: 'rouge',
       permission: 'RECLAMATION_CONSULTER',
+      // Le lien mène au filtre « Ouverte », pas à la liste complète : c'est
+      // exactement ce que la carte vient de compter. Ouvrir sur « toutes »
+      // ferait chercher, dans une liste de deux cents lignes, les quatre que
+      // le chiffre annonçait.
+      lien: '/reclamations?statut=OUVERTE',
       source: () => this.compterListe('/api/sav/reclamations/a-traiter'),
     },
   ];

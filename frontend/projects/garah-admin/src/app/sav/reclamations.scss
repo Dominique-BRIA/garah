@@ -1,0 +1,99 @@
+// Les reclamations. Motifs communs dans ecrans-communs.scss.
+
+.filtres {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.filtre {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte-attenue);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// Un point devant les statuts qui appellent un geste. Pas une couleur de fond :
+// le filtre actif s'en sert deja, et deux signaux sur le meme canal ne se
+// distinguent plus.
+.filtre--action::before {
+  content: '';
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--primary);
+  vertical-align: middle;
+}
+
+.filtre--actif {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+
+  &::before { background: #fff; }
+}
+
+// Un dossier qui attend un geste porte un lisere discret : la ligne reste
+// lisible, mais l'oeil trouve tout de suite ce sur quoi agir.
+tr.attend td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.cellule-client {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.cellule-client .attenue { font-size: 0.76rem; }
+
+// Le motif tient sur un mot ou deux. On le laisse respirer plutot que de le
+// tronquer : « ARTICLE_MANQ… » ne veut plus rien dire.
+.motif {
+  max-width: 16rem;
+  font-size: 0.88rem;
+}
+
+// --- Le dossier ouvert -------------------------------------------------------
+.fiche__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+
+  h2 { margin: 0 0 0.2rem; }
+  .aide { margin: 0; }
+}
+
+.fiche__motif {
+  margin: 0.2rem 0 1.25rem;
+  font-weight: 600;
+}
+
+// La description vient du CLIENT : elle peut contenir des retours a la ligne,
+// et les ecraser rendrait un texte de dix lignes illisible.
+.fiche__description {
+  margin: 0.2rem 0 1.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+  background: var(--surface-douce);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.panneau .boutons { margin-top: 1rem; }

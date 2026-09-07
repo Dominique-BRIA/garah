@@ -2,8 +2,12 @@ package com.garah.api.sav.web;
 
 import com.garah.api.commerce.domaine.MoyenPaiement;
 import com.garah.api.sav.domaine.EtatArticle;
+import com.garah.api.sav.domaine.ResumeReclamation;
+import com.garah.api.sav.domaine.ResumeRetour;
 import com.garah.api.sav.domaine.ServiceReclamation;
 import com.garah.api.sav.domaine.ServiceRetour;
+import com.garah.api.sav.domaine.StatutReclamation;
+import com.garah.api.sav.domaine.StatutRetour;
 import com.garah.api.sav.domaine.VueReclamation;
 import com.garah.api.sav.domaine.VueRetour;
 import jakarta.validation.Valid;
@@ -65,10 +69,57 @@ public class ControleurSav {
     // Réclamations — le back-office
     // -------------------------------------------------------------------------
 
+    /**
+     * Le raccourci du tableau de bord : ce qui n'est pris en charge par
+     * personne.
+     *
+     * <p>Distincte de {@link #listerReclamations} et volontairement : celle-ci
+     * répond à « combien de dossiers n'ont <b>aucun</b> propriétaire ? », et
+     * c'est ce chiffre-là qu'on met sur une carte. La liste complète répond à
+     * « où en est le dossier de ce client ? », qui est une autre question.</p>
+     */
     @GetMapping("/reclamations/a-traiter")
     @PreAuthorize("hasAuthority('RECLAMATION_CONSULTER')")
     public List<VueReclamation> aTraiter() {
         return reclamations.aTraiter().stream().map(VueReclamation::de).toList();
+    }
+
+    /**
+     * La liste du back-office.
+     *
+     * <p>Les plus <b>anciennes</b> d'abord — l'inverse des listes de
+     * catalogue, et c'est voulu : une réclamation qui traîne est un client qui
+     * s'énerve, et c'est celle-là qu'il faut voir en haut.</p>
+     *
+     * <p>La recherche porte sur le numéro de réclamation <b>et</b> sur celui
+     * de la commande : quand un client rappelle, il donne le second — il n'a
+     * souvent jamais noté le premier.</p>
+     */
+    @GetMapping("/reclamations")
+    @PreAuthorize("hasAuthority('RECLAMATION_CONSULTER')")
+    public Page<ResumeReclamation> listerReclamations(
+            @RequestParam(required = false) StatutReclamation statut,
+            @RequestParam(required = false) String recherche,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int taille) {
+
+        return reclamations.administration(statut, recherche,
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)));
+    }
+
+    /**
+     * Une réclamation, description comprise.
+     *
+     * <p>Contrairement au routage d'un navigateur, l'ordre de déclaration ne
+     * compte pas ici : Spring classe un segment <b>littéral</b> avant une
+     * variable, donc {@code /reclamations/a-traiter} et
+     * {@code /reclamations/miennes} restent atteignables même déclarés avant
+     * ce {@code {id}}. Inutile de les réordonner « par sécurité ».</p>
+     */
+    @GetMapping("/reclamations/{id}")
+    @PreAuthorize("hasAuthority('RECLAMATION_CONSULTER')")
+    public VueReclamation detailReclamation(@PathVariable Long id) {
+        return reclamations.detail(id);
     }
 
     @PostMapping("/reclamations/{id}/prise-en-charge")
@@ -117,6 +168,25 @@ public class ControleurSav {
 
         return VueRetour.resume(retours.demander(
                 demande.commandeId(), client(jeton), demande.motif(), lignes));
+    }
+
+    /**
+     * La liste du back-office.
+     *
+     * <p>Le filtre par statut n'est pas un confort : accepter, réceptionner et
+     * valider un retour sont <b>trois métiers différents</b>, avec trois
+     * permissions différentes. Sans filtre, chacun devrait parcourir toute la
+     * liste pour trouver ce qui l'attend.</p>
+     */
+    @GetMapping("/retours")
+    @PreAuthorize("hasAuthority('RETOUR_CONSULTER')")
+    public Page<ResumeRetour> listerRetours(
+            @RequestParam(required = false) StatutRetour statut,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int taille) {
+
+        return retours.administration(statut,
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)));
     }
 
     @GetMapping("/retours/{id}")

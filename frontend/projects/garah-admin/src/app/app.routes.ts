@@ -50,6 +50,12 @@ export const routes: Routes = [
       // de la liste des expeditions.
       { path: 'retraits', loadComponent: () => import('./expeditions/retraits').then((m) => m.Retraits) },
       { path: 'expeditions/:id', loadComponent: () => import('./expeditions/fiche-expedition').then((m) => m.FicheExpedition) },
+      // Le SAV. Deux ecrans distincts et non deux onglets d'un meme : une
+      // reclamation est une PLAINTE qu'un humain tranche, un retour est une
+      // MARCHANDISE qui revient. Les gestes, les permissions et les gens ne
+      // sont pas les memes.
+      { path: 'reclamations', loadComponent: () => import('./sav/reclamations').then((m) => m.Reclamations) },
+      { path: 'retours', loadComponent: () => import('./sav/retours').then((m) => m.Retours) },
       { path: 'lieux', loadComponent: () => import('./lieux/lieux').then((m) => m.Lieux) },
       // Les itineraires vivent dans le meme dossier que les lieux : un trajet
       // n'est rien d'autre qu'une suite de lieux, et on ne peut en definir un

@@ -17,8 +17,13 @@ import com.garah.api.iam.infra.UtilisateurRepository;
 import com.garah.api.logistique.domaine.*;
 import com.garah.api.logistique.infra.LieuRepository;
 import com.garah.api.sav.domaine.EtatArticle;
+import com.garah.api.sav.domaine.Reclamation;
+import com.garah.api.sav.domaine.ResumeReclamation;
+import com.garah.api.sav.domaine.ResumeRetour;
 import com.garah.api.sav.domaine.Retour;
+import com.garah.api.sav.domaine.ServiceReclamation;
 import com.garah.api.sav.domaine.ServiceRetour;
+import com.garah.api.sav.domaine.StatutReclamation;
 import com.garah.api.sav.domaine.StatutRetour;
 import com.garah.api.stock.domaine.ServiceStock;
 import org.junit.jupiter.api.*;
@@ -56,6 +61,7 @@ class ParcoursLogistiqueTest {
     @Autowired ServicePaiement paiements;
     @Autowired ServiceExpedition expeditions;
     @Autowired ServiceRetour retours;
+    @Autowired ServiceReclamation reclamations;
     @Autowired ServiceCatalogue catalogue;
     @Autowired ServiceTarification tarification;
     @Autowired ServiceStock stock;
@@ -131,6 +137,10 @@ class ParcoursLogistiqueTest {
     void nettoyer() {
         jdbc.update("DELETE FROM ligne_retour WHERE retour_id IN (SELECT r.id FROM retour r JOIN client c ON c.id = r.client_id WHERE c.code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM retour WHERE client_id IN (SELECT id FROM client WHERE code_client = 'CLI-LOG-1')");
+        // Sans cette ligne, les réclamations d'un test resteraient visibles
+        // dans la liste du suivant — et l'assertion « doesNotContain » d'un
+        // filtre passerait ou échouerait selon l'ordre d'exécution.
+        jdbc.update("DELETE FROM reclamation WHERE client_id IN (SELECT id FROM client WHERE code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM retrait_marchandise WHERE client_id IN (SELECT id FROM client WHERE code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM evenement_expedition WHERE colis_id IN (SELECT co.id FROM colis co JOIN expedition e ON e.id = co.expedition_id JOIN commande cm ON cm.id = e.commande_id JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM ligne_colis WHERE colis_id IN (SELECT co.id FROM colis co JOIN expedition e ON e.id = co.expedition_id JOIN commande cm ON cm.id = e.commande_id JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
@@ -462,6 +472,89 @@ class ParcoursLogistiqueTest {
     // -------------------------------------------------------------------------
     // Retour
     // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("la liste des retours nomme le client et la commande")
+    void listeDesRetours() {
+        Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
+        Retour retour = retours.demander(commande.id(), clientId, "Taille incorrecte", List.of(
+                new ServiceRetour.DemandeLigne(ligneId, 2, EtatArticle.NEUF),
+                new ServiceRetour.DemandeLigne(ligneId, 1, EtatArticle.ABIME)));
+
+        // Ce test exécute réellement les quatre requêtes de la liste — noms de
+        // clients, numéros de commande, totaux agrégés. Une @Query cassée
+        // n'échouerait qu'au moment où on l'appelle.
+        ResumeRetour vu = retours.administration(null, PageRequest.of(0, 25))
+                .getContent().stream()
+                .filter(r -> r.id().equals(retour.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        // Un identifiant nu obligerait à ouvrir chaque ligne pour savoir de
+        // qui vient le retour.
+        assertThat(vu.clientNom()).isNotBlank();
+        assertThat(vu.commandeNumero()).isNotBlank();
+
+        // 🎯 Les deux chiffres ne disent PAS la même chose. 3 articles sont
+        //    ANNONCÉS ; rien n'est encore remboursé, parce que personne n'a
+        //    ouvert le colis.
+        assertThat(vu.nombreArticles()).isEqualTo(3);
+        assertThat(vu.montantRembourse()).isEqualByComparingTo("0.00");
+
+        // Le filtre par statut : accepter, réceptionner et valider sont trois
+        // métiers, et chacun a sa file.
+        assertThat(retours.administration(StatutRetour.DEMANDE, PageRequest.of(0, 25)))
+                .isNotEmpty();
+        assertThat(retours.administration(StatutRetour.CLOTURE, PageRequest.of(0, 25))
+                .getContent().stream().map(ResumeRetour::id))
+                .doesNotContain(retour.getId());
+
+        // Après validation, le second chiffre devient un FAIT : 3 × 15 000.
+        retours.accepter(retour.getId());
+        retours.receptionner(retour.getId());
+        retours.valider(retour.getId(), MoyenPaiement.MTN_MOMO);
+
+        ResumeRetour apres = retours.administration(StatutRetour.VALIDE, PageRequest.of(0, 25))
+                .getContent().stream()
+                .filter(r -> r.id().equals(retour.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(apres.montantRembourse()).isEqualByComparingTo("45000.00");
+    }
+
+    @Test
+    @DisplayName("la liste des réclamations se cherche par numéro de commande")
+    void listeDesReclamations() {
+        Reclamation reclamation = reclamations.ouvrir(clientId, commande.id(),
+                "ARTICLE_MANQUANT", "Il manque une chemise dans le colis.");
+
+        ResumeReclamation vue = reclamations
+                .administration(null, null, PageRequest.of(0, 25))
+                .getContent().stream()
+                .filter(r -> r.id().equals(reclamation.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(vue.clientNom()).isNotBlank();
+        assertThat(vue.commandeNumero()).isEqualTo(commande.numero());
+
+        // Quand un client rappelle, il donne son numéro de COMMANDE : il n'a
+        // souvent jamais noté celui de la réclamation. La sous-requête vers
+        // Commande est donc exécutée pour de bon ici.
+        assertThat(reclamations.administration(null, commande.numero(), PageRequest.of(0, 25)))
+                .isNotEmpty();
+
+        // Et par son propre numéro, quand on le lui a communiqué.
+        assertThat(reclamations.administration(null, reclamation.getNumero(),
+                PageRequest.of(0, 25))).isNotEmpty();
+
+        assertThat(reclamations.administration(null, "INTROUVABLE-XYZ", PageRequest.of(0, 25)))
+                .isEmpty();
+
+        assertThat(reclamations.administration(StatutReclamation.RESOLUE, null,
+                PageRequest.of(0, 25)).getContent().stream().map(ResumeReclamation::id))
+                .doesNotContain(reclamation.getId());
+    }
 
     @Test
     @DisplayName("un retour partiel : 3 unités sur 10, dont 1 abîmée")

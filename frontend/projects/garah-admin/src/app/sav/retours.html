@@ -1,0 +1,264 @@
+<header class="entete">
+  <div>
+    <h1>Retours</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (libelleStatut(); as s) {
+        {{ total() }} retour(s) — {{ s }}
+      } @else { {{ total() }} retour(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<!-- Accepter, réceptionner et rembourser sont trois métiers avec trois
+     permissions. Sans ce filtre, chacun parcourrait toute la liste pour
+     trouver ce qui l'attend. -->
+<nav class="filtres" aria-label="Filtrer par statut">
+  <button type="button" class="filtre" [class.filtre--actif]="statut() === ''"
+          (click)="filtrer('')">Tous</button>
+
+  @for (s of statuts; track s.code) {
+    <button type="button" class="filtre"
+            [class.filtre--actif]="statut() === s.code"
+            [class.filtre--action]="attendSur(s.code)"
+            (click)="filtrer(s.code)">
+      {{ s.libelle }}
+    </button>
+  }
+</nav>
+
+<!-- Le libellé du statut ne dit pas ce qu'on attend de vous. Cette phrase, si. -->
+@if (attendu(); as quoi) {
+  <p class="attendu">{{ quoi }}</p>
+}
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="arrows-rotate" class="etat__icone" />
+    @if (libelleStatut(); as s) {
+      <p class="etat__titre">Aucun retour « {{ s }} »</p>
+      <p class="etat__aide">Rien n’attend d’action de ce côté.</p>
+    } @else {
+      <p class="etat__titre">Aucun retour</p>
+      <p class="etat__aide">
+        Un retour est demandé par le client, sur une commande qu’il a reçue.
+        Il ne se crée pas depuis cet écran.
+      </p>
+    }
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Retour</th>
+          <th>Client</th>
+          <th>Commande</th>
+          <th>Motif</th>
+          <th class="droite">Articles</th>
+          <th class="droite">Remboursé</th>
+          <th>Statut</th>
+          <th>Attente</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of liste(); track r.id) {
+          <tr class="cliquable" (click)="ouvrir(r)" [class.attend]="attendSur(r.statut)">
+            <td><code>{{ r.numero }}</code></td>
+            <td>
+              <div class="cellule-client">
+                <span class="nom">{{ r.clientNom ?? 'Client supprimé' }}</span>
+                @if (r.clientCode) {
+                  <span class="attenue">{{ r.clientCode }}</span>
+                }
+              </div>
+            </td>
+            <td>
+              @if (r.commandeNumero) {
+                <a [routerLink]="['/commandes', r.commandeId]"
+                   (click)="$event.stopPropagation()">
+                  <code>{{ r.commandeNumero }}</code>
+                </a>
+              } @else {
+                <span class="attenue">—</span>
+              }
+            </td>
+            <td class="motif">{{ r.motif }}</td>
+
+            <!-- ⚠️ Deux chiffres, deux natures. Le premier est ANNONCÉ par le
+                 client ; le second est CONSTATÉ après ouverture du colis. -->
+            <td class="droite nombre">{{ r.nombreArticles }}</td>
+            <td class="droite nombre">
+              @if (r.montantRembourse > 0) {
+                {{ montant(r.montantRembourse) }}
+              } @else {
+                <span class="attenue">—</span>
+              }
+            </td>
+
+            <td>
+              <span class="gu-badge" [class]="badge(r.statut)">{{ libelle(r.statut) }}</span>
+            </td>
+            <td class="attenue">{{ attente(r.dateCreation) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="allerA($event)" />
+}
+
+<!-- ==================================================================== -->
+<!-- Le dossier                                                            -->
+<!-- ==================================================================== -->
+@if (ouvert() || chargementFiche() || erreurFiche()) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true" aria-label="Retour">
+    @if (chargementFiche()) {
+      <div class="etat">
+        <gu-icone nom="circle-notch" tourne class="etat__icone" />
+        <p class="etat__titre">Chargement…</p>
+      </div>
+    } @else if (ouvert(); as r) {
+      <header class="fiche__entete">
+        <div>
+          <h2>{{ r.numero }}</h2>
+          <p class="aide">Demandé le {{ dateHeure(r.dateCreation) }}</p>
+        </div>
+        <span class="gu-badge" [class]="badge(r.statut)">{{ libelle(r.statut) }}</span>
+      </header>
+
+      <p class="gu-libelle">Motif</p>
+      <p class="fiche__motif">{{ r.motif }}</p>
+
+      <p class="gu-libelle">Articles renvoyés</p>
+      @if (r.lignes.length === 0) {
+        <p class="attenue">Aucune ligne — ce retour ne porte sur rien.</p>
+      } @else {
+        <ul class="lignes">
+          @for (l of r.lignes; track l.id) {
+            <li class="ligne" [class.ligne--invendable]="invendable(l.etatArticle)">
+              <span class="ligne__quantite">{{ l.quantite }}</span>
+              <div class="ligne__corps">
+                <span class="ligne__etat">{{ etat(l.etatArticle) }}</span>
+                <!-- Un article abîmé ne redeviendra jamais vendable. Le dire
+                     ici évite qu'on s'étonne de ne pas le voir en stock. -->
+                @if (invendable(l.etatArticle)) {
+                  <span class="attenue">Ne repartira pas en vente.</span>
+                } @else {
+                  <span class="attenue">Redevient vendable.</span>
+                }
+              </div>
+              <span class="ligne__montant">
+                @if (l.montantRembourse > 0) {
+                  {{ montant(l.montantRembourse) }}
+                } @else {
+                  <span class="attenue">non remboursé</span>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+
+        @if (totalRembourse(r) > 0) {
+          <p class="total">
+            Remboursé au client : <strong>{{ montant(totalRembourse(r)) }}</strong>
+          </p>
+        }
+      }
+
+      <dl class="fiche__dates">
+        <dt>Réception</dt>
+        <dd>{{ dateHeure(r.dateReception) }}</dd>
+      </dl>
+
+      <a [routerLink]="['/commandes', r.commandeId]" class="gu-btn gu-btn--secondaire petit"
+         (click)="fermer()">
+        Voir la commande
+      </a>
+
+      @if (erreurFiche(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <!-- Seuls les gestes POSSIBLES, et seulement ceux que ce compte a le
+           droit de faire. Le serveur refuserait les autres, mais un bouton
+           qui échoue fait cliquer pour rien. -->
+      @if (!formRemboursement() && gestes().length > 0) {
+        <div class="boutons">
+          @for (g of gestes(); track g.code) {
+            <button type="button"
+                    [class]="g.code === 'REFUSE' ? 'gu-btn gu-btn--secondaire' : 'gu-btn gu-btn--primaire'"
+                    (click)="declencher(g.code)" [disabled]="action() !== null">
+              @if (action() === g.code) { <gu-icone nom="circle-notch" tourne /> }
+              {{ g.libelle }}
+            </button>
+          }
+        </div>
+      }
+
+      <!-- 🎯 LE REMBOURSEMENT NE PART QU'ICI, après que quelqu'un a ouvert le
+           colis. Il demande par quel moyen : l'enchaîner sans rien demander
+           ferait partir l'argent au hasard. -->
+      @if (formRemboursement()) {
+        <form class="remboursement" (ngSubmit)="rembourser()" novalidate>
+          <label class="gu-libelle" for="moyen">Rembourser par</label>
+          <select id="moyen" name="moyen" class="gu-champ"
+                  [ngModel]="moyen()" (ngModelChange)="moyen.set($event)">
+            @for (m of moyens; track m) {
+              <option [value]="m">{{ nomMoyen(m) }}</option>
+            }
+          </select>
+          <p class="aide">
+            Le montant est calculé au prix réellement payé, ligne par ligne, et
+            seuls les articles en bon état retournent en stock.
+          </p>
+
+          <div class="boutons">
+            <button type="submit" class="gu-btn gu-btn--primaire" [disabled]="action() !== null">
+              @if (action() === 'VALIDE') { <gu-icone nom="circle-notch" tourne /> }
+              Rembourser le client
+            </button>
+            <button type="button" class="gu-btn gu-btn--secondaire"
+                    (click)="formRemboursement.set(false)">
+              Annuler
+            </button>
+          </div>
+        </form>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Fermer</button>
+      </div>
+    } @else if (erreurFiche(); as m) {
+      <div class="etat" role="alert">
+        <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+        <p class="etat__titre">{{ m }}</p>
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Fermer</button>
+      </div>
+    }
+  </aside>
+}

@@ -24,6 +24,7 @@ export * from './lib/modeles/logistique';
 export * from './lib/modeles/equipe';
 export * from './lib/modeles/commerce';
 export * from './lib/modeles/stock';
+export * from './lib/modeles/sav';
 
 // --- Les listes ---
 export * from './lib/liste/bascule-vue';

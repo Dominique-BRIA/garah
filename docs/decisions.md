@@ -1296,3 +1296,90 @@ blanches sans qu'aucune erreur n'apparaisse.
 **L'hôte est une constante**, parce que DiceBear s'auto-héberge. Le jour où il
 devient lent, payant, ou inatteignable depuis le Cameroun — comme l'est déjà
 Render (D-22) — c'est une ligne à changer, et rien d'autre.
+
+---
+
+## D-27 — Le backend passe sur Azure App Service
+
+**Date :** 07/09/2026
+**Statut :** ✅ actée — remplace la partie « API » de D-14. **D-22 reste en
+vigueur** jusqu'à preuve du contraire (voir plus bas).
+
+**Choix.** Le backend quitte Render pour **Azure App Service B1** (France
+Central), en conteneur, sur un abonnement *Azure for Students*.
+
+**⚠️ L'ordre compte, et il a été choisi.** On déploie sur Azure **d'abord**,
+on ne touche à rien d'autre. Le Worker Cloudflare reste devant, les frontends
+continuent de l'appeler, et les visiteurs ne voient aucun changement tant que
+la nouvelle instance n'a pas fait ses preuves.
+
+Faire les deux d'un coup — changer d'hébergeur *et* changer le chemin réseau —
+donnerait, en cas de panne, deux causes possibles et aucun moyen de les
+départager. C'est la même règle que pour `bootstrap-mode` plus bas : un
+changement à la fois, sinon le diagnostic devient une devinette.
+
+**Ce que Render nous coûtait.** Trois problèmes, tous dus aux 512 Mo :
+
+- l'application ne démarrait qu'au prix d'un réglage risqué
+  (`bootstrap-mode: lazy`), qui déplace l'échec d'une requête invalide du
+  démarrage vers la production ;
+- l'instance s'endormait, et le réveil prenait **120 secondes** — payées par
+  le premier visiteur ;
+- le nom d'hôte `garah-api.onrender.com` était filtré par Orange Cameroun, ce
+  qui avait imposé le Worker.
+
+Azure B1 donne **1,75 Go** et **Always On**. Les deux premiers points
+disparaissent ; le troisième est le pari de cette décision.
+
+**Pourquoi un conteneur et pas la pile Java SE.** App Service ne propose pas
+Java 24. Ce n'est pas un choix, c'est la seule voie — et elle ne coûte rien,
+puisque c'est le `Dockerfile` de Render, inchangé. La réversibilité exigée par
+D-14 vient de servir pour de bon.
+
+**Le sort du Worker, et comment il se décidera.** Dominique estime que le
+domaine Azure n'est pas filtré, puisqu'il a pu ouvrir le portail depuis une
+connexion Orange.
+
+> ⚠️ **L'argument n'est pas une preuve.** Le filtrage décrit par D-22 lisait le
+> **nom d'hôte** dans la poignée de main TLS — `garah-api.onrender.com`
+> précisément. `portal.azure.com` et `*.azurewebsites.net` sont deux domaines
+> différents : ouvrir le premier ne dit rien du second.
+>
+> Le seul test qui tranche, une fois l'API en ligne, **depuis une connexion
+> Orange Cameroun** :
+>
+> ```bash
+> curl -s -o /dev/null -w "%{http_code}\n" https://<hôte-azure>/api/sante
+> ```
+>
+> `200` → le Worker peut tomber, et D-22 sera marquée « remplacée par D-27 ».
+> Connexion coupée → le Worker reste, et il aura justifié son existence une
+> seconde fois.
+
+Tant que ce test n'a pas été fait, **le Worker reste devant** et les frontends
+continuent de l'appeler. Il ne coûte rien : plan gratuit, 100 000 requêtes par
+jour.
+
+**Ce que ça coûte, et c'est le vrai risque.** Le crédit étudiant est de
+**100 $ sur 12 mois**. Le seul plan B1 consomme environ 13 $/mois : le crédit
+s'épuise en **7 à 8 mois**, après quoi l'application s'arrête. Ce n'est pas
+une offre gratuite, c'est une **échéance**.
+
+D'où deux règles qui découlent directement :
+
+- **La base reste sur Neon.** Azure PostgreSQL est gratuit douze mois puis
+  facturé ; Neon est gratuit sans terme. Migrer la base consommerait le crédit
+  deux fois plus vite pour remplacer ce qui marche.
+- **Rien d'autre ne va sur Azure** sans se demander ce qu'il retire de mois à
+  l'application.
+
+**Ce que ça permet de réparer.** `bootstrap-mode: lazy` a été imposé par les
+512 Mo, et son coût est écrit : une requête `@Query` cassée n'échoue plus au
+démarrage mais devant un utilisateur. Avec 1,75 Go, ce filet peut être
+retendu — **après** un premier déploiement réussi, jamais en même temps.
+
+**Ce qu'on perd.** L'hébergement du backend cesse d'être gratuit et devient
+daté. Render restait médiocre mais perpétuel ; Azure est confortable et
+temporaire. Le jour où le crédit s'épuise, il faudra payer, redevenir
+étudiant, ou revenir en arrière — et ce jour-là, `deploiement/azure.md` et
+cette entrée disent où était le point de départ.

@@ -7,9 +7,15 @@ import com.garah.api.commerce.infra.LigneCommandeRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.commerce.domaine.NumeroCommande;
+import com.garah.api.commerce.infra.CommandeRepository;
 import com.garah.api.finance.domaine.ServiceGrandLivre;
+import com.garah.api.iam.domaine.NomClient;
+import com.garah.api.iam.domaine.ServiceClient;
 import com.garah.api.sav.infra.RetourRepository;
 import com.garah.api.stock.domaine.ServiceStock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +25,7 @@ import java.time.Year;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Les retours de marchandise.
@@ -45,14 +52,24 @@ public class ServiceRetour {
     private final ServicePaiement paiements;
     private final ServiceGrandLivre grandLivre;
 
+    /**
+     * Pour <b>nommer</b> le client et la commande dans les listes, jamais pour
+     * les modifier.
+     */
+    private final ServiceClient clients;
+    private final CommandeRepository commandes;
+
     public ServiceRetour(RetourRepository retours, LigneCommandeRepository lignesCommande,
                          ServiceStock stock, ServicePaiement paiements,
-                         ServiceGrandLivre grandLivre) {
+                         ServiceGrandLivre grandLivre, ServiceClient clients,
+                         CommandeRepository commandes) {
         this.retours = retours;
         this.lignesCommande = lignesCommande;
         this.stock = stock;
         this.paiements = paiements;
         this.grandLivre = grandLivre;
+        this.clients = clients;
+        this.commandes = commandes;
     }
 
     /**
@@ -209,6 +226,50 @@ public class ServiceRetour {
     @Transactional(readOnly = true)
     public List<Retour> pourCommande(Long commandeId) {
         return retours.findByCommandeId(commandeId);
+    }
+
+    /**
+     * La liste du back-office, clients et commandes <b>nommés</b>.
+     *
+     * <p>Quatre requêtes en tout, quelle que soit la taille de la page : les
+     * retours, leurs clients, leurs numéros de commande, et les totaux de
+     * leurs lignes. Compter les articles retour par retour ferait cinquante
+     * requêtes de plus pour vingt-cinq lignes.</p>
+     *
+     * <p>⚠️ Le total des <b>articles annoncés</b> et le total <b>remboursé</b>
+     * viennent de la même requête mais ne veulent pas dire la même chose :
+     * l'un est déclaré par le client, l'autre constaté après ouverture du
+     * colis. Voir {@link ResumeRetour}.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<ResumeRetour> administration(StatutRetour statut, Pageable pagination) {
+        Page<Retour> page = retours.administration(statut, pagination);
+
+        if (page.isEmpty()) {
+            // `IN ()` avec une collection vide est refusé par certains
+            // dialectes : on ne pose pas la question quand il n'y a rien à
+            // demander.
+            return page.map(r -> ResumeRetour.de(r, null, null, 0, BigDecimal.ZERO));
+        }
+
+        List<Long> ids = page.map(Retour::getId).toList();
+
+        Map<Long, NomClient> noms = clients.nomsPar(page.map(Retour::getClientId).toList());
+
+        Map<Long, String> numeros = commandes.numerosPar(page.map(Retour::getCommandeId).toList())
+                .stream()
+                .collect(Collectors.toMap(NumeroCommande::id, NumeroCommande::numero));
+
+        Map<Long, Object[]> totaux = retours.totauxPar(ids).stream()
+                .collect(Collectors.toMap(ligne -> (Long) ligne[0], ligne -> ligne));
+
+        return page.map(r -> {
+            Object[] total = totaux.get(r.getId());
+            return ResumeRetour.de(r, noms.get(r.getClientId()),
+                    numeros.get(r.getCommandeId()),
+                    total == null ? 0 : ((Number) total[1]).longValue(),
+                    total == null ? BigDecimal.ZERO : (BigDecimal) total[2]);
+        });
     }
 
     /** Ce que le client demande de retourner. */
