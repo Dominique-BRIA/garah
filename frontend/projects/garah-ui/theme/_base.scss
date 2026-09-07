@@ -397,3 +397,164 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.78rem;
   color: var(--danger);
 }
+
+// =============================================================================
+// La fiche : une carte qui presente UN objet
+// =============================================================================
+// A ne pas confondre avec `.gu-carte`, qui n est qu une surface. Une FICHE
+// presente une entite — un marchand, un compte, un membre — et suit toujours
+// la meme partition :
+//
+//     une barre d accent          dit « ceci est une fiche », et sa couleur
+//     un portrait cercle          l avatar, avec un anneau qui le detache
+//     un nom, un identifiant      qui c est
+//     une pastille de role        ce que c est
+//     des lignes d information    icone + libelle + VALEUR, sur une ligne
+//     un filet, des actions       quoi en faire
+//
+// 🎯 LA LIGNE D INFORMATION EST LE POINT QUI CHANGE TOUT.
+//
+//    La version precedente empilait le libelle AU-DESSUS de la valeur, en
+//    petites capitales. Sur trois informations, cela fait six lignes, toutes
+//    de meme poids : l oeil ne sait plus ou se poser, et la carte parait
+//    encombree alors qu elle ne dit presque rien.
+//
+//    Ici le libelle et la valeur partagent une ligne. Le libelle s efface
+//    (attenue, poids normal), la valeur porte (couleur du texte, gras) :
+//    on lit les VALEURS en descendant, et on ne lit les libelles que lorsqu on
+//    ne comprend pas une valeur. Trois informations tiennent alors en trois
+//    lignes au lieu de six.
+// =============================================================================
+.gu-fiche {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  // La barre d accent est un ::before : elle ne prend pas de place dans le
+  // flux, donc elle ne decale rien et ne peut pas etre oubliee au montage.
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+  }
+}
+
+.gu-fiche__tete {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+// L anneau detache le portrait du fond de la carte. `box-shadow` plutot qu un
+// `border` : la bordure rognerait l image de deux pixels sur tout le tour.
+.gu-fiche__portrait {
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
+  flex-shrink: 0;
+}
+
+.gu-fiche__identite {
+  // Sans lui, un nom long pousse tout le reste hors de la carte au lieu
+  // d etre tronque.
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.gu-fiche__nom {
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.gu-fiche__identifiant {
+  font-family: var(--police-mono);
+  font-size: 0.72rem;
+  color: var(--texte-attenue);
+}
+
+// --- Les lignes d information -----------------------------------------------
+.gu-fiche__infos {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.gu-fiche__info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  min-width: 0;
+
+  // L icone donne un point d ancrage a gauche : l oeil descend une colonne
+  // d icones au lieu de balayer du texte.
+  gu-icone {
+    color: var(--primary);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    // `baseline` alignerait l icone sur le texte de facon instable selon la
+    // police ; on la recale d un cheveu.
+    transform: translateY(1px);
+  }
+}
+
+.gu-fiche__libelle {
+  color: var(--texte-attenue);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.gu-fiche__valeur {
+  color: var(--texte);
+  font-weight: 700;
+  min-width: 0;
+  // Une adresse e-mail longue passe a la ligne au lieu d elargir la carte.
+  overflow-wrap: anywhere;
+}
+
+// --- Les actions -------------------------------------------------------------
+.gu-fiche__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  // `auto` colle le pied en bas : dans une grille, les fiches de hauteurs
+  // differentes alignent quand meme leurs boutons.
+  margin-top: auto;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--verre-bordure);
+}
+
+// =============================================================================
+// Cacher a l oeil SANS cacher au lecteur d ecran
+// =============================================================================
+// `display: none` et `visibility: hidden` retirent l element de l arbre
+// d accessibilite : le lecteur d ecran ne l annonce plus, et un bouton qui
+// n avait que ce texte pour nom devient « bouton », sans plus.
+//
+// Ce motif garde le texte lisible par la machine et invisible a l ecran. Il
+// sert aux boutons qui ne montrent qu une icone.
+// =============================================================================
+.gu-visuellement-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  // `rect(0 0 0 0)` suffirait, mais certains lecteurs sautent alors le texte.
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

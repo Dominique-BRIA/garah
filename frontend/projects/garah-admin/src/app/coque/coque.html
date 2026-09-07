@@ -49,7 +49,7 @@
       @if (session.utilisateur(); as u) {
         <a routerLink="/profil" routerLinkActive="compte--actif" class="compte"
            (click)="fermerLeMenu()">
-          <gu-avatar [nom]="u.nom" taille="2.25rem" />
+          <gu-avatar [nom]="u.nom" [url]="u.urlPhoto" taille="2.25rem" />
           <div class="compte__texte">
             <div class="compte__nom">{{ u.nom }}</div>
             <div class="compte__type">{{ role(u.type) }}</div>

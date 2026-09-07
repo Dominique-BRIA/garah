@@ -12,6 +12,17 @@ import {
   libelleRole,
 } from 'garah-ui';
 
+/**
+ * 2 Mo, la même limite que l'API.
+ *
+ * ⚠️ Recopiée, et c'est assumé : la vérifier côté navigateur évite d'envoyer
+ * huit méga-octets depuis une connexion mobile pour s'entendre refuser au
+ * bout d'une minute. Le contrôle qui FAIT AUTORITÉ reste celui du serveur —
+ * celui-ci n'est qu'une politesse. Si l'un des deux doit changer, changer les
+ * deux.
+ */
+const TAILLE_MAX_PHOTO = 2 * 1024 * 1024;
+
 /** Les langues du référentiel (D-08). Le code part à l'API, le libellé s'affiche. */
 const LANGUES = [
   { code: 'fr', libelle: 'Français' },
@@ -62,6 +73,81 @@ export class ProfilEcran {
   protected readonly enregistrement = signal(false);
   protected readonly erreurFormulaire = signal<string | null>(null);
   protected readonly succes = signal(false);
+
+  // --- La photo -------------------------------------------------------------
+  protected readonly envoiPhoto = signal(false);
+  protected readonly erreurPhoto = signal<string | null>(null);
+
+  /**
+   * Envoie la photo choisie.
+   *
+   * <p>⚠️ <b>Le champ est vidé après chaque envoi.</b> Sans cela, choisir le
+   * même fichier une seconde fois ne déclenche aucun événement — le navigateur
+   * considère que la valeur n'a pas changé. Quelqu'un qui recadre son image et
+   * la resélectionne croirait que le bouton ne marche plus.</p>
+   *
+   * <p>Le poids est vérifié <b>ici aussi</b>, alors que l'API le refuse déjà :
+   * envoyer 8 Mo depuis Douala pour s'entendre dire non au bout d'une minute
+   * est une mauvaise façon de l'apprendre.</p>
+   */
+  protected choisirPhoto(evenement: Event): void {
+    const champ = evenement.target as HTMLInputElement;
+    const fichier = champ.files?.[0];
+    champ.value = '';
+
+    if (!fichier) {
+      return;
+    }
+
+    this.erreurPhoto.set(null);
+
+    if (fichier.size > TAILLE_MAX_PHOTO) {
+      this.erreurPhoto.set('La photo ne doit pas dépasser 2 Mo.');
+      return;
+    }
+
+    const corps = new FormData();
+    corps.append('fichier', fichier);
+
+    this.envoiPhoto.set(true);
+    // ⚠️ Aucun en-tête Content-Type posé à la main : le navigateur doit
+    // écrire lui-même la frontière du multipart. En forcer un produirait un
+    // corps que le serveur ne sait pas découper, et un 400 incompréhensible.
+    this.http.post<Profil>('/api/profil/photo', corps).subscribe({
+      next: (p) => this.appliquer(p),
+      error: (e: unknown) => {
+        this.envoiPhoto.set(false);
+        this.erreurPhoto.set(this.lireErreur(e, "L'envoi de la photo a échoué."));
+      },
+    });
+  }
+
+  protected retirerPhoto(): void {
+    if (this.envoiPhoto()) {
+      return;
+    }
+    this.envoiPhoto.set(true);
+    this.erreurPhoto.set(null);
+
+    this.http.delete<Profil>('/api/profil/photo').subscribe({
+      next: (p) => this.appliquer(p),
+      error: (e: unknown) => {
+        this.envoiPhoto.set(false);
+        this.erreurPhoto.set(this.lireErreur(e, 'Le retrait de la photo a échoué.'));
+      },
+    });
+  }
+
+  private appliquer(p: Profil): void {
+    this.profil.set(p);
+    this.envoiPhoto.set(false);
+
+    // La barre latérale lit l'utilisateur de la session : sans cette ligne,
+    // elle garderait l'ancien avatar jusqu'au prochain rafraîchissement de
+    // jeton — quinze minutes pendant lesquelles la photo qu'on vient de
+    // déposer semble n'avoir pas été prise en compte.
+    this.session.actualiserUtilisateur({ urlPhoto: p.urlPhoto });
+  }
 
   // --- Le formulaire de mot de passe ----------------------------------------
   protected readonly actuel = signal('');

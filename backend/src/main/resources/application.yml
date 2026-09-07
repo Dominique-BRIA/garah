@@ -61,6 +61,34 @@ spring:
     baseline-on-migrate: false
     validate-on-migrate: true
 
+  # ===========================================================================
+  # Televersement de fichiers
+  # ===========================================================================
+  # /!\ SANS CES DEUX LIGNES, SPRING PLAFONNE A 1 Mo PAR FICHIER.
+  #
+  #     C est le defaut de Spring Boot, et il ne se voit nulle part : ni dans
+  #     le code, ni dans une trace au demarrage. Pendant ce temps
+  #     DepotFichiers verifiait consciencieusement une limite de 25 Mio que le
+  #     conteneur servlet n a JAMAIS laisse atteindre — le controle etait
+  #     mort, et personne ne pouvait le savoir en lisant le code.
+  #
+  #     Le symptome, cote utilisateur : deposer une photo de 1,2 Mo echoue,
+  #     deposer la meme recadree a 900 Ko reussit. On conclut que « ca marche
+  #     une fois sur deux ».
+  #
+  # max-file-size s aligne sur DepotFichiers.TAILLE_MAX. Les deux valeurs
+  # doivent bouger ENSEMBLE : la plus basse gagne toujours, et si c est
+  # celle-ci, l erreur rendue n est plus le message metier mais une exception
+  # du conteneur.
+  #
+  # max-request-size est plus haut que max-file-size : une requete multipart
+  # porte le fichier PLUS les autres champs et l enveloppe. Les regler a
+  # l identique ferait echouer un fichier a la taille exacte du plafond.
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 30MB
+
 server:
   port: ${PORT:8080}
 

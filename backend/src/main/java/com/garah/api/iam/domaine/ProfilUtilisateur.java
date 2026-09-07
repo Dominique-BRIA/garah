@@ -37,10 +37,22 @@ public record ProfilUtilisateur(
         String langue,
         String type,
         boolean emailVerifie,
+        /**
+         * L'adresse de la photo, <b>déjà signée</b>, ou {@code null}.
+         *
+         * <p>La base ne stocke qu'une clé d'objet (D-21) : le frontend ne peut
+         * pas fabriquer cette adresse lui-même, il faudrait signer, donc
+         * détenir la clé secrète. On la lui donne donc toute faite.</p>
+         *
+         * <p>{@code null} n'est pas un manque : {@code gu-avatar} engendre
+         * alors un avatar à partir du nom, qui ne coûte rien et suit le
+         * thème.</p>
+         */
+        String urlPhoto,
         Instant dateCreation,
         Instant dateDerniereConnexion) {
 
-    static ProfilUtilisateur de(Utilisateur utilisateur) {
+    static ProfilUtilisateur de(Utilisateur utilisateur, String urlPhoto) {
         return new ProfilUtilisateur(
                 utilisateur.getId(),
                 utilisateur.getNom(),
@@ -50,6 +62,7 @@ public record ProfilUtilisateur(
                 utilisateur.getLangue(),
                 utilisateur.getType().name(),
                 utilisateur.estEmailVerifie(),
+                urlPhoto,
                 utilisateur.getDateCreation(),
                 utilisateur.getDateDerniereConnexion());
     }

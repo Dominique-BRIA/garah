@@ -266,7 +266,11 @@ public class ServiceRafraichissement {
                 accesJetons.creer(utilisateur, droits),
                 accesJetons.dureeEnSecondes(),
                 utilisateur.getId(), utilisateur.getType(),
-                utilisateur.getNom(), utilisateur.getLangue(), droits);
+                utilisateur.getNom(), utilisateur.getLangue(),
+                // Relue à chaque rafraîchissement, comme les permissions : une
+                // photo changée sur un onglet apparaît sur les autres au
+                // renouvellement suivant, sans reconnexion.
+                utilisateur.getPhotoCle(), droits);
 
         return emettre(utilisateur, jeton.getFamille(), connexion, adresseIp);
     }

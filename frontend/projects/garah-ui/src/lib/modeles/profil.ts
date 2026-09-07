@@ -29,6 +29,17 @@ export interface Profil {
    * sans indication visible personne ne comprend pourquoi.
    */
   readonly emailVerifie: boolean;
+  /**
+   * L'adresse de la photo, DEJA SIGNEE, ou null.
+   *
+   * La base ne stocke qu'une cle d'objet (D-21) : le frontend ne peut pas
+   * fabriquer cette adresse, il faudrait signer. Elle EXPIRE au bout de sept
+   * jours — ne jamais la ranger ailleurs que dans l'affichage en cours.
+   *
+   * null n'est pas un manque : <gu-avatar> engendre alors un avatar a partir
+   * du nom.
+   */
+  readonly urlPhoto: string | null;
   readonly dateCreation: string;
   readonly dateDerniereConnexion: string | null;
 }

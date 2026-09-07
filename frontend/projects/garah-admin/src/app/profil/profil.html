@@ -20,22 +20,48 @@
 
   <div class="colonnes">
 
-    <!-- ============ L'identité, en lecture seule ============ -->
-    <section class="gu-carte identite">
-      <gu-avatar [nom]="p.nom" taille="5rem" />
+    <!-- ============ L'identité ============ -->
+    <section class="gu-carte gu-fiche">
+      <div class="gu-fiche__tete">
+        <!-- Le portrait et son bouton d'échange. Le <label> EST le bouton :
+             un <input type="file"> ne se déclenche pas depuis un <button>
+             sans JavaScript, alors qu'un label associé le fait nativement —
+             et reste accessible au clavier. -->
+        <div class="portrait">
+          <gu-avatar class="gu-fiche__portrait"
+                     [nom]="p.nom" [url]="p.urlPhoto" taille="4.5rem" />
 
-      <div class="identite__texte">
-        <h2 class="identite__nom">
-          {{ p.prenom ? p.prenom + ' ' + p.nom : p.nom }}
-        </h2>
-        <span class="gu-badge gu-badge--info">{{ role(p.type) }}</span>
+          <label class="portrait__echange"
+                 [class.portrait__echange--occupe]="envoiPhoto()">
+            @if (envoiPhoto()) {
+              <gu-icone nom="circle-notch" tourne />
+            } @else {
+              <gu-icone nom="upload" />
+            }
+            <span class="gu-visuellement-cache">Changer la photo de profil</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp"
+                   [disabled]="envoiPhoto()" (change)="choisirPhoto($event)" />
+          </label>
+        </div>
+
+        <div class="gu-fiche__identite">
+          <h2 class="gu-fiche__nom">
+            {{ p.prenom ? p.prenom + ' ' + p.nom : p.nom }}
+          </h2>
+          <span class="gu-fiche__identifiant">{{ p.email }}</span>
+          <span class="gu-badge gu-badge--info role-pastille">{{ role(p.type) }}</span>
+        </div>
       </div>
 
-      <dl class="faits">
-        <div class="fait">
-          <dt>Adresse e-mail</dt>
-          <dd>
-            {{ p.email }}
+      @if (erreurPhoto(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <dl class="gu-fiche__infos">
+        <div class="gu-fiche__info">
+          <gu-icone nom="check" />
+          <span class="gu-fiche__libelle">Adresse</span>
+          <span class="gu-fiche__valeur">
             @if (p.emailVerifie) {
               <span class="gu-badge gu-badge--succes petit-badge">Confirmée</span>
             } @else {
@@ -43,21 +69,41 @@
                    (D-23). Sans cette mention, personne ne comprend pourquoi. -->
               <span class="gu-badge gu-badge--neutre petit-badge">À confirmer</span>
             }
-          </dd>
+          </span>
         </div>
 
-        <div class="fait">
-          <dt>Compte créé le</dt>
-          <dd>{{ dateLisible(p.dateCreation) }}</dd>
+        @if (p.telephone) {
+          <div class="gu-fiche__info">
+            <gu-icone nom="comments" />
+            <span class="gu-fiche__libelle">Téléphone</span>
+            <span class="gu-fiche__valeur">{{ p.telephone }}</span>
+          </div>
+        }
+
+        <div class="gu-fiche__info">
+          <gu-icone nom="star" />
+          <span class="gu-fiche__libelle">Compte créé le</span>
+          <span class="gu-fiche__valeur">{{ dateLisible(p.dateCreation) }}</span>
         </div>
 
         @if (p.dateDerniereConnexion; as derniere) {
-          <div class="fait">
-            <dt>Dernière connexion</dt>
-            <dd>{{ dateHeureLisible(derniere) }}</dd>
+          <div class="gu-fiche__info">
+            <gu-icone nom="eye" />
+            <span class="gu-fiche__libelle">Dernière connexion</span>
+            <span class="gu-fiche__valeur">{{ dateHeureLisible(derniere) }}</span>
           </div>
         }
       </dl>
+
+      @if (p.urlPhoto) {
+        <div class="gu-fiche__actions">
+          <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                  [disabled]="envoiPhoto()" (click)="retirerPhoto()"
+                  aria-label="Retirer la photo de profil" title="Retirer la photo">
+            <gu-icone nom="trash" />
+          </button>
+        </div>
+      }
 
       <p class="aide">
         L'adresse e-mail sert à vous connecter et ne se modifie pas ici.

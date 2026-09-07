@@ -18,11 +18,23 @@ public record ReponseConnexion(
         Utilisateur utilisateur,
         Set<String> permissions) {
 
-    /** Le strict nécessaire pour afficher l'en-tête de l'application. */
-    public record Utilisateur(Long id, String nom, String type, String langue) {
+    /**
+     * Le strict nécessaire pour afficher l'en-tête de l'application.
+     *
+     * @param urlPhoto l'adresse de la photo, <b>déjà signée</b>, ou
+     *                 {@code null}. Sans elle, la barre latérale afficherait
+     *                 l'avatar engendré alors que la personne a déposé une
+     *                 photo — et aurait l'air de ne pas l'avoir enregistrée.
+     */
+    public record Utilisateur(Long id, String nom, String type, String langue,
+                              String urlPhoto) {
     }
 
-    public static ReponseConnexion de(ResultatConnexion resultat) {
+    /**
+     * @param urlPhoto signée par l'appelant : le domaine ne transporte qu'une
+     *                 clé d'objet, et seule la couche web sait la signer
+     */
+    public static ReponseConnexion de(ResultatConnexion resultat, String urlPhoto) {
         return new ReponseConnexion(
                 resultat.jeton(),
                 "Bearer",
@@ -31,7 +43,8 @@ public record ReponseConnexion(
                         resultat.utilisateurId(),
                         resultat.nom(),
                         resultat.type().name(),
-                        resultat.langue()),
+                        resultat.langue(),
+                        urlPhoto),
                 resultat.permissions());
     }
 }

@@ -1,5 +1,6 @@
 package com.garah.api.iam.web;
 
+import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.commun.web.AdresseClient;
 import com.garah.api.iam.domaine.ServiceAuthentification;
 import com.garah.api.iam.domaine.ServiceInscription;
@@ -45,16 +46,27 @@ public class ControleurAuthentification {
     private final CookieRafraichissement cookie;
     private final ServiceVerificationEmail verification;
 
+    /**
+     * Signe l'adresse de la photo de profil au moment de la réponse.
+     *
+     * <p>C'est la couche web qui signe, jamais le domaine : le domaine ne
+     * transporte qu'une clé d'objet (D-21), et une URL signée expire au bout
+     * de sept jours — elle n'a de sens qu'à l'instant où on l'envoie.</p>
+     */
+    private final StockageObjet stockage;
+
     public ControleurAuthentification(ServiceAuthentification authentification,
                                       ServiceInscription inscription,
                                       ServiceRafraichissement sessions,
                                       CookieRafraichissement cookie,
-                                      ServiceVerificationEmail verification) {
+                                      ServiceVerificationEmail verification,
+                                      StockageObjet stockage) {
         this.authentification = authentification;
         this.inscription = inscription;
         this.sessions = sessions;
         this.cookie = cookie;
         this.verification = verification;
+        this.stockage = stockage;
     }
 
     /**
@@ -170,7 +182,18 @@ public class ControleurAuthentification {
                 .header(CookieRafraichissement.enTete(),
                         cookie.poser(couple.jetonRafraichissement(),
                                 couple.dureeRafraichissementSecondes()))
-                .body(ReponseConnexion.de(couple.connexion()));
+                .body(ReponseConnexion.de(couple.connexion(),
+                        urlPhotoDe(couple.connexion().photoCle())));
+    }
+
+    /**
+     * Signe la clé, ou rend {@code null}.
+     *
+     * <p>{@code null} n'est pas un manque : le frontend engendre alors un
+     * avatar à partir du nom, qui ne coûte rien et suit le thème.</p>
+     */
+    private String urlPhotoDe(String cle) {
+        return cle == null || cle.isBlank() ? null : stockage.urlPublique(cle);
     }
 
     // -------------------------------------------------------------------------

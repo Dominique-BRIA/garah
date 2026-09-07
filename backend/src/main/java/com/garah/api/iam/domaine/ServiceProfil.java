@@ -1,7 +1,10 @@
 package com.garah.api.iam.domaine;
 
 import com.garah.api.commun.erreur.ErreurMetier;
+import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.commun.stockage.DepotFichiers;
+import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.iam.infra.UtilisateurRepository;
 import com.garah.api.surveillance.domaine.GraviteEvenement;
 import com.garah.api.surveillance.domaine.ServiceEvenementsSecurite;
@@ -13,6 +16,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.SequenceInputStream;
 import java.util.Objects;
 
 /**
@@ -34,19 +41,39 @@ public class ServiceProfil {
 
     private static final Logger log = LoggerFactory.getLogger(ServiceProfil.class);
 
+    /**
+     * 2 Mio pour une photo de profil.
+     *
+     * <p>Volontairement bien plus bas que pour un média de produit : une photo
+     * de profil s'affiche dans un rond de 2,5 rem. Accepter 20 Mio ferait
+     * payer à chaque visiteur, sur une connexion mobile camerounaise, le
+     * téléchargement d'une image dont 99 % des pixels sont jetés à
+     * l'affichage.</p>
+     */
+    private static final long TAILLE_MAX_PHOTO = 2L * 1024 * 1024;
+
+    /** De quoi reconnaître une image à sa signature binaire. */
+    private static final int OCTETS_SIGNATURE = 16;
+
     private final UtilisateurRepository utilisateurs;
     private final PasswordEncoder encodeur;
     private final ServiceRafraichissement sessions;
     private final ServiceEvenementsSecurite securite;
+    private final DepotFichiers fichiers;
+    private final StockageObjet stockage;
 
     public ServiceProfil(UtilisateurRepository utilisateurs,
                          PasswordEncoder encodeur,
                          ServiceRafraichissement sessions,
-                         ServiceEvenementsSecurite securite) {
+                         ServiceEvenementsSecurite securite,
+                         DepotFichiers fichiers,
+                         StockageObjet stockage) {
         this.utilisateurs = utilisateurs;
         this.encodeur = encodeur;
         this.sessions = sessions;
         this.securite = securite;
+        this.fichiers = fichiers;
+        this.stockage = stockage;
     }
 
     // -------------------------------------------------------------------------
@@ -93,7 +120,7 @@ public class ServiceProfil {
 
     @Transactional(readOnly = true)
     public ProfilUtilisateur lire(Long utilisateurId) {
-        return ProfilUtilisateur.de(charger(utilisateurId));
+        return vueDe(charger(utilisateurId));
     }
 
     // -------------------------------------------------------------------------
@@ -150,7 +177,7 @@ public class ServiceProfil {
                     "Numéro de téléphone modifié depuis le profil.");
         }
 
-        return ProfilUtilisateur.de(utilisateur);
+        return vueDe(utilisateur);
     }
 
     // -------------------------------------------------------------------------
@@ -222,5 +249,138 @@ public class ServiceProfil {
     private Utilisateur charger(Long utilisateurId) {
         return utilisateurs.findById(utilisateurId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Utilisateur", utilisateurId));
+    }
+
+    /**
+     * La vue, avec l'adresse de la photo <b>signée au moment de la lecture</b>.
+     *
+     * <p>Un seul endroit fabrique cette paire. La signature ne peut pas être
+     * mise en cache côté base : elle expire (D-21), et une adresse rangée en
+     * dur y serait morte au bout de sept jours.</p>
+     */
+    private ProfilUtilisateur vueDe(Utilisateur utilisateur) {
+        String cle = utilisateur.getPhotoCle();
+        return ProfilUtilisateur.de(utilisateur,
+                cle == null || cle.isBlank() ? null : stockage.urlPublique(cle));
+    }
+
+    // -------------------------------------------------------------------------
+    // La photo de profil
+    // -------------------------------------------------------------------------
+
+    /**
+     * Remplace sa photo de profil.
+     *
+     * <h2>⚠️ Le type déclaré par le navigateur n'est pas cru</h2>
+     *
+     * <p>{@code Content-Type} est fourni par l'appelant : renommer
+     * {@code virus.exe} en {@code photo.jpg} suffirait à le faire accepter. On
+     * lit donc les <b>premiers octets</b> du fichier et on en déduit le type
+     * réel ; s'il ne s'agit pas d'une image, on refuse.</p>
+     *
+     * <p>Les octets lus pour l'inspection sont remis en tête du flux. Sans
+     * cela, le fichier déposé serait amputé de ses seize premiers octets —
+     * donc corrompu, et silencieusement : le téléversement réussit, et c'est
+     * l'affichage qui casse.</p>
+     *
+     * <p><b>Sur la transaction.</b> Le dépôt sur le stockage d'objets est fait
+     * <b>hors</b> transaction : un appel réseau qui peut durer trente secondes
+     * ne doit jamais retenir une connexion du pool PostgreSQL, réduit à 5 sur
+     * Neon (D-14).</p>
+     */
+    public ProfilUtilisateur changerPhoto(Long utilisateurId, String typeDeclare,
+                                          long taille, InputStream contenu) {
+
+        if (taille > TAILLE_MAX_PHOTO) {
+            throw new RegleMetierViolee("PHOTO_TROP_LOURDE",
+                    "La photo ne doit pas dépasser 2 Mo.");
+        }
+
+        // Le compte doit exister AVANT le dépôt : sinon on paierait du stockage
+        // pour un fichier aussitôt orphelin.
+        Utilisateur utilisateur = charger(utilisateurId);
+        String ancienne = utilisateur.getPhotoCle();
+
+        byte[] debut;
+        InputStream flux;
+        try {
+            debut = DepotFichiers.premiersOctets(contenu, OCTETS_SIGNATURE);
+            flux = new SequenceInputStream(new ByteArrayInputStream(debut), contenu);
+        } catch (IOException e) {
+            throw new RegleMetierViolee("FICHIER_ILLISIBLE",
+                    "Le fichier n'a pas pu être lu.");
+        }
+
+        String typeReel = DepotFichiers.typeReel(debut);
+        if (typeReel == null || !typeReel.startsWith("image/")) {
+            log.warn("Photo de profil refusee pour l utilisateur {} : contenu non "
+                    + "reconnu comme image (type declare : {})", utilisateurId, typeDeclare);
+            throw new RegleMetierViolee("TYPE_FICHIER_REFUSE",
+                    "Ce fichier n'est pas une image reconnue. Formats admis : JPEG, PNG.");
+        }
+
+        // Appel réseau, HORS transaction.
+        String nouvelleCle = fichiers.deposer("utilisateurs/" + utilisateurId,
+                typeReel, taille, flux);
+
+        enregistrerLaCle(utilisateurId, nouvelleCle);
+
+        // L'ancienne n'est supprimée qu'APRÈS que la nouvelle soit enregistrée.
+        // Dans l'ordre inverse, un échec d'écriture laisserait un compte dont
+        // la photo a été détruite et non remplacée.
+        supprimerSansEchouer(ancienne);
+
+        return vueDe(charger(utilisateurId));
+    }
+
+    /** Revient à l'avatar engendré depuis le nom. */
+    public ProfilUtilisateur retirerPhoto(Long utilisateurId) {
+        Utilisateur utilisateur = charger(utilisateurId);
+        String ancienne = utilisateur.getPhotoCle();
+
+        enregistrerLaCle(utilisateurId, null);
+        supprimerSansEchouer(ancienne);
+
+        return vueDe(charger(utilisateurId));
+    }
+
+    /**
+     * Écrit la clé, et rien d'autre.
+     *
+     * <p>⚠️ <b>Volontairement SANS {@code @Transactional}</b>, alors que le
+     * réflexe serait d'en mettre un. L'annotation serait <b>inerte</b> :
+     * {@code changerPhoto} appelle cette méthode sur {@code this}, et une
+     * auto-invocation ne passe pas par le proxy Spring qui porte la
+     * transaction. On croirait avoir une transaction courte ; on n'aurait
+     * rien du tout, et rien ne le signalerait.</p>
+     *
+     * <p>Ce n'est pas un manque : {@code JpaRepository.save} est lui-même
+     * transactionnel. L'écriture est donc bien atomique — simplement, c'est le
+     * dépôt qui ouvre la transaction, pas cette méthode.</p>
+     */
+    private void enregistrerLaCle(Long utilisateurId, String cle) {
+        Utilisateur utilisateur = charger(utilisateurId);
+        utilisateur.setPhotoCle(cle);
+        utilisateurs.save(utilisateur);
+    }
+
+    /**
+     * ⚠️ Un fichier qu'on n'arrive pas à effacer ne doit pas faire échouer
+     * l'opération.
+     *
+     * <p>La photo est déjà remplacée en base : lever ici rendrait un 500 à
+     * quelqu'un dont le changement a parfaitement réussi. On laisse un objet
+     * orphelin sur le stockage — quelques kilo-octets — et on le note.</p>
+     */
+    private void supprimerSansEchouer(String cle) {
+        if (cle == null || cle.isBlank()) {
+            return;
+        }
+        try {
+            fichiers.supprimer(cle);
+        } catch (RuntimeException e) {
+            log.warn("Ancienne photo {} non supprimee du stockage : {}",
+                    cle, e.getClass().getSimpleName());
+        }
     }
 }

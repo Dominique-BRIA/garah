@@ -95,6 +95,21 @@ public class Utilisateur {
     @Column(nullable = false, length = 2)
     private String langue = "fr";
 
+    /**
+     * La clé d'objet de la photo de profil. {@code null} = pas de photo.
+     *
+     * <p>⚠️ Une <b>clé</b>, jamais une URL. Le bucket est privé et les URL
+     * signées expirent au bout de sept jours (D-21) : en stocker une ici
+     * donnerait une base pleine d'adresses mortes au bout d'une semaine, et
+     * changer d'hébergeur de fichiers obligerait à réécrire la table.</p>
+     *
+     * <p>La colonne existait depuis V23 mais n'était mappée par aucun champ :
+     * la photo pouvait être déposée sur le stockage, rien ne la reliait au
+     * compte.</p>
+     */
+    @Column(name = "photo_cle", length = 500)
+    private String photoCle;
+
     @Column(name = "date_creation", nullable = false, updatable = false)
     private Instant dateCreation = Instant.now();
 
@@ -166,6 +181,9 @@ public class Utilisateur {
         }
         this.nom = nom.strip();
     }
+
+    public String getPhotoCle() { return photoCle; }
+    public void setPhotoCle(String photoCle) { this.photoCle = photoCle; }
 
     public void setPrenom(String prenom) { this.prenom = prenom; }
     public void setTelephone(String telephone) { this.telephone = telephone; }

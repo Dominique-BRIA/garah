@@ -127,6 +127,7 @@ public class ServiceAuthentification {
                 utilisateur.getType(),
                 utilisateur.getNom(),
                 utilisateur.getLangue(),
+                utilisateur.getPhotoCle(),
                 droits);
     }
 

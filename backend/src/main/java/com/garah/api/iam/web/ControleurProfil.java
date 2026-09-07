@@ -1,5 +1,6 @@
 package com.garah.api.iam.web;
 
+import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.web.AdresseClient;
 import com.garah.api.iam.domaine.ProfilUtilisateur;
 import com.garah.api.iam.domaine.ServiceProfil;
@@ -9,6 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 /**
  * Son propre compte.
@@ -99,6 +103,39 @@ public class ControleurProfil {
 
         profils.changerMotDePasse(idDe(jeton), demande.actuel(), demande.nouveau(),
                 AdresseClient.de(requete));
+    }
+
+    // -------------------------------------------------------------------------
+    // La photo de profil
+    // -------------------------------------------------------------------------
+
+    /**
+     * Remplace sa photo.
+     *
+     * <p>{@code multipart/form-data} : le corps porte un fichier binaire, pas
+     * du JSON. Encoder l'image en base64 dans un JSON coûterait un tiers de
+     * poids en plus, sur des connexions qui ne l'ont pas.</p>
+     *
+     * <p>Le type déclaré par le navigateur est transmis au service, qui ne le
+     * <b>croit pas</b> : il lit les premiers octets du fichier pour établir le
+     * type réel. Renommer un exécutable en {@code .jpg} ne suffit pas.</p>
+     */
+    @PostMapping(value = "/photo", consumes = "multipart/form-data")
+    public ProfilUtilisateur changerPhoto(@RequestParam("fichier") MultipartFile fichier,
+                                          @AuthenticationPrincipal Jwt jeton) throws IOException {
+
+        if (fichier.isEmpty()) {
+            throw new RegleMetierViolee("FICHIER_VIDE", "Aucun fichier n'a été envoyé.");
+        }
+
+        return profils.changerPhoto(idDe(jeton), fichier.getContentType(),
+                fichier.getSize(), fichier.getInputStream());
+    }
+
+    /** Revient à l'avatar engendré depuis le nom. */
+    @DeleteMapping("/photo")
+    public ProfilUtilisateur retirerPhoto(@AuthenticationPrincipal Jwt jeton) {
+        return profils.retirerPhoto(idDe(jeton));
     }
 
     /**

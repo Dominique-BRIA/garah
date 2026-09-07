@@ -19,6 +19,18 @@ export interface UtilisateurConnecte {
   readonly nom: string;
   readonly type: TypeUtilisateur;
   readonly langue: string;
+  /**
+   * L'adresse de la photo, DEJA SIGNEE, ou null.
+   *
+   * Elle ne vient PAS du jeton : un JWT voyage a chaque requete et vit quinze
+   * minutes, y mettre une adresse valable sept jours la ferait circuler bien
+   * au-dela du necessaire. Elle arrive dans le CORPS de la reponse de
+   * connexion, et est relue a chaque rafraichissement.
+   *
+   * null n'est pas un manque : <gu-avatar> engendre alors un avatar a partir
+   * du nom.
+   */
+  readonly urlPhoto: string | null;
 }
 
 export type TypeUtilisateur = 'SUPER_ADMIN' | 'ADMIN' | 'RESPONSABLE' | 'CLIENT';

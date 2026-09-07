@@ -26,67 +26,69 @@
   margin: 0 0 1.25rem;
 }
 
-// --- L'identité --------------------------------------------------------------
-.identite {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.9rem;
+// --- Le portrait et son bouton d'échange -------------------------------------
+//
+// La carte elle-même vient de `.gu-fiche` (garah-ui) : barre d'accent,
+// portrait cerclé, lignes « icône + libellé + valeur ». Ne reste ici que ce
+// qui est propre à CET écran — pouvoir changer sa photo.
+.portrait {
+  position: relative;
+  flex-shrink: 0;
 }
 
-.identite__texte {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+// Le bouton posé en bas à droite du portrait, comme sur une messagerie.
+//
+// ⚠️ C'est un <label>, pas un <button>. Un <input type="file"> ne s'ouvre pas
+//    depuis un bouton sans JavaScript ; un label qui l'enveloppe le fait
+//    nativement, et reste actionnable au clavier.
+.portrait__echange {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 1.85rem;
+  height: 1.85rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  cursor: pointer;
+  // Détache la pastille du portrait, quelle que soit la photo dessous.
+  border: 2px solid var(--surface);
+  transition: background 0.2s ease, transform 0.2s ease;
+
+  &:hover { background: var(--primary-dark); }
+
+  // Le label ne reçoit pas le focus : c'est l'input caché qui le porte.
+  // On remonte donc l'anneau de focus jusqu'ici, sans quoi la navigation au
+  // clavier passe sur un contrôle rigoureusement invisible.
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
 }
 
-.identite__nom {
-  font-size: 1.2rem;
-  font-weight: 700;
-  margin: 0;
-  // Sans cela, un nom composé long élargit la carte au lieu de passer à la
-  // ligne, et toute la grille se décale.
-  overflow-wrap: anywhere;
+.portrait__echange--occupe {
+  cursor: progress;
+  opacity: 0.75;
 }
 
-// Les faits : libellé au-dessus, valeur en dessous. Une <dl> plutôt que des
-// <div> : ce SONT des couples terme/définition, et le lecteur d'écran les
-// annonce alors comme tels.
-.faits {
+// L'input reste dans le DOM et gardable au clavier : `display: none` le
+// retirerait de l'ordre de tabulation, et la photo deviendrait impossible à
+// changer sans souris.
+.portrait__echange input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
   width: 100%;
-  margin: 0.5rem 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  text-align: left;
+  height: 100%;
+  cursor: inherit;
 }
 
-.fait {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.fait dt {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--texte-attenue);
-}
-
-.fait dd {
-  margin: 0;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  // Une adresse e-mail longue ne doit pas forcer un défilement horizontal.
-  overflow-wrap: anywhere;
+.role-pastille {
+  align-self: flex-start;
+  margin-top: 0.35rem;
 }
 
 .petit-badge {

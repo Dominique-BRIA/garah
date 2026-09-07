@@ -101,12 +101,13 @@
        là où le tableau demande de suivre une ligne sur toute la largeur. -->
   <div class="grille-cartes">
     @for (m of liste(); track m.id) {
-      <article class="carte gu-carte">
-        <header class="carte__tete">
-          <gu-avatar [nom]="m.nom" [url]="m.urlLogo" taille="2.75rem" />
-          <div class="carte__identite">
-            <h2 class="carte__nom">{{ m.nom }}</h2>
-            <code class="carte__code">{{ m.code }}</code>
+      <article class="gu-carte gu-fiche">
+        <header class="gu-fiche__tete">
+          <gu-avatar class="gu-fiche__portrait"
+                     [nom]="m.nom" [url]="m.urlLogo" taille="2.9rem" />
+          <div class="gu-fiche__identite">
+            <h2 class="gu-fiche__nom">{{ m.nom }}</h2>
+            <span class="gu-fiche__identifiant">{{ m.code }}</span>
           </div>
           <span class="gu-badge"
                 [class]="m.statut === 'ACTIF' ? 'gu-badge--succes' : 'gu-badge--neutre'">
@@ -114,26 +115,52 @@
           </span>
         </header>
 
-        <dl class="carte__faits">
-          <div class="carte__fait">
-            <dt>Pays</dt>
-            <dd>{{ libelle(m.pays) }}</dd>
+        <!-- Libellé et valeur sur UNE ligne, l'icône en ancrage à gauche.
+             Empilés, trois informations occupaient six lignes de même poids et
+             la carte paraissait encombrée sans rien dire de plus. -->
+        <dl class="gu-fiche__infos">
+          <div class="gu-fiche__info">
+            <gu-icone nom="earth-africa" />
+            <span class="gu-fiche__libelle">Pays</span>
+            <span class="gu-fiche__valeur">{{ libelle(m.pays) }}</span>
           </div>
-          <div class="carte__fait">
-            <dt>Type</dt>
-            <dd>{{ m.type === 'INTERNE' ? 'GARAH' : 'Partenaire' }}</dd>
+
+          <div class="gu-fiche__info">
+            <gu-icone nom="store" />
+            <span class="gu-fiche__libelle">Type</span>
+            <span class="gu-fiche__valeur">
+              {{ m.type === 'INTERNE' ? 'GARAH' : 'Partenaire' }}
+            </span>
           </div>
-          <div class="carte__fait">
-            <dt>Contact</dt>
-            <dd>
-              @if (m.telephone) { <span>{{ m.telephone }}</span> }
-              @if (m.email) { <span class="attenue">{{ m.email }}</span> }
-              @if (!m.telephone && !m.email) { <span class="attenue">—</span> }
-            </dd>
-          </div>
+
+          @if (m.telephone) {
+            <div class="gu-fiche__info">
+              <gu-icone nom="phone" />
+              <span class="gu-fiche__libelle">Téléphone</span>
+              <span class="gu-fiche__valeur">{{ m.telephone }}</span>
+            </div>
+          }
+
+          @if (m.email) {
+            <div class="gu-fiche__info">
+              <gu-icone nom="envelope" />
+              <span class="gu-fiche__libelle">E-mail</span>
+              <span class="gu-fiche__valeur">{{ m.email }}</span>
+            </div>
+          }
+
+          <!-- Aucun des deux : on le DIT. Une carte qui saute la ligne
+               « contact » laisse croire qu'on a oublié de l'afficher. -->
+          @if (!m.telephone && !m.email) {
+            <div class="gu-fiche__info">
+              <gu-icone nom="phone" />
+              <span class="gu-fiche__libelle">Contact</span>
+              <span class="gu-fiche__valeur attenue">Aucun</span>
+            </div>
+          }
         </dl>
 
-        <footer class="carte__actions">
+        <footer class="gu-fiche__actions">
           <ng-container *ngTemplateOutlet="actions; context: { $implicit: m }" />
         </footer>
       </article>

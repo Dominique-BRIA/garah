@@ -60,11 +60,7 @@ class ServiceRafraichissementTest {
         var utilisateur = utilisateurs.findById(utilisateurId).orElseThrow();
         var connexion = new com.garah.api.iam.domaine.ResultatConnexion(
                 "jeton-factice", 900L, utilisateur.getId(), utilisateur.getType(),
-                utilisateur.getNom(), utilisateur.getLangue(),
-                // Aucune photo : ce test porte sur la rotation des jetons, pas
-                // sur le profil. Le champ existe depuis que la connexion
-                // renvoie la cle de l'avatar.
-                null, java.util.Set.<String>of());
+                utilisateur.getNom(), utilisateur.getLangue(), java.util.Set.<String>of());
 
         return sessions.ouvrirSession(connexion, IP).jetonRafraichissement();
     }

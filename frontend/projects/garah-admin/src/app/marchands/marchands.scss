@@ -19,79 +19,15 @@
   gap: 1rem;
 }
 
-.carte {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem;
-}
-
-.carte__tete {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-}
-
-.carte__identite {
-  // Sans lui, un nom long pousse le badge de statut hors de la carte au lieu
-  // d'etre tronque.
-  min-width: 0;
-  flex: 1;
-}
-
-.carte__nom {
-  font-size: 0.98rem;
-  font-weight: 700;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.carte__code {
-  font-family: var(--police-mono);
-  font-size: 0.7rem;
-  color: var(--texte-attenue);
-}
-
-.carte__faits {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.carte__fait {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-
-  dt {
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--texte-attenue);
-  }
-
-  dd {
-    margin: 0;
-    font-size: 0.85rem;
-    display: flex;
-    flex-direction: column;
-    // Une adresse e-mail longue ne doit pas elargir la carte.
-    overflow-wrap: anywhere;
-  }
-}
-
-// Les actions en bas, alignees a droite : la meme place que la colonne
-// « Actions » du tableau, pour que l'oeil ne les cherche pas en basculant.
-.carte__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.45rem;
-  margin-top: auto;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--verre-bordure);
-}
+// La carte elle-meme vient de `.gu-fiche` (garah-ui) : barre d accent,
+// portrait cercle, lignes « icone + libelle + valeur », pied d actions.
+//
+// Les classes `.carte__*` qui vivaient ici ont ete retirees. Elles empilaient
+// le libelle AU-DESSUS de la valeur en petites capitales : sur trois
+// informations cela faisait six lignes de meme poids, et la carte paraissait
+// encombree sans rien dire de plus. Le motif partage met les deux sur une
+// ligne — on lit les VALEURS en descendant, les libelles seulement en cas de
+// doute.
+//
+// ⚠️ Ne pas les recreer ici. Une quatrieme variante de carte, c est une
+//    quatrieme chose a maintenir et a faire diverger.
