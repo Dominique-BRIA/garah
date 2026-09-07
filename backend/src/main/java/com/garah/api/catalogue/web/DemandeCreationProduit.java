@@ -2,25 +2,26 @@ package com.garah.api.catalogue.web;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** Ce qu'un responsable envoie pour créer une fiche produit. */
+/**
+ * Ce qu'un responsable envoie pour creer une fiche produit.
+ *
+ * <p>Aucune reference : elle est ENGENDREE par le serveur a partir du code du
+ * marchand, de la categorie et du nom (202020-CHA-ADIDAS). La laisser saisir
+ * produisait « AD20 », « 202020 », « test2 » — des codes qui ne disaient rien
+ * trois mois plus tard, et que deux marchands finissaient par choisir en
+ * meme temps.</p>
+ */
 public record DemandeCreationProduit(
 
         @NotNull(message = "Le marchand est obligatoire.")
         Long marchandId,
 
-        @NotNull(message = "La catégorie est obligatoire.")
+        @NotNull(message = "La categorie est obligatoire.")
         Long categorieId,
 
-        @NotBlank(message = "La référence est obligatoire.")
-        @Size(max = 50, message = "La référence ne peut pas dépasser 50 caractères.")
-        @Pattern(regexp = "^[A-Za-z0-9._-]+$",
-                 message = "La référence ne peut contenir que des lettres, chiffres, points, tirets et underscores.")
-        String reference,
-
         @NotBlank(message = "Le nom est obligatoire.")
-        @Size(max = 200, message = "Le nom ne peut pas dépasser 200 caractères.")
+        @Size(max = 200, message = "Le nom ne peut pas depasser 200 caracteres.")
         String nom) {
 }

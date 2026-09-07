@@ -6,8 +6,8 @@
   <div>
     <h1>Nouveau produit</h1>
     <p class="sous-titre">
-      Il sera créé en brouillon. Vous ajouterez ensuite ses déclinaisons,
-      ses prix et ses photos.
+      Il sera créé en brouillon, avec sa référence. Vous ajouterez ensuite ses
+      déclinaisons, ses prix et ses photos.
     </p>
   </div>
 </header>
@@ -51,12 +51,6 @@
              placeholder="Chemise Oxford"
              [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
 
-      <label class="gu-libelle" for="ref">Référence</label>
-      <input id="ref" name="reference" class="gu-champ" required maxlength="50"
-             placeholder="CHEM-OXF-01"
-             [ngModel]="reference()" (ngModelChange)="reference.set($event)" />
-      <p class="aide">Votre propre référence interne. Lettres, chiffres, points et tirets.</p>
-
       <label class="gu-libelle" for="marchand">Marchand</label>
       <select id="marchand" name="marchand" class="gu-champ"
               [ngModel]="marchandId()" (ngModelChange)="marchandId.set($event)">
@@ -82,7 +76,7 @@
       <div class="boutons">
         <a routerLink="/produits" class="gu-btn gu-btn--secondaire">Annuler</a>
         <button type="submit" class="gu-btn gu-btn--primaire"
-                [disabled]="enregistrement() || !nom() || !reference()
+                [disabled]="enregistrement() || !nom()
                             || marchandId() === null || categorieId() === null">
           @if (enregistrement()) {
             <gu-icone nom="circle-notch" tourne /> Création…

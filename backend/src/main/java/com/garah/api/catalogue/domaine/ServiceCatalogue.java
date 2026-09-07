@@ -5,6 +5,7 @@ import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.commun.stockage.StockageObjet;
+import com.garah.api.marchand.domaine.ServiceMarchand;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -52,27 +53,60 @@ public class ServiceCatalogue {
      */
     private final StockageObjet urlsMedias;
 
+    /**
+     * Le marchand, en lecture seule, pour engendrer la référence d'un produit.
+     *
+     * <p>Le catalogue dépend du marchand, jamais l'inverse : le test ArchUnit
+     * « aucun cycle entre les domaines » le vérifie au build.</p>
+     */
+    private final ServiceMarchand marchands;
+
     public ServiceCatalogue(ProduitRepository produits,
                             VarianteRepository variantes,
                             CategorieProduitRepository categories,
                             MediaRepository medias,
                             TarificationRepository tarifications,
-                            StockageObjet urlsMedias) {
+                            StockageObjet urlsMedias,
+                            ServiceMarchand marchands) {
         this.produits = produits;
         this.variantes = variantes;
         this.categories = categories;
         this.medias = medias;
         this.tarifications = tarifications;
         this.urlsMedias = urlsMedias;
+        this.marchands = marchands;
     }
 
     /**
-     * Crée un produit AVEC sa variante par défaut.
+     * Crée un produit, sa référence étant <b>engendrée</b>.
      *
-     * <p>C'est le point clé de D-01 : on ne crée <b>jamais</b> un produit sans
-     * variante. Même un sac de ciment en a une. Sinon tout le code aval devrait
-     * tester {@code if (produit.aDesVariantes())}, et ce test finirait par être
-     * oublié quelque part — au panier, à la commande ou au colis.</p>
+     * <p>C'est le chemin qu'emprunte le back-office. La référence se déduit du
+     * marchand, de la catégorie et du nom : {@code 202020-CHA-ADIDAS}. Saisie à
+     * la main, elle devenait ce que la personne avait sous les yeux ce jour-là
+     * — « AD20 », « test2 » — et ne disait plus rien trois mois plus tard.</p>
+     */
+    @Transactional
+    public DetailProduit creerProduit(Long marchandId, Long categorieId,
+                                      String nom, Long creePar) {
+        CategorieProduit categorie = categories.findById(categorieId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Catégorie", categorieId));
+
+        // Le détail du marchand sert deux fois : il fournit le code, et il
+        // échoue tout de suite si le marchand n'existe pas — plutôt que de
+        // laisser la clé étrangère refuser l'insertion après coup.
+        String code = marchands.detail(marchandId).code();
+
+        String reference = referenceLibre(
+                ReferenceProduit.de(code, categorie.getNom(), nom));
+
+        return creer(marchandId, categorie, reference, nom, creePar);
+    }
+
+    /**
+     * Crée un produit avec une référence <b>imposée</b>.
+     *
+     * <p>Réservé aux imports et aux tests, qui ont besoin d'une référence
+     * connue d'avance. Le back-office passe par la variante qui l'engendre.</p>
      */
     @Transactional
     public DetailProduit creerProduit(Long marchandId, Long categorieId, String reference,
@@ -85,7 +119,27 @@ public class ServiceCatalogue {
         CategorieProduit categorie = categories.findById(categorieId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Catégorie", categorieId));
 
+        return creer(marchandId, categorie, reference, nom, creePar);
+    }
+
+    /**
+     * Le tronc commun : le produit ET sa variante par défaut.
+     *
+     * <p>C'est le point clé de D-01 : on ne crée <b>jamais</b> un produit sans
+     * variante. Même un sac de ciment en a une. Sinon tout le code aval devrait
+     * tester {@code if (produit.aDesVariantes())}, et ce test finirait par être
+     * oublié quelque part — au panier, à la commande ou au colis.</p>
+     */
+    private DetailProduit creer(Long marchandId, CategorieProduit categorie, String reference,
+                                String nom, Long creePar) {
         Produit produit = new Produit(marchandId, categorie, reference, nom, creePar);
+
+        // ⚠️ Le slug est calculé depuis le NOM, et deux produits peuvent porter
+        // le même nom. Sans ce garde-fou, le second heurtait la contrainte
+        // d'unicité et l'utilisateur recevait « conflit avec des données
+        // existantes » — un message qui ne dit ni quoi ni comment le corriger.
+        produit.definirSlug(slugLibre(produit.getSlug()));
+
         produits.save(produit);
 
         // La variante par défaut. Son SKU dérive de la référence : tant qu'il
@@ -93,6 +147,48 @@ public class ServiceCatalogue {
         produit.ajouterVariante(reference, nom, true);
 
         return DetailProduit.de(produit, urlsMedias::urlPublique);
+    }
+
+    /**
+     * La première référence libre à partir de cette base.
+     *
+     * <p>Deux « Adidas » du même marchand dans la même catégorie donnent la
+     * même base : le second devient {@code …-ADIDAS-2}. On vérifie aussi les
+     * SKU, car la référence sert de SKU à la variante par défaut — une
+     * référence libre côté produit mais prise côté déclinaison échouerait à
+     * l'insertion.</p>
+     */
+    private String referenceLibre(String base) {
+        if (estLibre(base)) {
+            return base;
+        }
+        for (int rang = 2; rang <= 999; rang++) {
+            String candidat = base + "-" + rang;
+            if (estLibre(candidat)) {
+                return candidat;
+            }
+        }
+        throw new RegleMetierViolee("REFERENCE_INTROUVABLE",
+                "Trop de produits portent déjà ce nom chez ce marchand. "
+                + "Précisez le nom du produit.");
+    }
+
+    private boolean estLibre(String reference) {
+        return !produits.existsByReference(reference) && !variantes.existsBySku(reference);
+    }
+
+    private String slugLibre(String base) {
+        if (!produits.existsBySlug(base)) {
+            return base;
+        }
+        for (int rang = 2; rang <= 999; rang++) {
+            String candidat = base + "-" + rang;
+            if (!produits.existsBySlug(candidat)) {
+                return candidat;
+            }
+        }
+        throw new RegleMetierViolee("ADRESSE_INTROUVABLE",
+                "Trop de produits portent déjà ce nom. Précisez-le.");
     }
 
     @Transactional

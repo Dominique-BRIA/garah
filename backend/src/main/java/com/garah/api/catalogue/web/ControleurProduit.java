@@ -64,8 +64,7 @@ public class ControleurProduit {
     public DetailProduit creer(@Valid @RequestBody DemandeCreationProduit demande,
                                @AuthenticationPrincipal Jwt jeton) {
         return catalogue.creerProduit(
-                demande.marchandId(), demande.categorieId(),
-                demande.reference(), demande.nom(),
+                demande.marchandId(), demande.categorieId(), demande.nom(),
                 Long.valueOf(jeton.getSubject()));
     }
 

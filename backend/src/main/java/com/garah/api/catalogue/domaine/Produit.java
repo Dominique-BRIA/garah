@@ -98,6 +98,20 @@ public class Produit {
         this.creePar = creePar;
     }
 
+    /**
+     * Fixe le slug, une seule fois, à la création.
+     *
+     * <p>Visible du seul paquet {@code domaine} : c'est {@link ServiceCatalogue}
+     * qui l'appelle quand le slug calculé depuis le nom est déjà pris — deux
+     * produits peuvent porter le même nom, leur adresse publique non.</p>
+     *
+     * <p>⚠️ N'en faites pas un moyen de renommer une adresse. Le slug est figé
+     * après la création : le changer casserait tous les liens déjà partagés.</p>
+     */
+    void definirSlug(String slug) {
+        this.slug = slug;
+    }
+
     @PreUpdate
     void avantMiseAJour() {
         this.dateModification = Instant.now();

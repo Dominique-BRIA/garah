@@ -29,7 +29,6 @@ export class NouveauProduit {
   protected readonly erreur = signal<string | null>(null);
   protected readonly enregistrement = signal(false);
 
-  protected readonly reference = signal('');
   protected readonly nom = signal('');
   protected readonly marchandId = signal<number | null>(null);
   protected readonly categorieId = signal<number | null>(null);
@@ -107,7 +106,9 @@ export class NouveauProduit {
 
     this.http
       .post<DetailProduit>('/api/produits', {
-        reference: this.reference().trim(),
+        // Aucune référence : elle est ENGENDRÉE par le serveur à partir du
+        // code du marchand, de la catégorie et du nom. Elle s'affiche sur la
+        // fiche, juste après.
         nom: this.nom().trim(),
         marchandId: this.marchandId(),
         categorieId: this.categorieId(),
