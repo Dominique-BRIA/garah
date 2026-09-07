@@ -496,6 +496,21 @@
                     </form>
                   }
                 </div>
+              } @else {
+                <!-- ⚠️ Sans cette branche, le bloc DISPARAISSAIT en silence
+                     quand le stock n'était pas lisible — et on croyait la
+                     fonctionnalité absente. Une absence doit se dire. -->
+                <div class="stock stock--absent">
+                  <div class="stock__entete">
+                    <span class="stock__titre">Stock</span>
+                    <button type="button" class="lien-action" (click)="chargerStock()">
+                      <gu-icone nom="arrows-rotate" /> Réessayer
+                    </button>
+                  </div>
+                  <p class="stock__alerte">
+                    Le stock de cette déclinaison n’a pas pu être lu.
+                  </p>
+                </div>
               }
             }
           </article>

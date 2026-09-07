@@ -411,3 +411,11 @@
   font-size: 0.78rem;
   color: var(--warning);
 }
+
+// Le stock illisible : on le DIT plutôt que de masquer le bloc. Une absence
+// silencieuse fait croire que la fonctionnalité n'existe pas — c'est
+// exactement ce qui s'est produit.
+.stock--absent {
+  border: 1px dashed var(--verre-bordure);
+  background: transparent;
+}
