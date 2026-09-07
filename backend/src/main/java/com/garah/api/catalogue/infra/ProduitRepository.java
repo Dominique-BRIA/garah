@@ -42,20 +42,80 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
      * la relation est {@code LAZY}, et chaque nom de catégorie affiché
      * déclencherait sinon son propre aller-retour.</p>
      */
+    /**
+     * @param disponibilite {@code TOUS}, {@code EN_STOCK}, {@code FAIBLE} ou
+     *                      {@code RUPTURE}
+     *
+     * <h2>⚠️ Le filtre de stock s'applique EN SQL, jamais après coup</h2>
+     *
+     * <p>Trier la page une fois reçue donnerait « 3 produits sur 24 » sur une
+     * page, « 7 sur 24 » sur la suivante, et un total qui ne correspondrait à
+     * rien. Un filtre qui ne participe pas à la pagination n'est pas un
+     * filtre.</p>
+     *
+     * <h2>Pourquoi {@code Stock} apparaît dans une requête du catalogue</h2>
+     *
+     * <p>Le stock dépend déjà du catalogue pour désigner ce qu'il compte :
+     * lui emprunter un dépôt formerait un <b>cycle</b> entre domaines, et
+     * {@code ArchitectureTest} refuserait le build. La requête, elle, ne crée
+     * aucune dépendance de paquetage — c'est le même arbitrage que
+     * {@code VarianteRepository.aDejaServi}, et il tient à un seul endroit.</p>
+     *
+     * <p>🎯 <b>La somme est portée par le PRODUIT, pas par la variante.</b>
+     * Un produit dont une déclinaison est épuisée et une autre disponible
+     * reste vendable : le filtrer comme « en rupture » cacherait de la
+     * marchandise qui part le jour même.</p>
+     *
+     * <p>{@code LEFT JOIN} implicite : une variante sans ligne de stock compte
+     * pour zéro. Sans le {@code COALESCE}, la somme vaudrait {@code null} et
+     * la comparaison serait fausse — le produit disparaîtrait de TOUS les
+     * filtres, y compris « en rupture », alors qu'il en est le cas le plus
+     * pur.</p>
+     */
     @Query(value = """
             SELECT p FROM Produit p
               JOIN FETCH p.categorie
              WHERE (:recherche IS NULL
                     OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
                     OR LOWER(p.reference) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+               AND (:disponibilite = 'TOUS'
+                    OR (:disponibilite = 'RUPTURE'  AND (SELECT COALESCE(SUM(s.quantiteDisponible), 0)
+                                                           FROM Stock s
+                                                          WHERE s.varianteId IN (SELECT v.id FROM Variante v
+                                                                                  WHERE v.produit.id = p.id)) = 0)
+                    OR (:disponibilite = 'EN_STOCK' AND (SELECT COALESCE(SUM(s.quantiteDisponible), 0)
+                                                           FROM Stock s
+                                                          WHERE s.varianteId IN (SELECT v.id FROM Variante v
+                                                                                  WHERE v.produit.id = p.id)) > 0)
+                    OR (:disponibilite = 'FAIBLE'   AND EXISTS (SELECT 1 FROM Stock s
+                                                                 WHERE s.varianteId IN (SELECT v.id FROM Variante v
+                                                                                         WHERE v.produit.id = p.id)
+                                                                   AND s.quantiteDisponible > 0
+                                                                   AND s.quantiteDisponible <= s.seuilAlerte)))
             """,
             countQuery = """
             SELECT count(p) FROM Produit p
              WHERE (:recherche IS NULL
                     OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
                     OR LOWER(p.reference) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+               AND (:disponibilite = 'TOUS'
+                    OR (:disponibilite = 'RUPTURE'  AND (SELECT COALESCE(SUM(s.quantiteDisponible), 0)
+                                                           FROM Stock s
+                                                          WHERE s.varianteId IN (SELECT v.id FROM Variante v
+                                                                                  WHERE v.produit.id = p.id)) = 0)
+                    OR (:disponibilite = 'EN_STOCK' AND (SELECT COALESCE(SUM(s.quantiteDisponible), 0)
+                                                           FROM Stock s
+                                                          WHERE s.varianteId IN (SELECT v.id FROM Variante v
+                                                                                  WHERE v.produit.id = p.id)) > 0)
+                    OR (:disponibilite = 'FAIBLE'   AND EXISTS (SELECT 1 FROM Stock s
+                                                                 WHERE s.varianteId IN (SELECT v.id FROM Variante v
+                                                                                         WHERE v.produit.id = p.id)
+                                                                   AND s.quantiteDisponible > 0
+                                                                   AND s.quantiteDisponible <= s.seuilAlerte)))
             """)
-    Page<Produit> administration(@Param("recherche") String recherche, Pageable pagination);
+    Page<Produit> administration(@Param("recherche") String recherche,
+                                 @Param("disponibilite") String disponibilite,
+                                 Pageable pagination);
 
     /**
      * Charge un produit avec ses variantes.

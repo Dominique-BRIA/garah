@@ -216,10 +216,18 @@ public class ControleurProduit {
     @PreAuthorize("hasAuthority('PRODUIT_CONSULTER')")
     public Page<ResumeProduit> listeAdministration(
             @RequestParam(required = false) String recherche,
+            /*
+             * TOUS, EN_STOCK, FAIBLE ou RUPTURE.
+             *
+             * Une valeur inconnue retombe sur TOUS plutôt que de répondre 400 :
+             * un paramètre d'URL bricolé à la main ne doit pas donner
+             * l'impression que l'écran est cassé.
+             */
+            @RequestParam(required = false) String disponibilite,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int taille) {
 
-        return catalogue.administration(recherche, PageRequest.of(
+        return catalogue.administration(recherche, disponibilite, PageRequest.of(
                 Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX),
                 Sort.by(Sort.Direction.DESC, "dateCreation")));
     }

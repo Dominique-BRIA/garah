@@ -30,7 +30,16 @@ public record ResumeProduit(
         String marchandNom,
         String categorieNom,
         BigDecimal prixMin,
-        String devise) {
+        String devise,
+        /**
+         * La quantite disponible, SOMMEE sur toutes les declinaisons.
+         *
+         * <p>Portee par le produit et non par la variante : une declinaison
+         * epuisee et une autre disponible font un produit toujours vendable.
+         * Zero quand aucune ligne de stock n existe encore — ce qui est le cas
+         * d un brouillon qu on vient de creer.</p>
+         */
+        int quantiteDisponible) {
 
     /**
      * @param versUrl transforme la clé en adresse affichable — concaténation
@@ -48,7 +57,8 @@ public record ResumeProduit(
      * secrète.</p>
      */
     public static ResumeProduit de(Produit produit, UnaryOperator<String> versUrl,
-                                   String marchandNom, PrixMinProduit prix) {
+                                   String marchandNom, PrixMinProduit prix,
+                                   Integer quantiteDisponible) {
         String photo = produit.getMedias().stream()
                 .filter(Media::estPrincipal)
                 .map(Media::getCleObjet)
@@ -66,6 +76,7 @@ public record ResumeProduit(
                 marchandNom,
                 produit.getCategorie().getNom(),
                 prix == null ? null : prix.prixMin(),
-                prix == null ? null : prix.devise());
+                prix == null ? null : prix.devise(),
+                quantiteDisponible == null ? 0 : quantiteDisponible);
     }
 }

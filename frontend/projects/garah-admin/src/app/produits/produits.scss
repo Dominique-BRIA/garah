@@ -111,14 +111,40 @@
   overflow-wrap: anywhere;
 }
 
+// Prix et stock sur la meme ligne : ce sont les deux chiffres qu on regarde
+// ensemble pour decider s il y a quelque chose a vendre, et a combien.
+//
+// `margin-top: auto` pousse le pied en bas : les cartes d une meme rangee
+// alignent alors leur prix, meme quand un nom passe sur deux lignes.
+.carte-produit__pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: auto 0 0;
+  padding-top: 0.7rem;
+}
+
 .carte-produit__prix {
-  margin: 0.7rem 0 0;
   font-size: 1.05rem;
   font-weight: 800;
   color: var(--texte);
   font-variant-numeric: tabular-nums;
-  margin-top: auto;
-  padding-top: 0.7rem;
+}
+
+// Les chiffres gardent la meme largeur : la colonne ne « saute » pas
+// lateralement quand une quantite passe de 9 a 10.
+.quantite .gu-badge {
+  font-variant-numeric: tabular-nums;
+}
+
+// Le menu de disponibilite. Largeur fixe : `auto` le fait changer de taille a
+// chaque choix — « En stock » puis « Toutes les disponibilites » — et toute la
+// barre d actions se decale sous le curseur.
+.filtre-stock {
+  width: 13.5rem;
+  flex-shrink: 0;
 }
 
 // =============================================================================

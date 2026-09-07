@@ -41,6 +41,10 @@ export class Coque {
     { libelle: 'Produits', chemin: '/produits', icone: 'box-open', permission: 'PRODUIT_CONSULTER' },
     { libelle: 'Marchands', chemin: '/marchands', icone: 'store', permission: 'MARCHAND_CONSULTER' },
     { libelle: 'Categories', chemin: '/categories', icone: 'sitemap', permission: 'CATEGORIE_PRODUIT_GERER' },
+    // Le referentiel des dimensions de declinaison. Garde par PRODUIT_CONSULTER
+    // et non ATTRIBUT_GERER : composer une declinaison suppose de LIRE les
+    // dimensions, meme sans avoir le droit d'en inventer une.
+    { libelle: 'Dimensions', chemin: '/attributs', icone: 'tags', permission: 'PRODUIT_CONSULTER' },
     { libelle: 'Commandes', chemin: '/commandes', icone: 'cart-shopping', permission: 'COMMANDE_CONSULTER_DETAILS' },
     { libelle: 'Stock', chemin: '/stock', icone: 'warehouse', permission: 'STOCK_CONSULTER' },
     { libelle: 'Paiements', chemin: '/paiements', icone: 'money-bill-wave', permission: 'PAIEMENT_CONSULTER' },

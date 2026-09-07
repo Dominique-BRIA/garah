@@ -18,7 +18,37 @@ export interface ResumeProduit {
   /** Le plus bas de la grille. Nul tant qu'aucun prix n'est pose. */
   readonly prixMin: number | null;
   readonly devise: string | null;
+  /**
+   * La quantite disponible, SOMMEE sur toutes les declinaisons.
+   *
+   * Portee par le produit et non par la variante : une declinaison epuisee et
+   * une autre disponible font un produit toujours vendable.
+   *
+   * Zero quand aucune ligne de stock n existe encore — le cas d un brouillon
+   * qu on vient de creer.
+   */
+  readonly quantiteDisponible: number;
 }
+
+/**
+ * Le filtre de disponibilite de la liste d administration.
+ *
+ * ⚠️ Il s applique EN BASE, pas apres reception de la page. Trier une page
+ * deja recue donnerait « 3 produits sur 24 » ici et « 7 sur 24 » a la page
+ * suivante, avec un total qui ne correspondrait a rien.
+ */
+export type FiltreDisponibilite = 'TOUS' | 'EN_STOCK' | 'FAIBLE' | 'RUPTURE';
+
+/** Les libelles affiches, dans l ordre du menu. */
+export const FILTRES_DISPONIBILITE: readonly {
+  readonly code: FiltreDisponibilite;
+  readonly libelle: string;
+}[] = [
+  { code: 'TOUS', libelle: 'Toutes les disponibilités' },
+  { code: 'EN_STOCK', libelle: 'En stock' },
+  { code: 'FAIBLE', libelle: 'Stock faible' },
+  { code: 'RUPTURE', libelle: 'En rupture' },
+];
 
 export type StatutProduit = 'BROUILLON' | 'PUBLIE' | 'MASQUE' | 'ARCHIVE';
 

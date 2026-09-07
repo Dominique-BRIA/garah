@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   BasculeVue,
+  FILTRES_DISPONIBILITE,
+  FiltreDisponibilite,
   Icone,
   Page,
   Pagination,
@@ -51,6 +53,37 @@ export class Produits {
   protected readonly erreur = signal<string | null>(null);
 
   protected readonly page = signal(0);
+
+  // --- Le filtre de disponibilité ---------------------------------------------
+  protected readonly filtresDisponibilite = FILTRES_DISPONIBILITE;
+  protected readonly disponibilite = signal<FiltreDisponibilite>('TOUS');
+
+  /**
+   * Change le filtre et recharge.
+   *
+   * <p>⚠️ Retour à la première page, comme pour la recherche. Passer de
+   * « toutes » à « en rupture » depuis la page 4 afficherait une liste vide
+   * alors que des produits correspondent — et personne ne pense à regarder le
+   * numéro de page pour comprendre pourquoi.</p>
+   */
+  protected changerDisponibilite(valeur: string): void {
+    this.disponibilite.set(valeur as FiltreDisponibilite);
+    this.page.set(0);
+    this.charger();
+  }
+
+  /**
+   * L'état de stock d'un produit, pour la pastille.
+   *
+   * <p>Le seuil d'alerte vit sur chaque déclinaison et n'est pas remonté dans
+   * la liste : ici on ne distingue donc que « il y en a » de « il n'y en a
+   * plus ». Le détail — quelle déclinaison est basse — se lit sur la fiche,
+   * et le filtre « stock faible », lui, est calculé en base où le seuil est
+   * disponible.</p>
+   */
+  protected badgeStock(quantite: number): string {
+    return quantite > 0 ? 'gu-badge--succes' : 'gu-badge--neutre';
+  }
   protected readonly totalPages = signal(0);
   protected readonly taille = TAILLE_PAGE;
 
@@ -199,6 +232,12 @@ export class Produits {
     });
     if (q) {
       parametres.set('recherche', q);
+    }
+    // Envoyé seulement quand il filtre réellement : une URL qui porte
+    // `disponibilite=TOUS` laisse croire à un filtre actif quand on la relit
+    // dans les journaux.
+    if (this.disponibilite() !== 'TOUS') {
+      parametres.set('disponibilite', this.disponibilite());
     }
 
     // ⚠️ La route d'ADMINISTRATION, pas le catalogue public. Ce dernier ne

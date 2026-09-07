@@ -22,6 +22,36 @@ public interface VarianteRepository extends JpaRepository<Variante, Long> {
     long countByProduitIdAndStatut(Long produitId, String statut);
 
     /**
+     * La quantité disponible, agrégée par produit, pour toute une page.
+     *
+     * <p>🎯 <b>Une requête pour vingt-quatre produits, pas vingt-quatre.</b>
+     * Lire le stock dans la boucle d'affichage est le réflexe naturel et le
+     * plus coûteux : invisible en développement avec trois produits, il ajoute
+     * quarante-huit allers-retours sur une base distante.</p>
+     *
+     * <p>{@code LEFT JOIN} : une variante sans ligne de stock compte pour
+     * zéro plutôt que de faire disparaître le produit du résultat.</p>
+     *
+     * <p>La somme est portée par le <b>produit</b> : une déclinaison épuisée
+     * et une autre disponible font un produit toujours vendable.</p>
+     */
+    @Query(value = """
+            SELECT v.produit_id                              AS produitId,
+                   COALESCE(SUM(s.quantite_disponible), 0)   AS disponible
+              FROM variante v
+              LEFT JOIN stock s ON s.variante_id = v.id
+             WHERE v.produit_id IN (:produitIds)
+             GROUP BY v.produit_id
+            """, nativeQuery = true)
+    List<DisponibiliteProduit> disponibilitesPar(@Param("produitIds") Collection<Long> produitIds);
+
+    /** La projection de {@link #disponibilitesPar}. */
+    interface DisponibiliteProduit {
+        Long getProduitId();
+        Integer getDisponible();
+    }
+
+    /**
      * Ce produit a-t-il déjà servi ? Commandé, mis au panier, ou négocié.
      *
      * <p>C'est la question qui décide si un produit peut être <b>supprimé</b>

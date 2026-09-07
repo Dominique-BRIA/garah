@@ -16,6 +16,18 @@
              (keyup.enter)="chercher()" aria-label="Rechercher un produit" />
     </div>
 
+    <!-- Le filtre de disponibilité. Il s'applique EN BASE, pas sur la page
+         reçue : filtrer après coup donnerait « 3 sur 24 » ici et « 7 sur 24 »
+         à la page suivante, avec un total qui ne voudrait rien dire. -->
+    <select class="gu-champ filtre-stock"
+            aria-label="Filtrer par disponibilité"
+            [ngModel]="disponibilite()"
+            (ngModelChange)="changerDisponibilite($event)">
+      @for (f of filtresDisponibilite; track f.code) {
+        <option [value]="f.code">{{ f.libelle }}</option>
+      }
+    </select>
+
     <button type="button" class="gu-btn gu-btn--secondaire"
             (click)="charger()" [disabled]="chargement()">
       <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
@@ -120,6 +132,7 @@
           <th>Marchand</th>
           <th>Catégorie</th>
           <th>Statut</th>
+          <th class="droite">Disponible</th>
           <th class="droite">Prix</th>
         </tr>
       </thead>
@@ -160,6 +173,13 @@
             <td>{{ produit.marchandNom || '—' }}</td>
             <td>{{ produit.categorieNom || '—' }}</td>
             <td><span class="gu-badge" [class]="badge(produit.statut)">{{ produit.statut }}</span></td>
+            <!-- Toutes déclinaisons confondues : une taille épuisée et une
+                 autre disponible font un produit toujours vendable. -->
+            <td class="droite quantite">
+              <span class="gu-badge" [class]="badgeStock(produit.quantiteDisponible)">
+                {{ produit.quantiteDisponible }}
+              </span>
+            </td>
             <td class="droite">{{ montant(produit.prixMin, produit.devise) }}</td>
           </tr>
         }
@@ -192,7 +212,17 @@
             {{ produit.marchandNom || '—' }} · {{ produit.categorieNom || '—' }}
           </p>
 
-          <p class="carte-produit__prix">{{ montant(produit.prixMin, produit.devise) }}</p>
+          <p class="carte-produit__pied">
+            <span class="carte-produit__prix">
+              {{ montant(produit.prixMin, produit.devise) }}
+            </span>
+            <!-- Le stock à côté du prix, pas ailleurs : ce sont les deux
+                 chiffres qu'on regarde ensemble pour décider s'il y a
+                 quelque chose à vendre et à combien. -->
+            <span class="gu-badge" [class]="badgeStock(produit.quantiteDisponible)">
+              {{ produit.quantiteDisponible }} en stock
+            </span>
+          </p>
         </div>
       </a>
     }

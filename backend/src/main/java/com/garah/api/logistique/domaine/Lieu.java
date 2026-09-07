@@ -79,6 +79,24 @@ public class Lieu {
     public BigDecimal getFraisAcheminement() { return fraisAcheminement; }
     public String getStatut() { return statut; }
 
+    /**
+     * Corrige l'identité du lieu.
+     *
+     * <p>Une méthode nommée plutôt que trois {@code set} : nom, pays et ville
+     * se lisent ensemble — « Agence Bertoua, CM, Bertoua » — et les changer
+     * séparément permettrait d'écrire une ville camerounaise sous un pays
+     * centrafricain sans que rien ne s'y oppose.</p>
+     *
+     * <p>⚠️ Le {@code type} n'en fait pas partie et n'a aucun {@code set} :
+     * un point de récupération devenu point de transit laisserait derrière lui
+     * des commandes dont le point de retrait n'en est plus un.</p>
+     */
+    public void renommer(String nom, String pays, String ville) {
+        this.nom = nom;
+        this.pays = pays;
+        this.ville = ville;
+    }
+
     public void setAdresse(String adresse) { this.adresse = adresse; }
     public void setTelephone(String telephone) { this.telephone = telephone; }
     public void setHoraires(String horaires) { this.horaires = horaires; }
