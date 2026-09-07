@@ -28,6 +28,46 @@
   </div>
 </header>
 
+<!-- La barre de sélection. Elle n'apparaît que si quelque chose est coché :
+     une barre d'actions toujours visible mais presque toujours désactivée
+     occupe la place et n'apprend rien. -->
+@if (nbSelectionnes() > 0) {
+  <div class="barre-selection" role="status">
+    <span class="barre-selection__compte">
+      {{ nbSelectionnes() }} produit(s) sélectionné(s)
+    </span>
+
+    <button type="button" class="gu-btn gu-btn--secondaire petit"
+            (click)="viderSelection()">Tout décocher</button>
+
+    <button type="button" class="gu-btn gu-btn--danger petit"
+            [disabled]="suppressionEnCours()" (click)="supprimerSelection()">
+      @if (suppressionEnCours()) {
+        <gu-icone nom="circle-notch" tourne /> Suppression…
+      } @else {
+        <gu-icone nom="trash" /> Supprimer
+      }
+    </button>
+  </div>
+}
+
+<!-- Ce qui n'a PAS pu être supprimé, nommé un par un.
+     Un simple « certains produits n'ont pas pu être supprimés » obligerait à
+     décocher à l'aveugle pour trouver lesquels. -->
+@if (refus().length > 0) {
+  <div class="gu-carte refus" role="alert">
+    <p class="refus__titre">
+      <gu-icone nom="triangle-exclamation" />
+      {{ refus().length }} produit(s) n'ont pas pu être supprimés
+    </p>
+    <ul class="refus__liste">
+      @for (r of refus(); track r.id) {
+        <li>{{ r.message }}</li>
+      }
+    </ul>
+  </div>
+}
+
 @if (erreur(); as message) {
   <div class="gu-carte etat" role="alert">
     <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
@@ -68,6 +108,13 @@
     <table class="gu-tableau">
       <thead>
         <tr>
+          @if (session.peut('PRODUIT_SUPPRIMER')) {
+            <th class="colonne-case">
+              <input type="checkbox" class="case" [checked]="toutSelectionne()"
+                     (change)="basculerTout()"
+                     aria-label="Tout sélectionner sur cette page" />
+            </th>
+          }
           <th>Produit</th>
           <th>Référence</th>
           <th>Marchand</th>
@@ -78,7 +125,20 @@
       </thead>
       <tbody>
         @for (produit of produits(); track produit.id) {
-          <tr class="cliquable" [routerLink]="['/produits', produit.id]">
+          <tr class="cliquable" [class.selectionnee]="estSelectionne(produit.id)"
+              [routerLink]="['/produits', produit.id]">
+            @if (session.peut('PRODUIT_SUPPRIMER')) {
+              <!-- ⚠️ `stopPropagation` est INDISPENSABLE : la ligne entière est
+                   un lien vers la fiche. Sans lui, cocher une case ouvrirait le
+                   produit au lieu de le sélectionner, et la sélection multiple
+                   serait rigoureusement inutilisable. -->
+              <td class="colonne-case" (click)="$event.stopPropagation()">
+                <input type="checkbox" class="case"
+                       [checked]="estSelectionne(produit.id)"
+                       (change)="basculerSelection(produit.id)"
+                       [attr.aria-label]="'Sélectionner ' + produit.nom" />
+              </td>
+            }
             <td>
               <div class="cellule-produit">
                 @if (produit.urlPhotoPrincipale) {

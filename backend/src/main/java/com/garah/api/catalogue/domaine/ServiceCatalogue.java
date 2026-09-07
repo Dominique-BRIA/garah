@@ -4,6 +4,7 @@ import com.garah.api.catalogue.infra.*;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
+import com.garah.api.commun.stockage.DepotFichiers;
 import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.marchand.domaine.ServiceMarchand;
 import org.springframework.context.ApplicationEventPublisher;
@@ -57,6 +58,16 @@ public class ServiceCatalogue {
     private final StockageObjet urlsMedias;
 
     /**
+     * Pour effacer les fichiers d'un produit supprimé.
+     *
+     * <p>Distinct de {@link #urlsMedias} : celui-ci <b>lit</b> (il signe des
+     * adresses), celui-là <b>écrit</b> (il dépose et efface). Les confondre
+     * donnerait au catalogue le droit d'effacer partout où il ne fait que
+     * lire.</p>
+     */
+    private final DepotFichiers fichiers;
+
+    /**
      * Le marchand, en lecture seule, pour engendrer la référence d'un produit.
      *
      * <p>Le catalogue dépend du marchand, jamais l'inverse : le test ArchUnit
@@ -78,6 +89,7 @@ public class ServiceCatalogue {
                             MediaRepository medias,
                             TarificationRepository tarifications,
                             StockageObjet urlsMedias,
+                            DepotFichiers fichiers,
                             ServiceMarchand marchands,
                             ApplicationEventPublisher evenements) {
         this.produits = produits;
@@ -86,6 +98,7 @@ public class ServiceCatalogue {
         this.medias = medias;
         this.tarifications = tarifications;
         this.urlsMedias = urlsMedias;
+        this.fichiers = fichiers;
         this.marchands = marchands;
         this.evenements = evenements;
     }
@@ -379,6 +392,89 @@ public class ServiceCatalogue {
         verifierTransition(produit, nouveau);
         produit.changerStatut(nouveau);
         return DetailProduit.de(produit, urlsMedias::urlPublique);
+    }
+
+    // -------------------------------------------------------------------------
+    // Suppression
+    // -------------------------------------------------------------------------
+
+    /**
+     * Supprime définitivement un produit — <b>uniquement s'il n'a jamais servi</b>.
+     *
+     * <h2>Supprimer et archiver ne sont pas deux façons de dire la même chose</h2>
+     *
+     * <p>La règle était écrite dans le référentiel depuis V14 :
+     * {@code PRODUIT_SUPPRIMER}, « Supprimer un produit jamais vendu ». Elle
+     * n'avait simplement jamais été implémentée.</p>
+     *
+     * <pre>
+     * jamais commandé, jamais mis au panier, jamais négocié   → on SUPPRIME
+     * a servi ne serait-ce qu'une fois                        → on ARCHIVE
+     * </pre>
+     *
+     * <p>🎯 <b>Pourquoi on ne peut pas supprimer un produit vendu.</b> Une
+     * ligne de commande pointe sur la variante. L'effacer viderait des
+     * commandes passées de leur objet : un client verrait une facture avec un
+     * article devenu introuvable, et le grand livre marchand perdrait la
+     * contrepartie de sommes déjà encaissées. L'archivage existe exactement
+     * pour ça — le produit sort du catalogue, l'historique reste entier.</p>
+     *
+     * <p>Les tables qui bloquent sont précisément celles qui référencent
+     * {@code variante} <b>sans</b> {@code ON DELETE CASCADE}. Le reste —
+     * variantes, médias, tarifications, stock — s'efface avec le produit,
+     * parce que rien de tout cela n'a de sens sans lui.</p>
+     *
+     * @return les clés des fichiers à retirer du stockage, à la charge de
+     *         l'appelant : voir {@link #supprimerFichiers}
+     */
+    @Transactional
+    public List<String> supprimerProduit(Long produitId) {
+        Produit produit = produits.findById(produitId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId));
+
+        if (variantes.aDejaServi(produitId)) {
+            throw new ConflitEtat("PRODUIT_DEJA_VENDU",
+                    "« " + produit.getNom() + " » a déjà été commandé, mis au panier "
+                    + "ou négocié : le supprimer viderait de leur objet des commandes "
+                    + "passées. Archivez-le pour le retirer du catalogue.");
+        }
+
+        // Les clés sont relevées AVANT la suppression : après, la ligne n'existe
+        // plus et les fichiers resteraient sur le stockage sans que rien ne
+        // permette de les retrouver.
+        List<String> cles = medias.findByProduitIdOrderByOrdreAsc(produitId).stream()
+                .map(Media::getCleObjet)
+                .filter(cle -> cle != null && !cle.isBlank())
+                .toList();
+
+        produits.delete(produit);
+        return cles;
+    }
+
+    /**
+     * Retire du stockage les fichiers d'un produit supprimé.
+     *
+     * <p>⚠️ Appelé <b>hors</b> de la transaction, et sans jamais lever. La
+     * ligne est déjà effacée : échouer ici rendrait une erreur à quelqu'un
+     * dont la suppression a parfaitement réussi. On laisse quelques objets
+     * orphelins sur le stockage plutôt que de mentir sur le résultat.</p>
+     */
+    public void supprimerFichiers(List<String> cles) {
+        for (String cle : cles) {
+            try {
+                fichiers.supprimer(cle);
+            } catch (RuntimeException e) {
+                // Rien à faire de plus : le produit est parti, le fichier
+                // n'est plus référencé, et il ne coûte que son octetage.
+                journalDeSuppression(cle, e);
+            }
+        }
+    }
+
+    private void journalDeSuppression(String cle, RuntimeException e) {
+        org.slf4j.LoggerFactory.getLogger(ServiceCatalogue.class)
+                .warn("Fichier {} non supprime du stockage : {}",
+                        cle, e.getClass().getSimpleName());
     }
 
     // -------------------------------------------------------------------------

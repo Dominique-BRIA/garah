@@ -101,3 +101,30 @@ export function montantLisible(
   const nombre = new Intl.NumberFormat('fr-FR').format(valeur);
   return `${nombre} ${devise === 'XAF' || !devise ? 'FCFA' : devise}`;
 }
+
+/**
+ * Un produit que l API a REFUSE de supprimer, et pourquoi.
+ *
+ * Le `code` est stable et sert de cle de traduction ; le `message` est humain
+ * et peut changer sans rien casser.
+ */
+export interface Refus {
+  readonly id: number;
+  readonly code: string;
+  readonly message: string;
+}
+
+/**
+ * Le resultat d une suppression multiple.
+ *
+ * 🎯 LA REUSSITE EST PARTIELLE, PAR CONCEPTION.
+ *
+ * Sur dix produits coches, deux peuvent avoir deja ete vendus : l API supprime
+ * les huit autres et nomme les deux qui restent. L ecran DOIT montrer les
+ * deux listes — annoncer « echec » masquerait huit suppressions bien reelles,
+ * annoncer « succes » mentirait sur deux.
+ */
+export interface ResultatSuppression {
+  readonly supprimes: readonly number[];
+  readonly refuses: readonly Refus[];
+}

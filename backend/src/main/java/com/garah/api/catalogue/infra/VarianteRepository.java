@@ -22,6 +22,49 @@ public interface VarianteRepository extends JpaRepository<Variante, Long> {
     long countByProduitIdAndStatut(Long produitId, String statut);
 
     /**
+     * Ce produit a-t-il déjà servi ? Commandé, mis au panier, ou négocié.
+     *
+     * <p>C'est la question qui décide si un produit peut être <b>supprimé</b>
+     * ou seulement <b>archivé</b> — la règle que le référentiel écrit depuis
+     * V14 : {@code PRODUIT_SUPPRIMER}, « Supprimer un produit jamais vendu ».</p>
+     *
+     * <h2>⚠️ Pourquoi du SQL natif, et pas trois dépôts injectés</h2>
+     *
+     * <p>{@code ligne_commande}, {@code ligne_panier} et
+     * {@code proposition_prix} appartiennent aux domaines <b>commerce</b> et
+     * <b>serviceclient</b>. Or ces deux-là dépendent déjà du catalogue : leur
+     * emprunter un dépôt créerait un <b>cycle</b> entre domaines, et
+     * {@code ArchitectureTest} refuserait la compilation des tests.</p>
+     *
+     * <p>Le SQL, lui, ne crée aucune dépendance de paquetage. Le couplage
+     * existe quand même — il est ici, nommé, dans une seule requête — au lieu
+     * d'être diffus dans les imports de tout le domaine.</p>
+     *
+     * <p>🎯 Ces trois tables sont exactement celles qui référencent
+     * {@code variante} <b>sans</b> {@code ON DELETE CASCADE}. Le reste du
+     * catalogue — médias, tarifications, stock — s'efface avec le produit.
+     * Cette requête est donc le miroir exact de ce que la base refuserait :
+     * elle sert à l'expliquer <b>avant</b>, plutôt qu'à subir une violation de
+     * contrainte illisible.</p>
+     */
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM ligne_commande lc
+                  JOIN variante v ON v.id = lc.variante_id
+                 WHERE v.produit_id = :produitId
+                UNION ALL
+                SELECT 1 FROM ligne_panier lp
+                  JOIN variante v ON v.id = lp.variante_id
+                 WHERE v.produit_id = :produitId
+                UNION ALL
+                SELECT 1 FROM proposition_prix pp
+                  JOIN variante v ON v.id = pp.variante_id
+                 WHERE v.produit_id = :produitId
+            )
+            """, nativeQuery = true)
+    boolean aDejaServi(@Param("produitId") Long produitId);
+
+    /**
      * Le contrat de vente d'une variante, pour le domaine commerce.
      *
      * <p>Une <b>projection</b> : la requête construit directement le record,

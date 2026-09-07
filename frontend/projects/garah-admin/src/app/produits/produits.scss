@@ -120,3 +120,81 @@
   margin-top: auto;
   padding-top: 0.7rem;
 }
+
+// =============================================================================
+// La selection multiple
+// =============================================================================
+
+.colonne-case {
+  width: 2.5rem;
+  // La case ne doit pas s ecarter du bord : une colonne large ferait croire
+  // qu il manque une donnee entre elle et le nom du produit.
+  padding-right: 0;
+}
+
+.case {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  // `accent-color` colore la case cochee avec la teinte de l application,
+  // sans avoir a redessiner un controle natif — qui perdrait au passage le
+  // clavier, le focus et les lecteurs d ecran.
+  accent-color: var(--primary);
+}
+
+// La ligne cochee se distingue au FOND, pas seulement par sa case : sur une
+// liste de vingt-quatre lignes, une case cochee a l extreme gauche se perd.
+.selectionnee {
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+}
+
+// --- La barre de selection ---------------------------------------------------
+.barre-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.barre-selection__compte {
+  font-weight: 700;
+  font-size: 0.87rem;
+  // Pousse les boutons a droite sans avoir a leur donner une marge.
+  margin-right: auto;
+}
+
+// --- Ce qui a ete refuse -----------------------------------------------------
+//
+// En AVERTISSEMENT et non en erreur : la suppression a bien eu lieu pour les
+// autres. Un fond rouge ferait croire que rien n a marche.
+.refus {
+  margin-bottom: 1rem;
+  border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+
+.refus__titre {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+
+  gu-icone { color: var(--warning); }
+}
+
+.refus__liste {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--texte-attenue);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}

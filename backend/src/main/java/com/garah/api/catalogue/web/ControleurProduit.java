@@ -4,7 +4,10 @@ import com.garah.api.catalogue.domaine.DetailProduit;
 import com.garah.api.catalogue.domaine.ResumeProduit;
 import com.garah.api.catalogue.domaine.ServiceCatalogue;
 import com.garah.api.catalogue.domaine.StatutProduit;
+import com.garah.api.commun.erreur.ErreurMetier;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -13,6 +16,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Les routes du catalogue.
@@ -108,6 +114,78 @@ public class ControleurProduit {
     @PreAuthorize("hasAuthority('PRODUIT_ARCHIVER')")
     public DetailProduit archiver(@PathVariable Long id) {
         return catalogue.changerStatut(id, StatutProduit.ARCHIVE);
+    }
+
+    // -------------------------------------------------------------------------
+    // Suppression
+    // -------------------------------------------------------------------------
+
+    /**
+     * Supprime définitivement un produit — s'il n'a jamais servi.
+     *
+     * <p>Le service refuse par un {@code 409} si le produit a été commandé,
+     * mis au panier ou négocié, en renvoyant vers l'archivage. C'est la règle
+     * que le référentiel porte depuis V14 : « Supprimer un produit jamais
+     * vendu ».</p>
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PRODUIT_SUPPRIMER')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void supprimer(@PathVariable Long id) {
+        // Les fichiers sont retirés APRÈS la transaction : le service rend les
+        // clés, le contrôleur déclenche le nettoyage.
+        catalogue.supprimerFichiers(catalogue.supprimerProduit(id));
+    }
+
+    /**
+     * Supprime plusieurs produits d'un coup.
+     *
+     * <h2>🎯 Réussite PARTIELLE, jamais tout ou rien</h2>
+     *
+     * <p>Sur dix produits cochés, deux peuvent avoir été vendus. Refuser les
+     * dix obligerait à décocher à l'aveugle pour trouver lesquels ; tout
+     * supprimer serait pire. On supprime donc les huit et on <b>nomme</b> les
+     * deux qui restent, avec la raison.</p>
+     *
+     * <p>Chaque suppression a sa propre transaction — c'est le proxy Spring
+     * qui l'ouvre, puisque l'appel part d'ici et non de l'intérieur du
+     * service. Sans cela, le premier refus annulerait les précédentes.</p>
+     *
+     * <p>Répond toujours {@code 200}, jamais {@code 409} : la requête a bien
+     * été traitée, et son résultat est dans le corps. Un code d'erreur global
+     * ferait croire que rien n'a été fait alors que huit produits sont
+     * partis.</p>
+     */
+    @DeleteMapping
+    @PreAuthorize("hasAuthority('PRODUIT_SUPPRIMER')")
+    public ResultatSuppression supprimerPlusieurs(@Valid @RequestBody DemandeSuppression demande) {
+        List<Long> supprimes = new ArrayList<>();
+        List<Refus> refuses = new ArrayList<>();
+
+        for (Long id : demande.ids()) {
+            try {
+                catalogue.supprimerFichiers(catalogue.supprimerProduit(id));
+                supprimes.add(id);
+            } catch (ErreurMetier e) {
+                refuses.add(new Refus(id, e.getCode(), e.getMessage()));
+            }
+        }
+
+        return new ResultatSuppression(supprimes, refuses);
+    }
+
+    /** Les identifiants à supprimer. */
+    public record DemandeSuppression(
+            @NotEmpty(message = "Aucun produit sélectionné.")
+            @Size(max = 100, message = "Cent produits au maximum par suppression.")
+            List<Long> ids) {
+    }
+
+    /** Ce qui est parti, et ce qui est resté — avec la raison. */
+    public record ResultatSuppression(List<Long> supprimes, List<Refus> refuses) {
+    }
+
+    public record Refus(Long id, String code, String message) {
     }
 
     /**

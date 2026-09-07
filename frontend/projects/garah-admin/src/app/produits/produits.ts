@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
@@ -10,6 +10,8 @@ import {
   Pagination,
   ReponseErreur,
   ResumeProduit,
+  ResultatSuppression,
+  Refus,
   ServiceSession,
   TypeVue,
   montantLisible,
@@ -64,8 +66,126 @@ export class Produits {
    */
   protected readonly filtreApplique = signal('');
 
+  // --- La sélection multiple --------------------------------------------------
+  //
+  // Un Set d'identifiants, et non un drapeau posé sur chaque produit : la liste
+  // est rechargée à chaque page et à chaque recherche, et des drapeaux portés
+  // par les objets disparaîtraient avec eux.
+  protected readonly selection = signal<ReadonlySet<number>>(new Set());
+
+  protected readonly nbSelectionnes = computed(() => this.selection().size);
+
+  /** Toutes les lignes visibles sont-elles cochées ? */
+  protected readonly toutSelectionne = computed(() => {
+    const liste = this.produits();
+    const choisis = this.selection();
+    return liste.length > 0 && liste.every((p) => choisis.has(p.id));
+  });
+
+  protected readonly suppressionEnCours = signal(false);
+
+  /** Ce qui n'a pas pu être supprimé, et pourquoi. Vidé à la prochaine action. */
+  protected readonly refus = signal<readonly Refus[]>([]);
+
   constructor() {
     this.charger();
+  }
+
+  protected estSelectionne(id: number): boolean {
+    return this.selection().has(id);
+  }
+
+  protected basculerSelection(id: number): void {
+    this.selection.update((courant) => {
+      const suivant = new Set(courant);
+      if (!suivant.delete(id)) {
+        suivant.add(id);
+      }
+      return suivant;
+    });
+  }
+
+  /**
+   * Coche ou décoche toutes les lignes VISIBLES.
+   *
+   * <p>⚠️ Visibles, pas « toutes celles du catalogue ». Une case qui
+   * sélectionnerait des produits qu'on n'a pas sous les yeux — ceux des pages
+   * suivantes, ou ceux qu'un filtre écarte — ferait supprimer sans avoir
+   * regardé. La sélection des autres pages est conservée, elle, parce que la
+   * décocher à chaque changement de page serait tout aussi surprenant.</p>
+   */
+  protected basculerTout(): void {
+    const visibles = this.produits().map((p) => p.id);
+    const tout = this.toutSelectionne();
+
+    this.selection.update((courant) => {
+      const suivant = new Set(courant);
+      for (const id of visibles) {
+        if (tout) {
+          suivant.delete(id);
+        } else {
+          suivant.add(id);
+        }
+      }
+      return suivant;
+    });
+  }
+
+  protected viderSelection(): void {
+    this.selection.set(new Set());
+    this.refus.set([]);
+  }
+
+  /**
+   * Supprime la sélection, après confirmation.
+   *
+   * <p>🎯 <b>La réussite est PARTIELLE, et l'écran doit le dire.</b> Sur dix
+   * produits cochés, deux peuvent avoir déjà été vendus : l'API supprime les
+   * huit autres et nomme les deux qui restent. Afficher « échec » masquerait
+   * huit suppressions bien réelles ; afficher « succès » mentirait sur deux.</p>
+   */
+  protected supprimerSelection(): void {
+    const ids = [...this.selection()];
+    if (ids.length === 0 || this.suppressionEnCours()) {
+      return;
+    }
+
+    // ⚠️ `confirm` est laid, mais il BLOQUE. Une suppression définitive ne doit
+    // pas pouvoir partir d'un clic distrait. À remplacer par une boîte de
+    // dialogue maison, jamais par rien.
+    // ⚠️ PAS `message` : ce nom est déjà celui de la fonction du module qui
+    //    traduit une erreur HTTP. Une variable locale la masquerait, et
+    //    l'appel `message(e)` du gestionnaire d'erreur ci-dessous tenterait
+    //    d'appeler une chaîne de caractères.
+    const question = ids.length === 1
+      ? 'Supprimer définitivement ce produit ?'
+      : `Supprimer définitivement ces ${ids.length} produits ?`;
+    if (!confirm(question)) {
+      return;
+    }
+
+    this.suppressionEnCours.set(true);
+    this.refus.set([]);
+
+    // `delete` avec un corps : Angular l'expose par l'option `body`, la seule
+    // façon d'en envoyer un sur cette méthode.
+    this.http
+      .delete<ResultatSuppression>('/api/produits', { body: { ids } })
+      .subscribe({
+        next: (resultat) => {
+          this.suppressionEnCours.set(false);
+          this.refus.set(resultat.refuses);
+
+          // Seuls les refusés restent cochés : la sélection devient la liste
+          // de ce qu'il reste à traiter, au lieu d'être à reconstituer.
+          this.selection.set(new Set(resultat.refuses.map((r) => r.id)));
+          this.charger();
+        },
+        error: (e: unknown) => {
+          this.suppressionEnCours.set(false);
+          this.erreur.set(message(e));
+        },
+      });
   }
 
   protected charger(): void {
