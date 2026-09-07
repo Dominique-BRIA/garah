@@ -1183,3 +1183,116 @@ sur une même victime.
 l'attaque : une requête par IP falsifiée ferait grossir la table jusqu'à
 l'`OutOfMemoryError`. On aurait remplacé un déni de service par un autre, en
 croyant se protéger.
+
+---
+
+## D-25 — Changer son mot de passe coupe TOUTES les sessions, la sienne comprise
+
+**Date :** 07/09/2026
+**Statut :** ✅ actée
+
+**Le manque.** Il n'existait aucun moyen de changer son mot de passe. L'API
+n'avait que `GET /api/auth/moi`, qui rend ce que le **jeton** porte — ni
+e-mail, ni téléphone, ni dates. Un compte compromis ne pouvait donc être
+repris par personne d'autre qu'un administrateur, à la main, en base.
+
+**Choix.** Trois routes sur son propre compte, et un changement de mot de passe
+qui **révoque toutes les sessions ouvertes**, y compris celle qui le demande.
+
+```text
+GET   /api/profil                 lire ses informations
+PATCH /api/profil                 nom, prénom, téléphone, langue
+POST  /api/profil/mot-de-passe    changer son mot de passe → tout est coupé
+```
+
+**Pourquoi toutes, et pas « toutes sauf la mienne ».** Le cas d'usage principal
+d'un changement de mot de passe est le **soupçon de vol**. Épargner la session
+courante reviendrait à faire confiance à l'idée qu'elle est bien celle du
+propriétaire — or c'est exactement ce dont on doute. Ne rien révoquer serait
+pire : le voleur garde son jeton de rafraîchissement **quatorze jours** (D-19),
+et le propriétaire croit s'être protégé.
+
+**Ce que ça coûte.** Celui qui change son mot de passe est déconnecté et doit se
+reconnecter. L'interface doit donc l'annoncer **avant** l'action, et rediriger
+elle-même avec un message : une déconnexion qu'on n'a pas prévenue passe pour
+une panne, même quand elle est le comportement voulu.
+
+> ⚠️ **Le jeton d'accès, lui, reste valide jusqu'à 15 minutes.** Un JWT ne se
+> révoque pas, c'est sa définition (D-19). C'est pourquoi le frontend termine
+> la session **lui-même** au lieu d'attendre le premier 401 : sinon
+> l'application continue de fonctionner un quart d'heure, puis déconnecte sans
+> rapport visible avec ce qu'on venait de faire.
+
+**Un motif de révocation a été ajouté** (`MOT_DE_PASSE_CHANGE`, migration V24)
+plutôt que de réutiliser `COMPTE_FERME`. Un journal d'audit ne se réécrit
+jamais : confondre les deux ferait lire, six mois plus tard, qu'un compte a été
+fermé alors que son propriétaire avait simplement changé son mot de passe.
+
+> ⚠️ Le motif est verrouillé par une contrainte `CHECK` (V21). Ajouter une
+> valeur à l'énumération Java **sans** la migration ne casse pas la
+> compilation : la panne arrive à l'exécution, au premier changement.
+
+**L'adresse e-mail n'est pas modifiable ici**, et ce n'est pas un oubli. Elle
+est l'identifiant de connexion et la destination des liens de confirmation
+(D-23). La changer suppose de vérifier qu'elle est libre, de repasser
+`emailVerifie` à faux, de réémettre un lien, et de décider ce qui advient si le
+propriétaire ne l'ouvre jamais — avec, au bout, un compte dont l'adresse ne
+reçoit plus rien. C'est un parcours à part entière, pas un champ de formulaire.
+
+**Aucune de ces routes ne prend d'identifiant.** Le compte visé est toujours
+celui du jeton : pas de `/api/profil/{id}`, pas d'`utilisateurId` dans le
+corps. L'élévation de privilège n'est donc pas une vérification qu'on pourrait
+oublier — elle est impossible par la forme des routes. C'est aussi pourquoi ce
+contrôleur ne porte aucun `@PreAuthorize` : il n'y a rien à autoriser au-delà
+d'être connecté.
+
+---
+
+## D-26 — Les avatars par défaut sont engendrés chez un tiers
+
+**Date :** 07/09/2026
+**Statut :** ✅ actée — remplace la position tenue jusqu'ici par `gu-avatar`
+
+**Ce qui change.** `gu-avatar` affichait deux lettres et une couleur dérivées du
+nom, et sa propre documentation défendait ce choix contre toute image distante :
+« sur une connexion mobile camerounaise, quarante avatars dans une liste font
+quarante requêtes ». On adopte pourtant **DiceBear**, comme le projet de
+référence, parce qu'un back-office où chaque personne a un visage se lit plus
+vite qu'une colonne de monogrammes.
+
+**Choix.** Une cascade à trois niveaux, où chaque cran rattrape le précédent :
+
+```text
+1. la vraie photo      si elle existe            ← toujours prioritaire
+2. l'avatar DiceBear   engendré depuis le nom    ← demande le réseau
+3. les initiales       deux lettres, une couleur ← zéro octet
+```
+
+**🎯 Les initiales sont peintes AVANT l'image, pas à sa place.** C'est ce qui
+rend la décision tenable : la liste s'affiche complète immédiatement, l'image
+recouvre les initiales quand elle arrive, et **si elle n'arrive jamais** — hors
+ligne, service en panne, opérateur qui filtre — elles restent. L'écran est
+correct dans les trois cas, et à aucun moment il n'est vide.
+`loading="lazy"` complète le dispositif : les avatars sous la ligne de
+flottaison ne sont même pas demandés.
+
+**Ce que ça coûte.**
+
+- **Le nom part chez un tiers**, puisqu'il sert de graine. Ce n'est pas
+  sensible, mais c'est réel : noms de marchands et d'administrateurs transitent
+  par `dicebear.com` à chaque affichage non mis en cache. **Ne jamais y mettre
+  autre chose** — pas d'e-mail, pas de téléphone, pas d'identifiant interne.
+- Une dépendance réseau de plus sur un chemin d'affichage.
+
+**Ce que ça évite.** Aucun fichier engendré à l'inscription, donc rien à
+stocker, rien à servir, et un avatar qui suit un changement de nom au lieu de
+rester figé.
+
+**La version est épinglée** (`7.x`, celle de la référence). Ne pas écrire « la
+dernière » : une collection renommée entre deux majeures ne casse pas
+bruyamment, elle renvoie une image vide — et l'écran se remplit de pastilles
+blanches sans qu'aucune erreur n'apparaisse.
+
+**L'hôte est une constante**, parce que DiceBear s'auto-héberge. Le jour où il
+devient lent, payant, ou inatteignable depuis le Cameroun — comme l'est déjà
+Render (D-22) — c'est une ligne à changer, et rien d'autre.

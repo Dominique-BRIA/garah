@@ -56,6 +56,19 @@ public class ControleurConfiguration {
                 // de la même façon, sans la recopier chacun de leur côté.
                 "devise", "XAF",
                 // D-08 : trois langues. La première est celle par défaut.
-                "langues", List.of("fr", "en", "sag"));
+                //
+                // ⚠️ « sg » et NON « sag ». Le sängö a deux codes normalisés —
+                //    `sg` en ISO 639-1, `sag` en 639-2 — et c'est le premier
+                //    qui fait foi ici : la table `langue` a `sg` pour clé
+                //    primaire, et la colonne `utilisateur.langue` est un
+                //    `char(2)` avec une clé étrangère dessus.
+                //
+                //    Annoncer « sag » n'aurait produit AUCUNE erreur visible.
+                //    Un frontend qui construit son sélecteur à partir de cette
+                //    liste aurait proposé « sag » ; `langueValide()` l'aurait
+                //    rejeté en silence et enregistré « fr ». Le symptôme :
+                //    choisir le sängö ne fait rien, indéfiniment, sans une
+                //    ligne dans les journaux.
+                "langues", List.of("fr", "en", "sg"));
     }
 }
