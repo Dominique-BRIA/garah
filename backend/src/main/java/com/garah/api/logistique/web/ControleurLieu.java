@@ -2,13 +2,15 @@ package com.garah.api.logistique.web;
 
 import com.garah.api.logistique.domaine.TypeLieu;
 import com.garah.api.logistique.domaine.VueLieu;
+import com.garah.api.logistique.domaine.ServiceLieu;
 import com.garah.api.logistique.infra.LieuRepository;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -30,9 +32,11 @@ public class ControleurLieu {
     private static final String ACTIF = "ACTIF";
 
     private final LieuRepository lieux;
+    private final ServiceLieu service;
 
-    public ControleurLieu(LieuRepository lieux) {
+    public ControleurLieu(LieuRepository lieux, ServiceLieu service) {
         this.lieux = lieux;
+        this.service = service;
     }
 
     /**
@@ -68,5 +72,140 @@ public class ControleurLieu {
                 .stream()
                 .map(VueLieu::de)
                 .toList();
+    }
+
+    // -------------------------------------------------------------------------
+    // L'ecriture
+    // -------------------------------------------------------------------------
+    //
+    // ⚠️ Ces routes MANQUAIENT, et c'etait bloquant : une commande exige un
+    // point de recuperation (D-05). Tant qu'aucun n'existe, aucune commande ne
+    // peut etre passee — quel que soit l'etat du catalogue.
+    //
+    // Les permissions different selon le TYPE de lieu, comme le referentiel
+    // les a separees : POINT_RECUPERATION_* et POINT_TRANSIT_*. Un point de
+    // recuperation est une vitrine, un point de transit est de la logistique
+    // interne ; on peut vouloir confier l'un sans l'autre. La verification
+    // porte donc sur le corps de la requete, pas sur la route seule.
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('POINT_RECUPERATION_CONSULTER')")
+    public VueLieu detail(@PathVariable Long id) {
+        return service.detail(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("(#demande.type().name() == 'POINT_RECUPERATION'"
+                + "  and hasAuthority('POINT_RECUPERATION_CREER'))"
+                + " or (#demande.type().name() != 'POINT_RECUPERATION'"
+                + "  and hasAuthority('POINT_TRANSIT_CREER'))")
+    public VueLieu creer(@Valid @RequestBody DemandeLieu demande) {
+        return service.creer(demande.type(), demande.nom(), demande.pays(), demande.ville(),
+                demande.adresse(), demande.telephone(), demande.horaires(),
+                demande.fraisAcheminement());
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('POINT_RECUPERATION_MODIFIER')"
+                + " or hasAuthority('POINT_TRANSIT_MODIFIER')")
+    public VueLieu modifier(@PathVariable Long id,
+                            @Valid @RequestBody DemandeModificationLieu demande) {
+        return service.modifier(id, demande.nom(), demande.pays(), demande.ville(),
+                demande.adresse(), demande.telephone(), demande.horaires(),
+                demande.fraisAcheminement());
+    }
+
+    /*
+     * Activation et desactivation par le VERBE, gardees separement : le
+     * referentiel distingue ACTIVER de DESACTIVER, et ce n'est pas un exces de
+     * zele. Desactiver le dernier point de recuperation ferme le tunnel de
+     * vente ; le service le refuse d'ailleurs.
+     */
+    @PostMapping("/{id}/activation")
+    @PreAuthorize("hasAuthority('POINT_RECUPERATION_ACTIVER')"
+                + " or hasAuthority('POINT_TRANSIT_ACTIVER')")
+    public VueLieu activer(@PathVariable Long id) {
+        return service.changerStatut(id, true);
+    }
+
+    @DeleteMapping("/{id}/activation")
+    @PreAuthorize("hasAuthority('POINT_RECUPERATION_DESACTIVER')"
+                + " or hasAuthority('POINT_TRANSIT_DESACTIVER')")
+    public VueLieu desactiver(@PathVariable Long id) {
+        return service.changerStatut(id, false);
+    }
+
+    // -------------------------------------------------------------------------
+
+    public record DemandeLieu(
+            @NotNull(message = "Le type de lieu est obligatoire.")
+            TypeLieu type,
+
+            @NotBlank(message = "Le nom est obligatoire.")
+            @Size(max = 150, message = "Le nom ne peut pas depasser 150 caracteres.")
+            String nom,
+
+            /* Code ISO 3166-1 alpha-2 : CM, CF, TD... Jamais un nom en clair. */
+            @NotBlank(message = "Le pays est obligatoire.")
+            @Pattern(regexp = "^[A-Za-z]{2}$",
+                     message = "Le pays doit etre un code a deux lettres.")
+            String pays,
+
+            @NotBlank(message = "La ville est obligatoire.")
+            @Size(max = 100, message = "La ville ne peut pas depasser 100 caracteres.")
+            String ville,
+
+            @Size(max = 255, message = "Adresse trop longue.")
+            String adresse,
+
+            @Size(max = 30, message = "Numero de telephone trop long.")
+            @Pattern(regexp = "^$|^[+()0-9 .-]{6,30}$",
+                     message = "Ce numero de telephone n'est pas valide.")
+            String telephone,
+
+            @Size(max = 255, message = "Horaires trop longs.")
+            String horaires,
+
+            /*
+             * Ce que coute l'acheminement jusqu'a CE point. Fige sur la
+             * commande (D-11) : le changer ensuite ne touche aucune commande
+             * deja passee. N'a de sens que sur un point de recuperation.
+             */
+            @DecimalMin(value = "0", message = "Les frais ne peuvent pas etre negatifs.")
+            @Digits(integer = 13, fraction = 2, message = "Montant mal forme.")
+            BigDecimal fraisAcheminement) {
+    }
+
+    /** Le type n'y figure pas : voir {@code ServiceLieu.modifier}. */
+    public record DemandeModificationLieu(
+            @NotBlank(message = "Le nom est obligatoire.")
+            @Size(max = 150, message = "Le nom ne peut pas depasser 150 caracteres.")
+            String nom,
+
+            @NotBlank(message = "Le pays est obligatoire.")
+            @Pattern(regexp = "^[A-Za-z]{2}$",
+                     message = "Le pays doit etre un code a deux lettres.")
+            String pays,
+
+            @NotBlank(message = "La ville est obligatoire.")
+            @Size(max = 100, message = "La ville ne peut pas depasser 100 caracteres.")
+            String ville,
+
+            @Size(max = 255, message = "Adresse trop longue.")
+            String adresse,
+
+            @Size(max = 30, message = "Numero de telephone trop long.")
+            @Pattern(regexp = "^$|^[+()0-9 .-]{6,30}$",
+                     message = "Ce numero de telephone n'est pas valide.")
+            String telephone,
+
+            @Size(max = 255, message = "Horaires trop longs.")
+            String horaires,
+
+            @DecimalMin(value = "0", message = "Les frais ne peuvent pas etre negatifs.")
+            @Digits(integer = 13, fraction = 2, message = "Montant mal forme.")
+            BigDecimal fraisAcheminement) {
     }
 }

@@ -20,6 +20,7 @@ export * from './lib/modeles/marchand';
 export * from './lib/modeles/categorie';
 export * from './lib/modeles/variante';
 export * from './lib/modeles/attribut';
+export * from './lib/modeles/logistique';
 export * from './lib/modeles/equipe';
 export * from './lib/modeles/commerce';
 export * from './lib/modeles/stock';

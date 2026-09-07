@@ -1,0 +1,117 @@
+// Les lieux de la chaine logistique. Motifs communs dans styles.scss.
+
+// Ce qui BLOQUE la prise de commande. Ambre et non rouge : ce n'est pas une
+// panne, c'est une configuration qui manque — et elle se repare en un clic.
+.bloquant {
+  display: flex;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.5rem;
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 7%, var(--verre-fond));
+}
+
+.bloquant__icone { color: var(--warning); font-size: 1.15rem; margin-top: 0.1rem; }
+.bloquant__titre { font-weight: 600; margin: 0 0 0.3rem; }
+
+.bloquant__texte {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--texte-attenue);
+  line-height: 1.55;
+}
+
+// --- Les filtres de role -----------------------------------------------------
+.filtres {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.filtre {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte-attenue);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.filtre--actif {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+// --- Le tableau --------------------------------------------------------------
+.cellule-lieu {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.nom { font-weight: 600; }
+
+.adresse,
+.contact .attenue { font-size: 0.76rem; }
+
+.contact {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.attenue { color: var(--texte-attenue); }
+
+.montant { font-variant-numeric: tabular-nums; }
+
+tr.inactif { opacity: 0.55; }
+
+// --- Le choix du role, en cartes ---------------------------------------------
+//
+// Le role decide de ce que le lieu EST dans la chaine, et des commandes s'y
+// rattachent ensuite. Un <select> le ferait passer pour un detail.
+.choix-type {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.carte-choix {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); }
+
+  // Sorti de la VUE, pas du FLUX : retire du flux, le champ ne serait plus
+  // atteignable au clavier.
+  input[type='radio'] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.carte-choix--actif {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.carte-choix__titre { font-weight: 600; font-size: 0.9rem; }
+.carte-choix__aide { font-size: 0.78rem; color: var(--texte-attenue); line-height: 1.4; }

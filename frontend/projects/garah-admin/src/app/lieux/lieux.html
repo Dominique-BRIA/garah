@@ -1,0 +1,243 @@
+<header class="entete">
+  <div>
+    <h1>Lieux</h1>
+    <p class="sous-titre">
+      Entrepôts, points de transit et points de récupération — la chaîne
+      Douala → Bertoua → Bangui.
+    </p>
+  </div>
+
+  @if (session.peut('POINT_RECUPERATION_CREER') || session.peut('POINT_TRANSIT_CREER')) {
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="ouvrirCreation()">
+      Nouveau lieu
+    </button>
+  }
+</header>
+
+<!-- ⚠️ Sans point de récupération actif, PLUS AUCUNE commande ne peut être
+     passée. Rien d'autre dans l'application ne le signalerait : la commande
+     échouerait simplement, chez le client, au dernier écran. -->
+@if (!chargement() && pointsActifs() === 0) {
+  <div class="gu-carte bloquant" role="alert">
+    <gu-icone nom="triangle-exclamation" class="bloquant__icone" />
+    <div>
+      <p class="bloquant__titre">Aucun point de récupération actif</p>
+      <p class="bloquant__texte">
+        Une commande exige un point de retrait. Tant qu’il n’y en a pas,
+        personne ne peut commander — même sur un catalogue complet.
+      </p>
+    </div>
+  </div>
+}
+
+@if (erreur(); as m) {
+  <p class="alerte" role="alert">{{ m }}</p>
+}
+
+<nav class="filtres" aria-label="Filtrer par rôle">
+  <button type="button" class="filtre" [class.filtre--actif]="filtreType() === ''"
+          (click)="filtreType.set('')">Tous</button>
+  @for (t of typesLieu; track t.code) {
+    <button type="button" class="filtre" [class.filtre--actif]="filtreType() === t.code"
+            (click)="filtreType.set(t.code)">{{ t.libelle }}</button>
+  }
+</nav>
+
+@if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (visibles().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="warehouse" class="etat__icone" />
+    <p class="etat__titre">Aucun lieu</p>
+    <p class="etat__aide">
+      Commencez par un point de récupération : c’est le seul qui conditionne
+      la prise de commande.
+    </p>
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Rôle</th>
+          <th>Ville</th>
+          <th>Contact</th>
+          <th class="droite">Acheminement</th>
+          <th>Statut</th>
+          <th class="droite">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of visibles(); track l.id) {
+          <tr [class.inactif]="l.statut !== 'ACTIF'">
+            <td>
+              <div class="cellule-lieu">
+                <span class="nom">{{ l.nom }}</span>
+                @if (l.adresse) { <span class="adresse">{{ l.adresse }}</span> }
+              </div>
+            </td>
+            <td>
+              <span class="gu-badge" [class]="badgeType(l.type)">
+                {{ libelleType(l.type) }}
+              </span>
+            </td>
+            <td>
+              {{ l.ville }}
+              <span class="attenue">· {{ libelle(l.pays) }}</span>
+            </td>
+            <td class="contact">
+              @if (l.telephone) { <span>{{ l.telephone }}</span> }
+              @if (l.horaires) { <span class="attenue">{{ l.horaires }}</span> }
+              @if (!l.telephone && !l.horaires) { <span class="attenue">—</span> }
+            </td>
+            <td class="droite montant">
+              <!-- Les frais n'existent que sur un point de récupération. Un
+                   tiret ailleurs, pas « 0 FCFA » : zéro laisserait croire que
+                   l'acheminement y est gratuit, alors qu'il ne s'y facture
+                   simplement pas. -->
+              @if (l.type === 'POINT_RECUPERATION') {
+                {{ montant(l.fraisAcheminement) }}
+              } @else {
+                <span class="attenue">—</span>
+              }
+            </td>
+            <td>
+              <span class="gu-badge"
+                    [class]="l.statut === 'ACTIF' ? 'gu-badge--succes' : 'gu-badge--neutre'">
+                {{ l.statut }}
+              </span>
+            </td>
+            <td class="droite">
+              <div class="cellule-actions">
+                @if (session.peut('POINT_RECUPERATION_MODIFIER')
+                     || session.peut('POINT_TRANSIT_MODIFIER')) {
+                  <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                          (click)="ouvrirEdition(l)"
+                          aria-label="Modifier ce lieu" title="Modifier">
+                    <gu-icone nom="pen" />
+                  </button>
+                }
+                @if (l.statut === 'ACTIF'
+                     && (session.peut('POINT_RECUPERATION_DESACTIVER')
+                         || session.peut('POINT_TRANSIT_DESACTIVER'))) {
+                  <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                          (click)="basculerActivation(l)"
+                          aria-label="Désactiver ce lieu" title="Désactiver">
+                    <gu-icone nom="eye-slash" />
+                  </button>
+                }
+                @if (l.statut !== 'ACTIF'
+                     && (session.peut('POINT_RECUPERATION_ACTIVER')
+                         || session.peut('POINT_TRANSIT_ACTIVER'))) {
+                  <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+                          (click)="basculerActivation(l)"
+                          aria-label="Réactiver ce lieu" title="Réactiver">
+                    <gu-icone nom="eye" />
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (formulaireOuvert()) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true"
+         [attr.aria-label]="enEdition() ? 'Modifier le lieu' : 'Nouveau lieu'">
+    @if (enEdition(); as l) {
+      <h2>Modifier {{ l.nom }}</h2>
+      <p class="aide">{{ libelleType(l.type) }} — le rôle ne change pas.</p>
+    } @else {
+      <h2>Nouveau lieu</h2>
+    }
+
+    <form (ngSubmit)="enregistrer()" novalidate>
+      <!-- Le rôle ne se choisit qu'à la création : il décide de ce que le lieu
+           EST dans la chaîne, et des commandes s'y rattachent ensuite. -->
+      @if (!enEdition()) {
+        <span class="gu-libelle">Rôle</span>
+        <div class="choix-type">
+          @for (t of typesLieu; track t.code) {
+            <label class="carte-choix" [class.carte-choix--actif]="type() === t.code">
+              <input type="radio" name="type" [value]="t.code"
+                     [ngModel]="type()" (ngModelChange)="type.set($event)" />
+              <span class="carte-choix__titre">{{ t.libelle }}</span>
+              <span class="carte-choix__aide">{{ t.explication }}</span>
+            </label>
+          }
+        </div>
+      }
+
+      <label class="gu-libelle" for="nom">Nom</label>
+      <input id="nom" name="nom" class="gu-champ" required maxlength="150"
+             placeholder="Agence Bertoua centre"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+
+      <label class="gu-libelle" for="pays">Pays</label>
+      <select id="pays" name="pays" class="gu-champ"
+              [ngModel]="pays()" (ngModelChange)="pays.set($event)">
+        @for (p of listePays; track p.code) {
+          <option [value]="p.code">{{ p.libelle }}</option>
+        }
+      </select>
+
+      <label class="gu-libelle" for="ville">Ville</label>
+      <input id="ville" name="ville" class="gu-champ" required maxlength="100"
+             placeholder="Bertoua"
+             [ngModel]="ville()" (ngModelChange)="ville.set($event)" />
+
+      <label class="gu-libelle" for="adresse">Adresse</label>
+      <input id="adresse" name="adresse" class="gu-champ" maxlength="255"
+             [ngModel]="adresse()" (ngModelChange)="adresse.set($event)" />
+
+      <label class="gu-libelle" for="tel">Téléphone</label>
+      <input id="tel" name="telephone" class="gu-champ" maxlength="30"
+             [ngModel]="telephone()" (ngModelChange)="telephone.set($event)" />
+
+      <label class="gu-libelle" for="horaires">Horaires</label>
+      <input id="horaires" name="horaires" class="gu-champ" maxlength="255"
+             placeholder="Lun–Sam 8h–18h"
+             [ngModel]="horaires()" (ngModelChange)="horaires.set($event)" />
+      <p class="aide">Affichés au client au moment de choisir son point.</p>
+
+      @if (porteDesFrais()) {
+        <label class="gu-libelle" for="frais">Frais d’acheminement (FCFA)</label>
+        <input id="frais" name="frais" type="number" min="0" class="gu-champ"
+               [ngModel]="frais()"
+               (ngModelChange)="frais.set($event === '' ? null : +$event)" />
+        <!-- Figés sur la commande : les changer plus tard ne touche aucune
+             commande déjà passée. C'est exactement ce qu'on veut — une facture
+             de mars doit rester juste en septembre. -->
+        <p class="aide">
+          Ce que coûte l’acheminement jusqu’ici. Figé sur chaque commande :
+          le modifier ne change rien aux commandes déjà passées.
+        </p>
+      }
+
+      @if (erreurFormulaire(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
+        <button type="submit" class="gu-btn gu-btn--primaire"
+                [disabled]="enregistrement() || !nom().trim() || !ville().trim()">
+          @if (enregistrement()) {
+            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+          } @else if (enEdition()) {
+            Enregistrer
+          } @else { Créer le lieu }
+        </button>
+      </div>
+    </form>
+  </aside>
+}
