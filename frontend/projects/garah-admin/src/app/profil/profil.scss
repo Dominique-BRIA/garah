@@ -91,6 +91,13 @@
   margin-top: 0.35rem;
 }
 
+// Aligné à gauche et non étiré : un bouton pleine largeur aurait le poids
+// d'une action principale, alors que retirer sa photo est un geste rare.
+.retirer-photo {
+  align-self: flex-start;
+  margin-top: -0.25rem;
+}
+
 .petit-badge {
   font-size: 0.62rem;
   padding: 0.12rem 0.5rem;

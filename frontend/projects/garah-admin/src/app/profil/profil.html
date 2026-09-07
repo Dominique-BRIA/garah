@@ -53,6 +53,18 @@
         </div>
       </div>
 
+      <!-- Le retrait est posé JUSTE SOUS la photo, et il est ÉCRIT.
+           Il vivait en pied de carte, en corbeille sans libellé, après un
+           filet : à cette place et sous cette forme, il se lisait
+           « supprimer mon compte ». Un bouton destructeur doit toucher ce
+           qu'il détruit, et dire ce qu'il détruit. -->
+      @if (p.urlPhoto) {
+        <button type="button" class="gu-btn gu-btn--secondaire petit retirer-photo"
+                [disabled]="envoiPhoto()" (click)="retirerPhoto()">
+          <gu-icone nom="trash" /> Retirer la photo
+        </button>
+      }
+
       @if (erreurPhoto(); as m) {
         <p class="alerte" role="alert">{{ m }}</p>
       }
@@ -95,19 +107,16 @@
         }
       </dl>
 
-      @if (p.urlPhoto) {
-        <div class="gu-fiche__actions">
-          <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
-                  [disabled]="envoiPhoto()" (click)="retirerPhoto()"
-                  aria-label="Retirer la photo de profil" title="Retirer la photo">
-            <gu-icone nom="trash" />
-          </button>
-        </div>
-      }
-
+      <!-- ⚠️ NE PAS écrire « contactez un administrateur ».
+           Cet écran est ouvert par des super administrateurs : leur dire de
+           contacter un administrateur, c'est les renvoyer à eux-mêmes. Et
+           surtout, ce recours n'existe pour PERSONNE — aucune route ne change
+           une adresse e-mail, quel que soit le rôle. Une interface qui promet
+           un chemin inexistant fait perdre plus de temps qu'un silence. -->
       <p class="aide">
-        L'adresse e-mail sert à vous connecter et ne se modifie pas ici.
-        Contactez un administrateur pour la changer.
+        Votre adresse e-mail vous sert à vous connecter. La modifier suppose de
+        confirmer la nouvelle adresse avant de basculer : ce parcours n'existe
+        pas encore.
       </p>
     </section>
 
