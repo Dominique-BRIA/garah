@@ -23,6 +23,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -76,6 +77,36 @@ public class GestionnaireErreursGlobal {
             Map.entry("affectation_conversation_ouverte_unique",
                     "Cette conversation est déjà affectée."));
 
+    /**
+     * Ce qu'on dit d'une contrainte qu'on n'a pas nommée, d'après son SQLState.
+     *
+     * <p>🎯 <b>Une phrase vraie de tout n'aide personne.</b> « L'opération est
+     * en conflit avec des données existantes » couvrait aussi bien un doublon
+     * qu'une référence manquante ou une règle arithmétique. Une réception de
+     * stock refusée a coûté une demi-heure avant qu'on découvre une clé
+     * étrangère derrière cette phrase (V28).</p>
+     *
+     * <p>La <b>nature</b> du refus ne fuit rien : elle ne nomme ni table, ni
+     * colonne, ni contrainte. Elle dit seulement de quel genre de problème il
+     * s'agit — et c'est ce qui oriente la recherche.</p>
+     *
+     * <p>⚠️ Ces codes viennent de la norme SQL, classe 23 « integrity
+     * constraint violation ». Ils sont stables : ce n'est pas du texte
+     * d'erreur PostgreSQL, qui changerait de langue et de formulation d'une
+     * version à l'autre.</p>
+     *
+     * <p>⚠️ Ce n'est pas une excuse pour laisser une contrainte non traduite.
+     * Chacune qui arrive ici est un <b>bug de service</b> — elle est
+     * journalisée en ERROR, avec son nom, pour être nommée dans
+     * {@link #MESSAGES_CONTRAINTES}.</p>
+     */
+    private static final Map<String, String> NATURES = Map.of(
+            "23503", "Cette opération renvoie à un élément qui n'existe pas, "
+                     + "ou qui a été supprimé entre-temps.",
+            "23505", "Une donnée du même genre existe déjà : cette valeur doit être unique.",
+            "23514", "Les informations saisies ne respectent pas une règle du système.",
+            "23502", "Une information obligatoire manque.");
+
     /** Erreurs métier explicites : elles portent déjà leur code et leur statut. */
     @ExceptionHandler(ErreurMetier.class)
     public ResponseEntity<ReponseErreur> erreurMetier(ErreurMetier e, HttpServletRequest requete) {
@@ -119,11 +150,19 @@ public class GestionnaireErreursGlobal {
                             message, requete.getRequestURI()));
         }
 
-        // Contrainte inconnue : on ne devine pas, et on ne fuit rien.
-        log.error("Violation d'integrite non traduite sur {}", requete.getRequestURI(), e);
+        // Contrainte non traduite : on dit au moins de QUELLE NATURE est le
+        // refus. « L'opération est en conflit avec des données existantes »
+        // était vrai de tout, donc utile pour rien : une réception de stock
+        // saisie par un administrateur a coûté une demi-heure de recherche
+        // avant qu'on découvre une clé étrangère derrière cette phrase (V28).
+        String nature = NATURES.get(sqlState(e));
+        log.error("Violation d'integrite non traduite sur {} — contrainte '{}', SQLState {}",
+                requete.getRequestURI(), contrainte, sqlState(e), e);
+
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ReponseErreur.de("CONFLIT_DONNEES",
-                        "L'opération est en conflit avec des données existantes.",
+                        nature != null ? nature
+                                : "L'opération est en conflit avec des données existantes.",
                         requete.getRequestURI()));
     }
 
@@ -237,6 +276,24 @@ public class GestionnaireErreursGlobal {
      * Remonte la chaîne des causes pour trouver le nom de la contrainte PostgreSQL.
      * Spring enveloppe l'exception Hibernate, qui enveloppe elle-même celle du pilote.
      */
+    /**
+     * Le SQLState de la première {@link SQLException} de la chaîne.
+     *
+     * <p>⚠️ On remonte les causes : Spring enveloppe l'exception d'Hibernate,
+     * qui enveloppe celle du pilote. Le SQLState n'existe que sur la dernière,
+     * et regarder seulement la première ne trouve jamais rien.</p>
+     */
+    private String sqlState(Throwable e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof SQLException sql && sql.getSQLState() != null) {
+                return sql.getSQLState();
+            }
+            cause = cause.getCause();
+        }
+        return "";
+    }
+
     private String nomDeContrainte(Throwable e) {
         Throwable cause = e;
         while (cause != null) {

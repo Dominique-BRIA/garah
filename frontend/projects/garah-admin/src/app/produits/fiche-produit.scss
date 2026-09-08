@@ -101,7 +101,7 @@
 
 // --- Déclinaisons ------------------------------------------------------------
 .variante {
-  padding: 1rem 0;
+  padding: 1.5rem 0;
   border-top: 1px solid var(--verre-bordure);
 
   &:first-of-type { border-top: none; padding-top: 0; }
@@ -118,7 +118,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.9rem;
 }
 
 .variante__libelle { font-weight: 600; margin-right: 0.5rem; }
@@ -149,26 +149,106 @@
 //    quatrième classe locale.
 
 // --- La grille tarifaire d'une déclinaison -----------------------------------
-.grille {
-  padding-left: 0.75rem;
-  border-left: 2px solid var(--verre-bordure);
+//
+// 🎯 CE QUI RENDAIT LA FICHE ILLISIBLE N'ÉTAIT PAS LA DENSITÉ, C'ÉTAIT
+//    L'ABSENCE DE FRONTIÈRES.
+//
+// Prix et stock se suivaient, séparés par un simple filet à gauche et quatre
+// dixièmes de rem. Deux sujets différents, collés, se lisent comme un seul
+// bloc confus — et on ne sait plus ce qui commande quoi.
+//
+// Chaque sujet a maintenant son encart, son fond et son titre. L'écart entre
+// eux est plus grand que l'écart interne : c'est CE RAPPORT, pas la marge
+// absolue, qui fait voir deux choses au lieu d'une.
+.tarifs {
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
 }
 
-.grille__entete {
+.tarifs__entete {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.6rem;
 }
 
-.grille__titre {
+// Petit, gras, espacé : trois signes qui disent « ceci nomme un bloc », sans
+// peser autant que le nom de la déclinaison juste au-dessus.
+.tarifs__titre {
+  margin: 0;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--texte-attenue);
 }
+
+.tarifs__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+
+  th {
+    padding: 0 0.5rem 0.35rem;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--texte-attenue);
+    border-bottom: 1px solid var(--verre-bordure);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.4rem 0.5rem;
+    vertical-align: middle;
+    color: var(--texte-attenue);
+  }
+
+  // Les prix s'alignent verticalement : sans chiffres à largeur fixe, la
+  // colonne des montants ondule d'une ligne à l'autre.
+  .montant {
+    color: var(--texte);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // La colonne des gestes ne prend que sa place. Sans cela, elle s'étale et
+  // écarte le prix de sa plage.
+  th:last-child,
+  td:last-child { width: 1%; white-space: nowrap; }
+}
+
+.tarifs__ligne + .tarifs__ligne { border-top: 1px solid var(--verre-bordure); }
+
+// La ligne qu'on remplit se détache de celles qu'on lit : sans cela, on ne
+// voit pas laquelle est en cours de saisie dans une grille de cinq paliers.
+.tarifs__ligne--edition {
+  background: var(--champ-fond-actif);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+// Un champ dans une cellule : ni marge, ni largeur imposée. Les colonnes du
+// tableau décident, pas le champ.
+.tarifs__champ {
+  width: 100%;
+  min-width: 5rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.84rem;
+}
+
+.tarifs__gestes {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.tarifs__aide { margin-top: 0.5rem; }
 
 .lien-action {
   display: inline-flex;
@@ -187,46 +267,6 @@
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 }
 
-.paliers {
-  list-style: none;
-  margin: 0.4rem 0 0;
-  padding: 0;
-  font-size: 0.84rem;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.35rem 0.5rem;
-    border-radius: var(--radius-sm);
-    color: var(--texte-attenue);
-  }
-
-  li:nth-child(odd) { background: var(--surface-douce); }
-
-  strong {
-    color: var(--texte);
-    // Les prix s'alignent verticalement : sans chiffres à largeur fixe, la
-    // colonne des montants ondule d'une ligne à l'autre.
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-// La plage pousse le prix et les actions à droite.
-.paliers__plage { flex: 1; }
-
-.paliers__actions { display: flex; gap: 0.15rem; flex-shrink: 0; }
-
-// La ligne d'édition d'un prix occupe toute la largeur, sous celle qu'elle
-// modifie — jamais ailleurs, sinon on ne sait plus quel prix on change.
-.paliers__edition {
-  display: block !important;
-  background: none !important;
-  padding: 0 !important;
-
-  form { display: flex; flex-direction: column; }
-}
-
 // --- Les formulaires en ligne ------------------------------------------------
 .encart {
   display: flex;
@@ -237,12 +277,6 @@
   background: var(--surface-douce);
 
   .gu-libelle:not(:first-child) { margin-top: 0.75rem; }
-}
-
-.duo {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
 }
 
 // --- Photos ------------------------------------------------------------------
@@ -333,10 +367,13 @@
 // Sous la grille tarifaire, dans le même bloc que la déclinaison : « combien
 // en reste-t-il ? » et « à quel prix ? » sont deux questions qu'on se pose
 // devant le même article.
+// Le MÊME encart que les tarifs : même cadre, même fond, même rayon. Deux
+// sujets voisins qui ne se ressemblent pas se lisent comme deux choses de
+// nature différente, et on se demande laquelle commande l'autre.
 .stock {
-  margin-top: 0.9rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-md);
   background: var(--surface-douce);
 }
 
