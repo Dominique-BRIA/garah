@@ -726,6 +726,39 @@ public class ServiceCatalogue {
         return enrichir(produits.administration(filtre, filtreStatut, mode, pagination));
     }
 
+    /**
+     * Combien de produits au catalogue — <b>rien d'autre</b>.
+     *
+     * <h2>🎯 Pourquoi une méthode pour un seul nombre</h2>
+     *
+     * <p>Le tableau de bord lisait ce chiffre par
+     * {@code /api/produits/administration?taille=1}, puis ne gardait que
+     * {@code totalElements}. Or cette route ENRICHIT la page qu'elle rend :
+     * elle résout le marchand, le prix d'appel et la disponibilité.</p>
+     *
+     * <pre>
+     * pour afficher UN nombre :  4 allers-retours vers Neon
+     *   1. la page de produits            (+ sa requête de comptage)
+     *   2. les noms de marchands
+     *   3. les prix d'appel
+     *   4. les quantités disponibles      ← que j'ai ajoutée sans y penser
+     * </pre>
+     *
+     * <p>Trois de ces quatre requêtes portaient sur <b>un seul produit</b>,
+     * dont on jetait ensuite toutes les données. Ici : un {@code count(*)}.</p>
+     *
+     * <p>Le coût ne se voit pas en local — quatre requêtes sur une base à
+     * 2 ms, c'est 8 ms. Il se voit depuis Douala, sur six cartes chargées en
+     * même temps par une instance à un seul cœur.</p>
+     *
+     * <p>La corbeille est exclue sans qu'on ait à le dire :
+     * {@code @SQLRestriction} s'applique aussi à {@code count()}.</p>
+     */
+    @Transactional(readOnly = true)
+    public long nombreProduits() {
+        return produits.count();
+    }
+
     /** {@code null} = tous les statuts, y compris pour une valeur inconnue. */
     private static StatutProduit statutValide(String demande) {
         if (demande == null || demande.isBlank() || "TOUS".equalsIgnoreCase(demande.strip())) {

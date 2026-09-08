@@ -202,6 +202,26 @@ public class ControleurProduit {
      * Qui n'a pas le droit de jeter n'a pas de raison de voir ce qui a été
      * jeté.</p>
      */
+    /**
+     * Le nombre de produits, et rien d'autre.
+     *
+     * <p>Pour le tableau de bord, qui n'affiche qu'un chiffre. Passer par
+     * {@code /administration?taille=1} coûtait <b>quatre</b> allers-retours
+     * vers la base — la page, les marchands, les prix, les disponibilités —
+     * dont on ne gardait que {@code totalElements}.</p>
+     *
+     * <p>⚠️ Déclarée AVANT {@code /administration/{id}} n'est pas nécessaire
+     * ici — Spring préfère toujours un chemin littéral à une variable — mais
+     * le jour où quelqu'un renomme cette route, le piège redevient celui de
+     * {@code produits/nouveau} côté Angular. Le rappel vaut mieux que la
+     * surprise.</p>
+     */
+    @GetMapping("/administration/nombre")
+    @PreAuthorize("hasAuthority('PRODUIT_CONSULTER')")
+    public long nombre() {
+        return catalogue.nombreProduits();
+    }
+
     @GetMapping("/corbeille")
     @PreAuthorize("hasAuthority('PRODUIT_SUPPRIMER')")
     public Page<VueCorbeille> corbeille(@RequestParam(defaultValue = "0") int page,

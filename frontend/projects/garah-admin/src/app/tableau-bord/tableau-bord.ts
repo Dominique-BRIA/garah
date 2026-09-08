@@ -64,7 +64,13 @@ export class TableauBord {
       // alors que la liste juste à côté en montrait quatre, dont trois
       // brouillons. Deux chiffres différents pour la même chose font douter
       // des deux.
-      source: () => this.compterPage('/api/produits/administration?taille=1'),
+      // ⚠️ La route de COMPTAGE, pas la liste tronquée à un élément.
+      //
+      // `/administration?taille=1` enrichit la page qu'elle rend : marchand,
+      // prix d'appel, disponibilité. Quatre allers-retours vers Neon pour un
+      // chiffre dont on jetait tout le reste — invisible en local, très
+      // visible depuis Douala avec six cartes qui chargent ensemble.
+      source: () => this.compterDirect('/api/produits/administration/nombre'),
     },
     {
       cle: 'marchands',
@@ -172,6 +178,18 @@ export class TableauBord {
 
   protected valeur(cle: string): number | null | undefined {
     return this.valeurs()[cle];
+  }
+
+  /**
+   * Une route qui rend un nombre, et rien d'autre.
+   *
+   * <p>La forme la moins chère : une requête HTTP, un {@code count(*)}. À
+   * préférer partout où une carte n'affiche qu'un chiffre — voir
+   * {@link #compterPage}, qui télécharge une page entière pour en lire le
+   * total.</p>
+   */
+  private compterDirect(url: string): Observable<number | null> {
+    return this.http.get<number>(url).pipe(catchError(() => of(null)));
   }
 
   /** Le nombre total d'une page Spring, sans en télécharger le contenu. */
