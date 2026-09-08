@@ -12,10 +12,6 @@
        filtre de plus. -->
   <div class="actions">
     <button type="button" class="gu-btn gu-btn--secondaire"
-            (click)="exporter()" [disabled]="chargement() || !bilan()">
-      <gu-icone nom="download" /> Exporter
-    </button>
-    <button type="button" class="gu-btn gu-btn--secondaire"
             (click)="charger()" [disabled]="chargement()">
       <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
     </button>
@@ -32,6 +28,45 @@
         </button>
       }
     </nav>
+  </div>
+
+  <!-- Les exports sont à DROITE de la barre d'outils, en face des filtres :
+       ils écrivent exactement la période sélectionnée à gauche. Placés en
+       haut avec « Actualiser », rien ne dirait qu'ils dépendent d'elle.
+
+       Trois boutons visibles plutôt qu'un menu déroulant : le format voulu
+       est déjà connu au moment où l'on vient chercher son fichier, et un
+       menu ferait cliquer deux fois pour la même chose. -->
+  <div class="barre-outils__groupe exports">
+    <button type="button" class="gu-btn export export--pdf"
+            (click)="exporter('pdf')" [disabled]="chargement() || !bilan() || action() !== null">
+      @if (action() === 'pdf') {
+        <gu-icone nom="circle-notch" tourne />
+      } @else {
+        <gu-icone nom="download" />
+      }
+      PDF
+    </button>
+
+    <button type="button" class="gu-btn export export--word"
+            (click)="exporter('word')" [disabled]="chargement() || !bilan() || action() !== null">
+      @if (action() === 'word') {
+        <gu-icone nom="circle-notch" tourne />
+      } @else {
+        <gu-icone nom="download" />
+      }
+      Word
+    </button>
+
+    <button type="button" class="gu-btn export export--tableur"
+            (click)="exporter('tableur')" [disabled]="chargement() || !bilan() || action() !== null">
+      @if (action() === 'tableur') {
+        <gu-icone nom="circle-notch" tourne />
+      } @else {
+        <gu-icone nom="download" />
+      }
+      Excel
+    </button>
   </div>
 </div>
 

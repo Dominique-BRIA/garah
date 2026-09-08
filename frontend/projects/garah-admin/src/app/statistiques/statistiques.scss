@@ -22,6 +22,31 @@
   line-height: 1.55;
 }
 
+// --- Les exports -------------------------------------------------------------
+// Une couleur par format, comme dans la reference : rouge pour le PDF, bleu
+// pour Word, vert pour le tableur. Ce sont les couleurs que ces trois
+// applications portent elles-memes depuis vingt ans — on ne les invente pas,
+// on s'appuie sur ce que l'oeil sait deja.
+.export {
+  color: #fff;
+  background: var(--couleur-format);
+  border: 1px solid var(--couleur-format);
+
+  &:hover:not(:disabled) {
+    // Assombri plutot que teinte : le format doit rester reconnaissable au
+    // survol, sinon le bouton change d'identite sous le curseur.
+    background: color-mix(in srgb, var(--couleur-format) 85%, #000);
+  }
+
+  // Sans cela les trois boutons gardent leur couleur pleine pendant l'ecriture
+  // et rien ne distingue celui qui travaille de ceux qu'on ne peut plus cliquer.
+  &:disabled { opacity: 0.5; }
+}
+
+.export--pdf     { --couleur-format: #dc2626; }
+.export--word    { --couleur-format: #2563eb; }
+.export--tableur { --couleur-format: #059669; }
+
 // --- Les totaux --------------------------------------------------------------
 .cartes {
   display: grid;

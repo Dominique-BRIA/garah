@@ -13,6 +13,8 @@ import {
   tauxLisible,
 } from 'garah-ui';
 
+import { Rapport, versPdf, versTableur, versWord } from './rapport';
+
 /**
  * Ce que le catalogue a produit sur une période.
  *
@@ -162,43 +164,96 @@ export class Statistiques {
    * le détail jour par jour, le classement. La période est écrite en tête,
    * parce qu'un tableau de chiffres sans ses dates ne veut rien dire.</p>
    */
-  protected exporter(): void {
+  protected rapport(): Rapport | null {
     const b = this.bilan();
     if (!b) {
+      return null;
+    }
+
+    return {
+      titre: 'Bilan GARAH',
+      periode: `Du ${this.dateLongue(b.du)} au ${this.dateLongue(b.au)}`,
+      fichier: `garah-statistiques-${b.du}-au-${b.au}`,
+      sections: [
+        {
+          titre: 'Totaux',
+          // Deux colonnes, et le type « texte » sur la seconde : ce tableau
+          // aligne des grandeurs qui n'ont pas la même unité — des francs,
+          // des unités, des jours. Les formater ensemble n'aurait aucun sens.
+          colonnes: [
+            { titre: 'Indicateur', type: 'texte' },
+            { titre: 'Valeur', type: 'texte' },
+          ],
+          lignes: [
+            ['Chiffre d’affaires', this.montant(b.chiffreAffaires)],
+            ['Commandes', String(b.commandes)],
+            ['Articles vendus', String(b.quantiteVendue)],
+            ['Retours', String(b.retours)],
+            ['Fiches consultées', String(b.vues)],
+            ['Visiteurs distincts', String(b.vuesUniques)],
+            ['Jours couverts', `${b.jours} sur ${this.joursAttendus()}`],
+          ],
+        },
+        {
+          titre: 'Jour par jour',
+          colonnes: [
+            { titre: 'Jour', type: 'date' },
+            { titre: 'Vues', type: 'nombre' },
+            { titre: 'Commandes', type: 'nombre' },
+            { titre: 'Chiffre d’affaires', type: 'montant' },
+          ],
+          // De vraies dates et de vrais nombres, pas leur écriture : dans un
+          // tableur, c'est ce qui permet de trier, de totaliser et de tracer.
+          lignes: b.parJour.map((p) => [
+            new Date(p.jour),
+            p.vues,
+            p.commandes,
+            p.chiffreAffaires,
+          ]),
+        },
+        {
+          titre: 'Ce qui rapporte le plus',
+          colonnes: [
+            { titre: 'Produit', type: 'texte' },
+            { titre: 'Vues', type: 'nombre' },
+            { titre: 'Commandes', type: 'nombre' },
+            { titre: 'Quantité vendue', type: 'nombre' },
+            { titre: 'Conversion', type: 'taux' },
+            { titre: 'Chiffre d’affaires', type: 'montant' },
+          ],
+          lignes: b.meilleurs.map((l) => [
+            l.nom,
+            l.vues,
+            l.commandes,
+            l.quantiteVendue,
+            l.tauxConversion,
+            l.chiffreAffaires,
+          ]),
+        },
+      ],
+    };
+  }
+
+  /**
+   * Écrit le bilan dans le format demandé.
+   *
+   * <p>Le bouton reste enfoncé le temps du travail : la bibliothèque doit
+   * d'abord être téléchargée, et sur une connexion lente cela prend plusieurs
+   * secondes. Sans ce retour, on clique trois fois et on obtient trois
+   * fichiers.</p>
+   */
+  protected exporter(format: 'pdf' | 'tableur' | 'word'): void {
+    const r = this.rapport();
+    if (!r || this.action()) {
       return;
     }
 
-    const lignes: string[][] = [
-      ['Bilan GARAH', `du ${b.du} au ${b.au}`],
-      [],
-      ['Chiffre d’affaires (XAF)', String(b.chiffreAffaires)],
-      ['Commandes', String(b.commandes)],
-      ['Articles vendus', String(b.quantiteVendue)],
-      ['Retours', String(b.retours)],
-      ['Fiches consultées', String(b.vues)],
-      ['Visiteurs distincts', String(b.vuesUniques)],
-      ['Jours couverts', `${b.jours} sur ${this.joursAttendus()}`],
-      [],
-      ['Jour', 'Vues', 'Commandes', 'Chiffre d’affaires'],
-      ...b.parJour.map((p) => [
-        p.jour,
-        String(p.vues),
-        String(p.commandes),
-        String(p.chiffreAffaires),
-      ]),
-      [],
-      ['Produit', 'Vues', 'Commandes', 'Quantité vendue', 'Chiffre d’affaires', 'Conversion'],
-      ...b.meilleurs.map((l) => [
-        l.nom,
-        String(l.vues),
-        String(l.commandes),
-        String(l.quantiteVendue),
-        String(l.chiffreAffaires),
-        this.taux(l.tauxConversion),
-      ]),
-    ];
+    this.action.set(format);
+    const ecrire = { pdf: versPdf, tableur: versTableur, word: versWord }[format];
 
-    telecharger(lignes, `garah-statistiques-${b.du}-au-${b.au}.csv`);
+    ecrire(r)
+      .catch(() => this.erreur.set('Le fichier n’a pas pu être créé.'))
+      .finally(() => this.action.set(null));
   }
 
   // -------------------------------------------------------------------------
@@ -237,6 +292,21 @@ export class Statistiques {
     return `${date} — ${p.vues} vue(s), ${p.commandes} commande(s)`;
   }
 
+  /**
+   * Une date écrite en toutes lettres, pour l'en-tête d'un fichier.
+   *
+   * <p>À l'écran, « 10 août » suffit : la page est là, on sait quand on la
+   * regarde. Un fichier, lui, se retrouve six mois plus tard dans un dossier —
+   * il lui faut son année.</p>
+   */
+  protected dateLongue(jour: string): string {
+    return new Date(jour).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+
   protected periodeLisible(): string {
     const b = this.bilan();
     if (!b) {
@@ -251,47 +321,6 @@ export class Statistiques {
 /** Le format que le serveur attend : une date, sans heure ni fuseau. */
 function iso(date: Date): string {
   return date.toISOString().slice(0, 10);
-}
-
-/**
- * Écrit un tableau dans un fichier, et le donne à télécharger.
- *
- * <p>⚠️ <b>Point-virgule et non virgule.</b> Excel configuré en français lit
- * la virgule comme un séparateur DÉCIMAL : tout un tableau atterrit dans une
- * seule colonne. C'est le défaut le plus courant des exports faits ailleurs,
- * et il ne se voit qu'à l'ouverture.</p>
- *
- * <p>⚠️ <b>Le BOM en tête</b> — {@code \uFEFF}, écrit en échappement et non
- * collé tel quel : c'est un caractère INVISIBLE, et personne ne devinerait
- * qu'il compte en relisant la ligne. Sans lui, Excel lit l'UTF-8 comme du
- * latin-1 et tous les accents du fichier se cassent.</p>
- *
- * <p>⚠️ <b>CRLF entre les lignes</b>, comme le veut la spécification du
- * format. Un simple LF passe partout sauf sur les vieux tableurs Windows.</p>
- */
-function telecharger(lignes: readonly string[][], nom: string): void {
-  const csv = lignes.map((l) => l.map(cellule).join(';')).join('\r\n');
-  const url = URL.createObjectURL(
-    new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
-  );
-
-  const lien = document.createElement('a');
-  lien.href = url;
-  lien.download = nom;
-  lien.click();
-
-  // Sans cela le fichier reste en mémoire jusqu'au rechargement de la page.
-  URL.revokeObjectURL(url);
-}
-
-/**
- * Une cellule, protégée.
- *
- * <p>Un nom de produit contient un jour un point-virgule — et ce jour-là, la
- * ligne entière se décale d'une colonne, silencieusement.</p>
- */
-function cellule(valeur: string): string {
-  return /[";\r\n]/.test(valeur) ? `"${valeur.replace(/"/g, '""')}"` : valeur;
 }
 
 function message(e: unknown, repli: string): string {
