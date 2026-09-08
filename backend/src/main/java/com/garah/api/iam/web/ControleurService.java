@@ -3,7 +3,11 @@ package com.garah.api.iam.web;
 import com.garah.api.iam.domaine.ServiceEquipe;
 import com.garah.api.iam.domaine.ServiceHierarchie;
 import com.garah.api.iam.domaine.VueMembre;
+import com.garah.api.surveillance.domaine.ServiceAudit;
+import com.garah.api.surveillance.domaine.VueActivite;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -44,12 +48,18 @@ import java.util.List;
 @RequestMapping("/api/services")
 public class ControleurService {
 
+    /** Une page d'activité ne dépasse pas cette taille, quoi qu'on demande. */
+    private static final int TAILLE_MAX = 200;
+
     private final ServiceHierarchie hierarchie;
     private final ServiceEquipe equipe;
+    private final ServiceAudit audit;
 
-    public ControleurService(ServiceHierarchie hierarchie, ServiceEquipe equipe) {
+    public ControleurService(ServiceHierarchie hierarchie, ServiceEquipe equipe,
+                             ServiceAudit audit) {
         this.hierarchie = hierarchie;
         this.equipe = equipe;
+        this.audit = audit;
     }
 
     // -------------------------------------------------------------------------
@@ -160,6 +170,29 @@ public class ControleurService {
             @AuthenticationPrincipal Jwt jeton) {
         hierarchie.exigerAutoriteSur(utilisateur(jeton), id);
         equipe.reinitialiserMotDePasse(id, demande.motDePasse());
+    }
+
+    /**
+     * Ce qu'un membre a fait, et quand.
+     *
+     * <p>🎯 <b>Ce n'est pas le journal d'audit.</b> Celui-ci porte les clichés
+     * JSON des objets modifiés — donc, potentiellement, n'importe quelle donnée
+     * du système — et reste réservé au module SÉCURITÉ. Un chef reçoit
+     * l'action, l'objet visé et l'horodatage, sans leur contenu.</p>
+     *
+     * <p>⚠️ La réduction se fait dans {@code ServiceAudit}, pas ici. Renvoyer
+     * la vue complète en comptant sur l'écran pour ne pas l'afficher
+     * reviendrait à poser un rideau devant une fenêtre ouverte.</p>
+     */
+    @GetMapping("/membres/{id}/activite")
+    @PreAuthorize("hasAuthority('SERVICE_MEMBRE_ACTIVITE')")
+    public Page<VueActivite> activite(@PathVariable Long id,
+                                      @RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "50") int taille,
+                                      @AuthenticationPrincipal Jwt jeton) {
+        hierarchie.exigerAutoriteSur(utilisateur(jeton), id);
+        return audit.activiteDe(id,
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)));
     }
 
     // -------------------------------------------------------------------------

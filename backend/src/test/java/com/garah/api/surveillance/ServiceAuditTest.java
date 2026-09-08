@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -119,5 +120,34 @@ class ServiceAuditTest {
         // REQUIRES_NEW. La trace de la TENTATIVE reste — et c'est souvent la
         // trace la plus intéressante.
         assertThat(audit.historiqueDe("tarification_test", 123L)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("⚠️ la vue du chef de service ne porte AUCUN cliché")
+    void laVueDuChefNePorteAucunCliche() {
+        // Ce que voit un chef sur son équipier passe par activiteDe(), pas par
+        // actionsDe(). La différence n'a aucun symptôme visible : les deux
+        // rendent une liste de la bonne taille, dans le bon ordre. Seule la
+        // seconde emporte, en plus, le contenu des objets modifiés — le prix
+        // d'achat d'un marchand, l'adresse d'un client.
+        //
+        // Un jour où quelqu'un remplacera l'appel par actionsDe() « parce que
+        // c'était plus simple », rien ne le signalera. Sauf ce test.
+        audit.enregistrer(acteurId, "Paul Mbarga", EMAIL,
+                "PRODUIT_MODIFIER", "tarification_test", 55L,
+                Map.of("prixAchat", "9500"),
+                Map.of("prixAchat", "8000"),
+                "41.202.0.1");
+
+        var reduite = audit.activiteDe(acteurId, PageRequest.of(0, 10)).getContent();
+
+        assertThat(reduite).hasSize(1);
+        assertThat(reduite.getFirst().action()).isEqualTo("PRODUIT_MODIFIER");
+        assertThat(reduite.getFirst().entite()).isEqualTo("tarification_test");
+
+        // Le record n'a tout simplement pas de champ où loger le cliché. On
+        // vérifie donc qu'il n'en a pas gagné un : rien dans ce qui sort ne
+        // doit contenir le prix d'achat.
+        assertThat(reduite.getFirst().toString()).doesNotContain("9500", "8000");
     }
 }

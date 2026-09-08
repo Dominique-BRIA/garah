@@ -89,6 +89,21 @@ public class ServiceAudit {
         return journal.findByUtilisateurIdOrderByDateHeureDesc(utilisateurId, pagination);
     }
 
+    /**
+     * La même question, posée par un chef de service — et donc allégée.
+     *
+     * <p>⚠️ La réduction se fait <b>ici</b>, et pas à l'écran. Les clichés JSON
+     * du journal peuvent porter n'importe quelle donnée du système ; les
+     * laisser sortir en comptant sur l'interface pour ne pas les afficher
+     * reviendrait à poser un rideau devant une fenêtre ouverte. Voir
+     * {@link VueActivite}.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<VueActivite> activiteDe(Long utilisateurId, Pageable pagination) {
+        return journal.findByUtilisateurIdOrderByDateHeureDesc(utilisateurId, pagination)
+                .map(VueActivite::de);
+    }
+
     private String serialiser(Object valeur) {
         if (valeur == null) {
             return null;

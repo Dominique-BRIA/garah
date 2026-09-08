@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Avatar, Icone, Membre, messageErreur, ProfilMetier, ServiceSession } from 'garah-ui';
 
 /**
@@ -25,7 +26,7 @@ import { Avatar, Icone, Membre, messageErreur, ProfilMetier, ServiceSession } fr
  */
 @Component({
   selector: 'gu-mon-service',
-  imports: [Icone, Avatar],
+  imports: [Icone, Avatar, FormsModule],
   templateUrl: './mon-service.html',
   styleUrl: './mon-service.scss',
 })
@@ -45,6 +46,28 @@ export class MonService {
   protected readonly chargement = signal(true);
   protected readonly erreur = signal<string | null>(null);
   protected readonly action = signal<number | null>(null);
+
+  // --- Les deux panneaux, et ce qu'ils partagent -----------------------------
+  //
+  // Un seul est ouvert à la fois : ce sont deux gestes distincts sur la même
+  // personne, et les mêler ferait réinitialiser un mot de passe en croyant
+  // corriger un prénom.
+  protected readonly edition = signal<Membre | null>(null);
+  protected readonly reinitialisation = signal<Membre | null>(null);
+  protected readonly enregistrement = signal(false);
+  protected readonly erreurPanneau = signal<string | null>(null);
+
+  /** Ce qui vient de se passer, dit à l'écran plutôt que disparu en silence. */
+  protected readonly succes = signal<string | null>(null);
+
+  protected readonly nom = signal('');
+  protected readonly prenom = signal('');
+  protected readonly telephone = signal('');
+  protected readonly dateEmbauche = signal('');
+
+  protected readonly motDePasse = signal('');
+  /** Le mot de passe se transmet : on doit pouvoir le relire pour le dicter. */
+  protected readonly mdpVisible = signal(false);
 
   /** Les services que je dirige, nommés. */
   protected readonly mesServices = computed<readonly ProfilMetier[]>(() => {
@@ -105,6 +128,7 @@ export class MonService {
     this.serviceChoisi.set(serviceId);
     this.membres.set([]);
     this.erreur.set(null);
+    this.succes.set(null);
 
     this.http.get<Membre[]>(`/api/services/${serviceId}/membres`).subscribe({
       next: (m) => this.membres.set(m),
@@ -146,6 +170,135 @@ export class MonService {
         this.erreur.set(messageErreur(e, 'Ce geste n’a pas pu être appliqué.'));
       },
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Modifier l'identité
+  // -------------------------------------------------------------------------
+
+  /**
+   * Ouvre la fiche d'un membre.
+   *
+   * <p>⚠️ L'adresse e-mail n'y figure pas comme champ : c'est l'identifiant de
+   * connexion, et la changer déconnecterait la personne sans le lui dire. Elle
+   * est affichée pour qu'on sache de qui il s'agit, pas pour être touchée.</p>
+   */
+  protected ouvrirEdition(membre: Membre): void {
+    this.fermerPanneaux();
+    this.nom.set(membre.nom);
+    this.prenom.set(membre.prenom ?? '');
+    this.telephone.set(membre.telephone ?? '');
+    this.dateEmbauche.set(membre.dateEmbauche ?? '');
+    this.edition.set(membre);
+  }
+
+  protected enregistrerIdentite(): void {
+    const membre = this.edition();
+    if (!membre || this.enregistrement()) {
+      return;
+    }
+
+    // 🎯 Ce qui manque se dit AVANT le clic — ici juste après, faute de place,
+    //    mais toujours en nommant le champ plutôt qu'en rendant le bouton
+    //    inerte sans un mot.
+    if (!this.nom().trim()) {
+      this.erreurPanneau.set('Le nom est obligatoire.');
+      return;
+    }
+
+    this.enregistrement.set(true);
+    this.erreurPanneau.set(null);
+
+    this.http
+      .patch<Membre>(`/api/services/membres/${membre.id}`, {
+        nom: this.nom().trim(),
+        prenom: this.prenom().trim(),
+        telephone: this.telephone().trim(),
+        dateEmbauche: this.dateEmbauche() || null,
+      })
+      .subscribe({
+        next: () => {
+          this.enregistrement.set(false);
+          this.fermerPanneaux();
+          // ⚠️ Le rechargement remet le bandeau à zéro : le message vient
+          //    APRÈS, sinon il disparaîtrait dans la milliseconde.
+          this.rafraichir();
+          this.succes.set(`La fiche de ${this.nom().trim()} est enregistrée.`);
+        },
+        error: (e: unknown) => this.echoue(e, 'La fiche n’a pas pu être enregistrée.'),
+      });
+  }
+
+  // -------------------------------------------------------------------------
+  // Redonner un mot de passe
+  // -------------------------------------------------------------------------
+
+  protected ouvrirMotDePasse(membre: Membre): void {
+    this.fermerPanneaux();
+    this.motDePasse.set('');
+    // Visible d'emblée : ce mot de passe doit être dicté ou recopié. Le masquer
+    // ferait taper à l'aveugle un texte qu'on va de toute façon communiquer.
+    this.mdpVisible.set(true);
+    this.reinitialisation.set(membre);
+  }
+
+  protected enregistrerMotDePasse(): void {
+    const membre = this.reinitialisation();
+    if (!membre || this.enregistrement()) {
+      return;
+    }
+
+    if (this.motDePasse().length < 6) {
+      this.erreurPanneau.set(
+        `Six caractères au moins — ${this.motDePasse().length} saisi(s).`,
+      );
+      return;
+    }
+
+    this.enregistrement.set(true);
+    this.erreurPanneau.set(null);
+
+    this.http
+      .post<void>(`/api/services/membres/${membre.id}/mot-de-passe`, {
+        motDePasse: this.motDePasse(),
+      })
+      .subscribe({
+        next: () => {
+          this.enregistrement.set(false);
+          const qui = `${membre.prenom ?? ''} ${membre.nom}`.trim();
+          this.fermerPanneaux();
+          // ⚠️ On rappelle le geste qui reste à faire : un mot de passe changé
+          //    et non communiqué met simplement la personne dehors.
+          this.succes.set(
+            `Mot de passe remplacé. Communiquez-le à ${qui} : c’est le seul moment où il est lisible.`,
+          );
+        },
+        error: (e: unknown) => this.echoue(e, 'Le mot de passe n’a pas pu être remplacé.'),
+      });
+  }
+
+  // -------------------------------------------------------------------------
+
+  protected fermerPanneaux(): void {
+    this.edition.set(null);
+    this.reinitialisation.set(null);
+    this.erreurPanneau.set(null);
+    this.enregistrement.set(false);
+    this.motDePasse.set('');
+  }
+
+  private rafraichir(): void {
+    const service = this.serviceChoisi();
+    if (service !== null) {
+      this.choisir(service);
+    }
+  }
+
+  private echoue(e: unknown, repli: string): void {
+    this.enregistrement.set(false);
+    // Le serveur nomme la raison — hors de mon service, rang trop élevé. Son
+    // message est plus juste que celui qu'on inventerait.
+    this.erreurPanneau.set(messageErreur(e, repli));
   }
 
   /** Vrai si c'est moi : on ne s'applique pas ces gestes à soi-même. */

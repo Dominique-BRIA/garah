@@ -27,6 +27,19 @@
 .etat p { margin: 0; }
 .etat--erreur { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
 
+// Ce qui vient d etre fait se DIT. Sans ce bandeau, remplacer un mot de passe
+// referme un panneau et ne change rien a l ecran : on recommence, en croyant
+// que le premier essai n a pas pris.
+.etat--succes {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .aide { font-size: 0.85rem; color: var(--texte-attenue); line-height: 1.55; }
 
 // --- Le choix du service -----------------------------------------------------
@@ -119,9 +132,54 @@
   margin: 0.2rem 0 0;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--alerte);
+  color: var(--warning);
 }
 
-.membre__actions { flex-shrink: 0; }
+// Jusqu a trois boutons selon les droits accordes : ils passent l un sous
+// l autre plutot que de deborder la carte sur un ecran etroit.
+.membre__actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
 
 .petit { padding: 0.35rem 0.75rem; font-size: 0.8rem; min-height: 36px; }
+
+// --- Le mot de passe ---------------------------------------------------------
+//
+// ⚠️ Ce mot de passe se TRANSMET : il faut le lire pour le dicter. Le masquer
+//    sans recours ferait taper a l aveugle un texte qu on va de toute facon
+//    communiquer.
+.champ-mdp {
+  position: relative;
+
+  // La place de l oeil, sans quoi un mot de passe long passe dessous.
+  input { padding-right: 2.8rem; }
+}
+
+.champ-mdp__oeil {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--texte-attenue);
+  font-size: 0.9rem;
+  cursor: pointer;
+
+  &:hover { color: var(--texte); background: var(--surface-douce); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// Tant que le compte n y est pas, l aide devient un avertissement. Elle porte
+// deja le nombre saisi : le defaut se lit sans avoir a compter.
+.aide--manque { color: var(--warning); }

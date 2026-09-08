@@ -7,7 +7,7 @@
 
 @if (chargement()) {
   <div class="gu-carte etat">
-    <gu-icone nom="circle-notch" class="tourne" />
+    <gu-icone nom="circle-notch" tourne />
     Chargement…
   </div>
 } @else if (mesServices().length === 0) {
@@ -42,6 +42,12 @@
     </div>
   }
 
+  @if (succes(); as m) {
+    <div class="gu-carte etat etat--succes" role="status">
+      <gu-icone nom="check" /> {{ m }}
+    </div>
+  }
+
   @if (serviceCourant(); as service) {
     <p class="compte">
       {{ membres().length }} personne(s) dans {{ service.nom }}.
@@ -71,6 +77,18 @@
                serveur le refuse aussi ; ici on évite de le proposer. -->
           @if (!estMoi(m)) {
             <div class="membre__actions">
+              @if (session.peut('SERVICE_MEMBRE_MODIFIER')) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="ouvrirEdition(m)">
+                  <gu-icone nom="pen" /> Modifier
+                </button>
+              }
+              @if (session.peut('SERVICE_MEMBRE_MOT_DE_PASSE')) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="ouvrirMotDePasse(m)">
+                  Mot de passe
+                </button>
+              }
               @if (m.statut === 'ACTIF' && session.peut('SERVICE_MEMBRE_DESACTIVER')) {
                 <button type="button" class="gu-btn gu-btn--secondaire petit"
                         [disabled]="action() === m.id"
@@ -90,4 +108,105 @@
       }
     </div>
   }
+}
+
+<!-- ============================================================= Modifier -->
+@if (edition(); as m) {
+  <div class="voile" (click)="fermerPanneaux()" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true"
+         aria-label="Modifier la fiche d’un membre">
+    <h2>{{ m.prenom }} {{ m.nom }}</h2>
+
+    <!-- ⚠️ L’adresse est RAPPELÉE, pas modifiable : c’est l’identifiant de
+         connexion. La changer ici mettrait la personne dehors sans le lui
+         dire, et ce geste-là appartient à l’administration. -->
+    <p class="aide">
+      {{ m.email }} — l’adresse de connexion ne change pas ici.
+      @if (m.matricule) { Matricule {{ m.matricule }}. }
+    </p>
+
+    <form (ngSubmit)="enregistrerIdentite()" novalidate>
+      <label class="gu-libelle" for="ms-nom">Nom</label>
+      <input id="ms-nom" name="nom" class="gu-champ" required maxlength="100"
+             [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+
+      <label class="gu-libelle" for="ms-prenom">Prénom</label>
+      <input id="ms-prenom" name="prenom" class="gu-champ" maxlength="100"
+             [ngModel]="prenom()" (ngModelChange)="prenom.set($event)" />
+
+      <label class="gu-libelle" for="ms-tel">Téléphone</label>
+      <input id="ms-tel" name="telephone" class="gu-champ" maxlength="30"
+             [ngModel]="telephone()" (ngModelChange)="telephone.set($event)" />
+
+      <label class="gu-libelle" for="ms-embauche">Date d’embauche</label>
+      <input id="ms-embauche" name="dateEmbauche" type="date" class="gu-champ"
+             [ngModel]="dateEmbauche()" (ngModelChange)="dateEmbauche.set($event)" />
+
+      @if (erreurPanneau(); as msg) {
+        <p class="alerte" role="alert">{{ msg }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermerPanneaux()">
+          Annuler
+        </button>
+        <button type="submit" class="gu-btn gu-btn--primaire" [disabled]="enregistrement()">
+          @if (enregistrement()) { <gu-icone nom="circle-notch" tourne /> }
+          Enregistrer
+        </button>
+      </div>
+    </form>
+  </aside>
+}
+
+<!-- ======================================================== Mot de passe -->
+@if (reinitialisation(); as m) {
+  <div class="voile" (click)="fermerPanneaux()" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true"
+         aria-label="Redonner un mot de passe">
+    <h2>Mot de passe de {{ m.prenom }} {{ m.nom }}</h2>
+
+    <!-- L’ancien n’est pas demandé : un chef ne le connaît pas, et c’est très
+         bien ainsi. On le DIT, sinon on cherche un champ absent. -->
+    <p class="aide">
+      L’ancien mot de passe n’est pas demandé : personne ne le connaît. Celui-ci
+      le remplace immédiatement.
+    </p>
+
+    <form (ngSubmit)="enregistrerMotDePasse()" novalidate>
+      <label class="gu-libelle" for="ms-mdp">Nouveau mot de passe</label>
+      <div class="champ-mdp">
+        <input id="ms-mdp" name="motDePasse" class="gu-champ" required
+               [type]="mdpVisible() ? 'text' : 'password'"
+               minlength="6" autocomplete="new-password"
+               [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)" />
+        <button type="button" class="champ-mdp__oeil"
+                [attr.aria-label]="mdpVisible() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                [attr.aria-pressed]="mdpVisible()"
+                (click)="mdpVisible.set(!mdpVisible())">
+          <gu-icone [nom]="mdpVisible() ? 'eye-slash' : 'eye'" />
+        </button>
+      </div>
+      <p class="aide" [class.aide--manque]="motDePasse().length > 0 && motDePasse().length < 6">
+        Six caractères au moins — {{ motDePasse().length }} saisi(s). Provisoire :
+        à communiquer à la personne, qui le changera depuis son profil.
+      </p>
+
+      @if (erreurPanneau(); as msg) {
+        <p class="alerte" role="alert">{{ msg }}</p>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermerPanneaux()">
+          Annuler
+        </button>
+        <button type="submit" class="gu-btn gu-btn--primaire" [disabled]="enregistrement()">
+          @if (enregistrement()) { <gu-icone nom="circle-notch" tourne /> }
+          Remplacer
+        </button>
+      </div>
+    </form>
+  </aside>
 }
