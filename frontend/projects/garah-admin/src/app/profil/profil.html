@@ -219,5 +219,57 @@
       </form>
     </section>
 
+    <!-- ================================================================ -->
+    <!-- LES NOTIFICATIONS                                                 -->
+    <!-- ================================================================ -->
+    <!-- 🎯 Elles s'activent SUR UN GESTE, jamais au chargement. Une demande
+         qui surgit à l'ouverture du back-office est refusée d'un réflexe —
+         et un refus est DÉFINITIF : le navigateur ne repose plus la
+         question, et personne ne va la débloquer dans ses réglages. -->
+    <section class="gu-carte">
+      <h2 class="titre-bloc">Notifications</h2>
+
+      @switch (notifications.etat()) {
+        @case ('actif') {
+          <p class="aide">
+            Ce poste est prévenu : un client qui attend, un dossier que vous
+            suivez qui bouge, un message d'un collègue.
+          </p>
+        }
+        @case ('refuse') {
+          <!-- On DIT que c'est définitif côté navigateur, et où le défaire.
+               Laisser un bouton qui ne redemandera plus rien ferait cliquer
+               trois fois avant qu'on renonce. -->
+          <p class="aide aide--avertissement">
+            <gu-icone nom="triangle-exclamation" />
+            Les notifications sont bloquées pour ce site. Vous pouvez les
+            rouvrir dans les réglages de votre navigateur, à la ligne de GARAH.
+          </p>
+        }
+        @case ('indisponible') {
+          <p class="aide">Ce navigateur ne gère pas les notifications.</p>
+        }
+        @default {
+          <p class="aide">
+            Trois choses : un client attend sans réponse, un dossier que vous
+            suivez a bougé, un collègue vous a écrit.
+          </p>
+          <div class="actions">
+            <button type="button" class="gu-btn gu-btn--secondaire"
+                    [disabled]="notifications.occupe()" (click)="activerLesAlertes()">
+              @if (notifications.occupe()) { Activation… } @else { Activer sur ce poste }
+            </button>
+          </div>
+        }
+      }
+
+      @if (echecAlertes(); as m) {
+        <p class="aide aide--avertissement">
+          <gu-icone nom="triangle-exclamation" />
+          {{ m }}
+        </p>
+      }
+    </section>
+
   </div>
 }

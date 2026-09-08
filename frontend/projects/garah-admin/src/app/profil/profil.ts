@@ -11,6 +11,7 @@ import {
   ServiceSession,
   libelleRole,
 } from 'garah-ui';
+import { ServiceNotifications } from '../service-notifications';
 
 /**
  * 2 Mo, la même limite que l'API.
@@ -51,6 +52,15 @@ const LANGUES = [
   styleUrl: './profil.scss',
 })
 export class ProfilEcran {
+  protected readonly notifications = inject(ServiceNotifications);
+
+  /** Ce qui a empêché l'activation, dit à l'écran. */
+  protected readonly echecAlertes = signal<string | null>(null);
+
+  protected async activerLesAlertes(): Promise<void> {
+    this.echecAlertes.set(await this.notifications.activer());
+  }
+
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   protected readonly session = inject(ServiceSession);
