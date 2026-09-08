@@ -30,10 +30,28 @@
   margin-bottom: 1.5rem;
 }
 
-.chiffre { padding: 1.25rem; }
+// Le filet de couleur en haut de la carte, repris de la reference. Il ne
+// remplace pas la pastille, il la PROLONGE : la teinte se lit alors sur toute
+// la largeur, et une colonne de cartes se distingue au premier coup d'oeil.
+.chiffre {
+  padding: 1.25rem;
+  border-top: 2px solid var(--teinte);
+}
 
+// L'etiquette et l'icone sur une meme ligne, l'icone poussee a droite. Le
+// chiffre garde ainsi le bord gauche pour lui seul.
+.chiffre__tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+// Sans marge : c'est .chiffre__tete qui porte desormais l'ecart avec le
+// chiffre. Deux marges empilees decolleraient l'icone de son etiquette.
 .chiffre__label {
-  margin: 0 0 0.4rem;
+  margin: 0;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;

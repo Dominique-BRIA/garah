@@ -60,32 +60,6 @@
   .indicateur:hover .pastille { transform: none; }
 }
 
-// Chaque indicateur a sa teinte : l'oeil retrouve une carte par sa couleur
-// avant d'en lire le libelle.
-//
-// La teinte est declaree UNE fois, sur la carte, et lue par la pastille comme
-// par le bouton. Deux declarations d'une meme couleur finissent toujours par
-// diverger — on en corrige une et on oublie l'autre.
-.teinte--indigo { --teinte: #6366f1; }
-.teinte--bleu   { --teinte: #3b82f6; }
-.teinte--violet { --teinte: #8b5cf6; }
-.teinte--orange { --teinte: #f59e0b; }
-.teinte--vert   { --teinte: #10b981; }
-.teinte--rouge  { --teinte: #ef4444; }
-
-.pastille {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 16px;
-  display: grid;
-  place-items: center;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-  background: color-mix(in srgb, var(--teinte) 14%, transparent);
-  color: var(--teinte);
-}
-
 .indicateur__corps {
   display: flex;
   flex-direction: column;

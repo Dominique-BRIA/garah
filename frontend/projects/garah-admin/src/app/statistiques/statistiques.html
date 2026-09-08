@@ -5,6 +5,21 @@
       @if (chargement()) { Chargement… } @else { {{ periodeLisible() }} }
     </p>
   </div>
+
+  <!-- ⚠️ Ces deux actions sont dans la PREMIÈRE bande, pas dans la barre
+       d'outils : elles portent sur l'écran entier, pas sur la période
+       choisie. Posées en face des filtres, elles se liraient comme un
+       filtre de plus. -->
+  <div class="actions">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="exporter()" [disabled]="chargement() || !bilan()">
+      <gu-icone nom="download" /> Exporter
+    </button>
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
 </header>
 
 <div class="barre-outils">
@@ -17,13 +32,6 @@
         </button>
       }
     </nav>
-  </div>
-
-  <div class="barre-outils__groupe">
-    <button type="button" class="gu-btn gu-btn--secondaire"
-            (click)="charger()" [disabled]="chargement()">
-      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
-    </button>
   </div>
 </div>
 
@@ -70,23 +78,35 @@
   <!-- ================================================================== -->
   <!-- Les totaux                                                          -->
   <!-- ================================================================== -->
+  <!-- Chaque carte porte sa teinte et son icône : l'œil retrouve « le chiffre
+       d'affaires » à sa couleur avant d'avoir lu l'étiquette. C'est ce qui
+       permet de BALAYER quatre cartes au lieu de les lire une à une. -->
   <section class="cartes">
-    <div class="gu-carte chiffre">
-      <p class="chiffre__label">Chiffre d’affaires</p>
+    <div class="gu-carte chiffre teinte--vert">
+      <div class="chiffre__tete">
+        <p class="chiffre__label">Chiffre d’affaires</p>
+        <span class="pastille pastille--petite"><gu-icone nom="money-bill-wave" /></span>
+      </div>
       <p class="chiffre__valeur">{{ montant(b.chiffreAffaires) }}</p>
       <p class="chiffre__aide">{{ b.commandes }} commande(s)</p>
     </div>
 
-    <div class="gu-carte chiffre">
-      <p class="chiffre__label">Articles vendus</p>
+    <div class="gu-carte chiffre teinte--indigo">
+      <div class="chiffre__tete">
+        <p class="chiffre__label">Articles vendus</p>
+        <span class="pastille pastille--petite"><gu-icone nom="cart-shopping" /></span>
+      </div>
       <p class="chiffre__valeur">{{ b.quantiteVendue }}</p>
       <!-- Les retours à côté des ventes, jamais ailleurs : vendre 500 et en
            reprendre 80 n'est pas la même chose que vendre 500. -->
       <p class="chiffre__aide">{{ b.retours }} retour(s)</p>
     </div>
 
-    <div class="gu-carte chiffre">
-      <p class="chiffre__label">Fiches consultées</p>
+    <div class="gu-carte chiffre teinte--bleu">
+      <div class="chiffre__tete">
+        <p class="chiffre__label">Fiches consultées</p>
+        <span class="pastille pastille--petite"><gu-icone nom="eye" /></span>
+      </div>
       <p class="chiffre__valeur">{{ b.vues }}</p>
       <!-- « Uniques » compte les visiteurs, « vues » compte les passages. Le
            second est toujours plus grand, et confondre les deux fait croire à
@@ -94,8 +114,11 @@
       <p class="chiffre__aide">{{ b.vuesUniques }} visiteur(s) distinct(s)</p>
     </div>
 
-    <div class="gu-carte chiffre">
-      <p class="chiffre__label">Jours couverts</p>
+    <div class="gu-carte chiffre teinte--orange">
+      <div class="chiffre__tete">
+        <p class="chiffre__label">Jours couverts</p>
+        <span class="pastille pastille--petite"><gu-icone nom="chart-pie" /></span>
+      </div>
       <p class="chiffre__valeur">{{ b.jours }}</p>
       <p class="chiffre__aide">sur {{ joursAttendus() }} demandé(s)</p>
     </div>

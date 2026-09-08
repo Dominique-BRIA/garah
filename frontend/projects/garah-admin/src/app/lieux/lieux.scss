@@ -22,34 +22,6 @@
 }
 
 // --- Les filtres de role -----------------------------------------------------
-.filtres {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.25rem;
-}
-
-.filtre {
-  padding: 0.4rem 0.85rem;
-  border: 1px solid var(--champ-bordure);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--texte-attenue);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-
-  &:hover { border-color: var(--primary-light); color: var(--texte); }
-  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-}
-
-.filtre--actif {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: #fff;
-}
 
 // --- Le tableau --------------------------------------------------------------
 .cellule-lieu {

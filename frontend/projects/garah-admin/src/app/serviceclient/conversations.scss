@@ -1,50 +1,10 @@
 // Le service client. Motifs communs dans ecrans-communs.scss.
 
 // --- Les filtres de statut ---------------------------------------------------
-.filtres {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.25rem;
-}
-
-.filtre {
-  padding: 0.4rem 0.85rem;
-  border: 1px solid var(--champ-bordure);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--texte-attenue);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-
-  &:hover { border-color: var(--primary-light); color: var(--texte); }
-  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-}
 
 // Un point devant les statuts qui appellent un geste. Pas une couleur de fond :
 // le filtre actif s'en sert deja, et deux signaux sur le meme canal ne se
 // distinguent plus.
-.filtre--action::before {
-  content: '';
-  display: inline-block;
-  width: 0.4rem;
-  height: 0.4rem;
-  margin-right: 0.4rem;
-  border-radius: 50%;
-  background: var(--primary);
-  vertical-align: middle;
-}
-
-.filtre--actif {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: #fff;
-
-  &::before { background: #fff; }
-}
 
 // --- La file -----------------------------------------------------------------
 // Des cartes plutot qu'un tableau : une conversation se reconnait a son SUJET,

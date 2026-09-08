@@ -84,6 +84,67 @@
   flex-wrap: wrap;
 }
 
+/**
+ * Les filtres en pastilles.
+ *
+ * <p>Un rang de boutons ronds qui disent « montre-moi seulement ceci ». Le
+ * rang ENTIER est visible d'un coup : c'est ce qui les distingue d'une liste
+ * déroulante, où l'on ne voit ni les autres choix ni celui qui est actif.</p>
+ *
+ * <p>⚠️ Ce bloc a vécu en <b>huit copies identiques</b>, une par écran. La
+ * neuvième n'a jamais été écrite : l'écran des statistiques posait les classes
+ * {@code .filtres} et {@code .filtre} et n'obtenait rien — trois boutons gris du
+ * navigateur, collés les uns aux autres. Un style dupliqué ne diverge pas
+ * seulement, il <b>manque</b>.</p>
+ */
+.filtres {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+// Dans la seconde bande, c'est .barre-outils qui porte l'écart du bas. La
+// marge d'origine décalerait le rang vers le haut de sa propre ligne.
+.barre-outils .filtres { margin-bottom: 0; }
+
+.filtre {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte-attenue);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// La pastille qui précède un filtre « à traiter » : ce n'est pas un état de
+// plus dans la liste, c'est celui qui appelle quelqu'un.
+.filtre--action::before {
+  content: '';
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--primary);
+  vertical-align: middle;
+}
+
+.filtre--actif {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+
+  &::before { background: #fff; }
+}
+
 .champ-recherche {
   position: relative;
 
@@ -98,6 +159,51 @@
   }
 
   input { padding-left: 2.1rem; min-width: 15rem; }
+}
+
+// =============================================================================
+// Les pastilles teintées
+// =============================================================================
+// Une icône dans un carré coloré, à côté d'un chiffre. L'œil retrouve une
+// carte par sa COULEUR avant d'en lire le libellé — c'est ce qui permet de
+// balayer six cartes sans les lire.
+//
+// La teinte est déclarée UNE fois, sur la carte, et lue par la pastille comme
+// par le bouton. Deux déclarations d'une même couleur finissent toujours par
+// diverger : on en corrige une et on oublie l'autre.
+//
+// ⚠️ Ici et non dans le tableau de bord : l'écran des statistiques en veut
+// aussi. Recopier le bloc aurait produit la même panne que .filtre, qui a
+// vécu en huit exemplaires avant qu'un neuvième écran ne les réclame en vain.
+// =============================================================================
+.teinte--indigo { --teinte: #6366f1; }
+.teinte--bleu   { --teinte: #3b82f6; }
+.teinte--violet { --teinte: #8b5cf6; }
+.teinte--orange { --teinte: #f59e0b; }
+.teinte--vert   { --teinte: #10b981; }
+.teinte--rouge  { --teinte: #ef4444; }
+
+.pastille {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+  background: color-mix(in srgb, var(--teinte) 14%, transparent);
+  color: var(--teinte);
+}
+
+// Sur une carte où le SUJET est le chiffre, l'icône n'est qu'un repère de
+// couleur. À 3,5 rem elle pèserait autant que lui et les deux se
+// disputeraient le regard.
+.pastille--petite {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 11px;
+  font-size: 0.95rem;
 }
 
 // --- Etats : erreur, chargement, vide ----------------------------------------

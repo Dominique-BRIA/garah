@@ -150,6 +150,57 @@ export class Statistiques {
     });
   }
 
+  /**
+   * Le bilan affiché, dans un fichier qu'un tableur ouvre.
+   *
+   * <p>🎯 <b>Tout est déjà dans le navigateur.</b> Le serveur n'est pas
+   * rappelé : on écrit ce que l'écran montre. Un export qui refait sa propre
+   * requête finit toujours par livrer des chiffres différents de ceux qu'on
+   * regardait — et c'est le genre d'écart qu'on ne découvre qu'en réunion.</p>
+   *
+   * <p>Les trois blocs de l'écran s'y retrouvent dans l'ordre : les totaux,
+   * le détail jour par jour, le classement. La période est écrite en tête,
+   * parce qu'un tableau de chiffres sans ses dates ne veut rien dire.</p>
+   */
+  protected exporter(): void {
+    const b = this.bilan();
+    if (!b) {
+      return;
+    }
+
+    const lignes: string[][] = [
+      ['Bilan GARAH', `du ${b.du} au ${b.au}`],
+      [],
+      ['Chiffre d’affaires (XAF)', String(b.chiffreAffaires)],
+      ['Commandes', String(b.commandes)],
+      ['Articles vendus', String(b.quantiteVendue)],
+      ['Retours', String(b.retours)],
+      ['Fiches consultées', String(b.vues)],
+      ['Visiteurs distincts', String(b.vuesUniques)],
+      ['Jours couverts', `${b.jours} sur ${this.joursAttendus()}`],
+      [],
+      ['Jour', 'Vues', 'Commandes', 'Chiffre d’affaires'],
+      ...b.parJour.map((p) => [
+        p.jour,
+        String(p.vues),
+        String(p.commandes),
+        String(p.chiffreAffaires),
+      ]),
+      [],
+      ['Produit', 'Vues', 'Commandes', 'Quantité vendue', 'Chiffre d’affaires', 'Conversion'],
+      ...b.meilleurs.map((l) => [
+        l.nom,
+        String(l.vues),
+        String(l.commandes),
+        String(l.quantiteVendue),
+        String(l.chiffreAffaires),
+        this.taux(l.tauxConversion),
+      ]),
+    ];
+
+    telecharger(lignes, `garah-statistiques-${b.du}-au-${b.au}.csv`);
+  }
+
   // -------------------------------------------------------------------------
   // Affichage
   // -------------------------------------------------------------------------
@@ -200,6 +251,47 @@ export class Statistiques {
 /** Le format que le serveur attend : une date, sans heure ni fuseau. */
 function iso(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Écrit un tableau dans un fichier, et le donne à télécharger.
+ *
+ * <p>⚠️ <b>Point-virgule et non virgule.</b> Excel configuré en français lit
+ * la virgule comme un séparateur DÉCIMAL : tout un tableau atterrit dans une
+ * seule colonne. C'est le défaut le plus courant des exports faits ailleurs,
+ * et il ne se voit qu'à l'ouverture.</p>
+ *
+ * <p>⚠️ <b>Le BOM en tête</b> — {@code \uFEFF}, écrit en échappement et non
+ * collé tel quel : c'est un caractère INVISIBLE, et personne ne devinerait
+ * qu'il compte en relisant la ligne. Sans lui, Excel lit l'UTF-8 comme du
+ * latin-1 et tous les accents du fichier se cassent.</p>
+ *
+ * <p>⚠️ <b>CRLF entre les lignes</b>, comme le veut la spécification du
+ * format. Un simple LF passe partout sauf sur les vieux tableurs Windows.</p>
+ */
+function telecharger(lignes: readonly string[][], nom: string): void {
+  const csv = lignes.map((l) => l.map(cellule).join(';')).join('\r\n');
+  const url = URL.createObjectURL(
+    new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
+  );
+
+  const lien = document.createElement('a');
+  lien.href = url;
+  lien.download = nom;
+  lien.click();
+
+  // Sans cela le fichier reste en mémoire jusqu'au rechargement de la page.
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Une cellule, protégée.
+ *
+ * <p>Un nom de produit contient un jour un point-virgule — et ce jour-là, la
+ * ligne entière se décale d'une colonne, silencieusement.</p>
+ */
+function cellule(valeur: string): string {
+  return /[";\r\n]/.test(valeur) ? `"${valeur.replace(/"/g, '""')}"` : valeur;
 }
 
 function message(e: unknown, repli: string): string {

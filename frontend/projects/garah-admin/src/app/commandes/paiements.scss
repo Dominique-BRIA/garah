@@ -1,39 +1,13 @@
 // Les paiements. Les filtres reprennent ceux des commandes.
 
-.filtres {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.6rem;
-}
+// Deux rangs de filtres, et donc deux écarts. Le statut est la question
+// principale, le type n'est qu'un affinage : le premier rang se colle au
+// second pour qu'on les lise comme une seule question posée en deux temps.
+.filtres { margin-bottom: 0.6rem; }
 
-// Le second rang de filtres est plus discret : le statut est la question
-// principale, le type n'est qu'un affinage.
 .filtres--secondaire {
   margin-bottom: 1.25rem;
   font-size: 0.9em;
-}
-
-.filtre {
-  padding: 0.4rem 0.85rem;
-  border: 1px solid var(--champ-bordure);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--texte-attenue);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-
-  &:hover { border-color: var(--primary-light); color: var(--texte); }
-  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-}
-
-.filtre--actif {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: #fff;
 }
 
 .attenue { color: var(--texte-attenue); }
