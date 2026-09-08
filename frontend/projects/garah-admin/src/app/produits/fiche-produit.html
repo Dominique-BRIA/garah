@@ -438,16 +438,106 @@
         }
       </section>
 
-      <!-- ---------------- Les paliers de la déclinaison choisie ---------------- -->
-      @if (selection(); as v) {
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- Colonne latérale : ce qui accompagne, et ce qui se fait vite        -->
+    <!-- ================================================================== -->
+    <div class="colonne-laterale">
+
+    <!-- ---------------- Photos ---------------- -->
+    <section class="gu-carte">
+      <header class="section-entete">
+        <h2>Photos</h2>
+        @if (session.peut('PRODUIT_AJOUTER_PHOTO')) {
+          <!-- Un <label> plutôt qu'un bouton : le champ de fichier natif est
+               inhabillable, mais un label lui est associé et déclenche le
+               sélecteur au clic. On garde donc l'apparence du reste. -->
+          <label class="gu-btn gu-btn--secondaire petit televerser">
+            @if (action() === 'photo') {
+              <gu-icone nom="circle-notch" tourne />
+            } @else {
+              <gu-icone nom="upload" />
+            }
+            Ajouter
+            <input type="file" accept="image/*" (change)="televerser($event)"
+                   [disabled]="action() !== null" />
+          </label>
+        }
+      </header>
+
+      @if (p.medias.length === 0) {
+        <p class="vide">Aucune photo. Une photo au moins est requise pour publier.</p>
+      } @else {
+        <div class="galerie">
+          @for (media of p.medias; track media.id) {
+            <figure class="vignette-media">
+              <img [src]="media.url" [alt]="p.nom" loading="lazy" />
+              @if (media.principal) {
+                <figcaption class="gu-badge gu-badge--info">Principale</figcaption>
+              }
+              @if (session.peut('PRODUIT_SUPPRIMER_PHOTO')) {
+                <button type="button" class="retirer" (click)="supprimerMedia(media.id)"
+                        [disabled]="action() !== null" aria-label="Retirer cette photo">
+                  <gu-icone nom="xmark" />
+                </button>
+              }
+            </figure>
+          }
+        </div>
+      }
+    </section>
+
+    </div>
+
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- CE QUI DÉPEND DE LA LIGNE CHOISIE                                     -->
+  <!-- ==================================================================== -->
+  <!--
+       🎯 UNE PORTÉE PAR ZONE.
+
+       Les prix et le stock vivaient dispersés : les paliers sous le tableau à
+       gauche, le stock en haut à droite, entre les photos du PRODUIT et le
+       reste. Deux portées entremêlées dans les deux colonnes — on ne pouvait
+       pas dire d'un coup d'œil ce qui parlait de l'article et ce qui parlait
+       de la ligne sélectionnée.
+
+       Ils sont maintenant réunis sous UN seul titre, qui nomme la ligne une
+       fois pour les deux. Chaque bloc répétait ce nom dans son propre
+       sous-titre : trois fois la même chose à l'écran, et personne ne savait
+       laquelle faisait autorité.
+
+       ⚠️ En pleine largeur, SOUS les colonnes, et non dans l'une d'elles :
+          ce panneau change entièrement quand on clique une autre ligne. Logé
+          dans une colonne, il ferait sauter la mise en page du reste à chaque
+          sélection.
+  -->
+  @if (selection(); as v) {
+    <section class="detail-ligne">
+      <header class="detail-ligne__entete">
+        <div>
+          <span class="detail-ligne__quoi">Déclinaison sélectionnée</span>
+          <h2 class="detail-ligne__nom">
+            {{ v.libelle }}
+            @if (v.parDefaut) {
+              <span class="gu-badge gu-badge--info petit-badge">par défaut</span>
+            }
+          </h2>
+        </div>
+        <code class="detail-ligne__sku">{{ v.sku }}</code>
+      </header>
+
+      <div class="detail-ligne__corps">
+        <!-- ---------------- Les paliers de la déclinaison choisie ---------------- -->
         <section class="gu-carte">
           <header class="section-entete">
             <div>
               <h2>Paliers tarifaires</h2>
               <p class="aide sous-section">
                 Le tarif dépend de la quantité commandée : un prix pour 1 à 6,
-                un autre au-delà. Configuration de
-                <strong>{{ v.libelle }}</strong> <code>{{ v.sku }}</code>.
+                un autre au-delà.
               </p>
             </div>
           </header>
@@ -595,270 +685,219 @@
             </p>
           }
         </section>
-      }
-    </div>
-
-    <!-- ================================================================== -->
-    <!-- Colonne latérale : ce qui accompagne, et ce qui se fait vite        -->
-    <!-- ================================================================== -->
-    <div class="colonne-laterale">
-
-    <!-- ---------------- Photos ---------------- -->
-    <section class="gu-carte">
-      <header class="section-entete">
-        <h2>Photos</h2>
-        @if (session.peut('PRODUIT_AJOUTER_PHOTO')) {
-          <!-- Un <label> plutôt qu'un bouton : le champ de fichier natif est
-               inhabillable, mais un label lui est associé et déclenche le
-               sélecteur au clic. On garde donc l'apparence du reste. -->
-          <label class="gu-btn gu-btn--secondaire petit televerser">
-            @if (action() === 'photo') {
-              <gu-icone nom="circle-notch" tourne />
-            } @else {
-              <gu-icone nom="upload" />
-            }
-            Ajouter
-            <input type="file" accept="image/*" (change)="televerser($event)"
-                   [disabled]="action() !== null" />
-          </label>
-        }
-      </header>
-
-      @if (p.medias.length === 0) {
-        <p class="vide">Aucune photo. Une photo au moins est requise pour publier.</p>
-      } @else {
-        <div class="galerie">
-          @for (media of p.medias; track media.id) {
-            <figure class="vignette-media">
-              <img [src]="media.url" [alt]="p.nom" loading="lazy" />
-              @if (media.principal) {
-                <figcaption class="gu-badge gu-badge--info">Principale</figcaption>
-              }
-              @if (session.peut('PRODUIT_SUPPRIMER_PHOTO')) {
-                <button type="button" class="retirer" (click)="supprimerMedia(media.id)"
-                        [disabled]="action() !== null" aria-label="Retirer cette photo">
-                  <gu-icone nom="xmark" />
-                </button>
-              }
-            </figure>
-          }
-        </div>
-      }
-    </section>
-
-      <!-- ---------------- Le stock de la déclinaison choisie ---------------- -->
-      @if (session.peut('STOCK_CONSULTER') && selection(); as v) {
-        <section class="gu-carte">
-          <header class="section-entete">
-            <div>
-              <h2>Stock</h2>
-              <!-- C'est en regardant un produit qu'on se demande combien il en
-                   reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
-                   retrouver la déclinaison, c'est séparer deux questions qu'on
-                   se pose ensemble. -->
-              <p class="aide sous-section">
-                <strong>{{ v.libelle }}</strong> <code>{{ v.sku }}</code>
-              </p>
-            </div>
-          </header>
-
-          <!-- ---------------- Le stock de CETTE déclinaison ----------------
-               C'est en regardant un produit qu'on se demande combien il en
-               reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
-               retrouver la déclinaison, c'est séparer deux questions qu'on
-               se pose ensemble. -->
-          @if (session.peut('STOCK_CONSULTER')) {
-            @if (stockDe(v.id); as s) {
-              <div class="stock" [class.stock--rupture]="s.sousLeSeuil">
-                <div class="stock__entete">
-                  <span class="stock__titre">Stock</span>
-
-                  @if (formulaire() === null) {
-                    <span class="stock__gestes">
-                      @if (session.peut('STOCK_ENTREE_ENREGISTRER')) {
-                        <button type="button" class="lien-action"
-                                (click)="ouvrirStock('stock-reception', v)">
-                          <gu-icone nom="plus" /> Réception
-                        </button>
-                      }
-                      @if (session.peut('STOCK_AJUSTER')) {
-                        <button type="button" class="lien-action"
-                                (click)="ouvrirStock('stock-inventaire', v)">Inventaire</button>
-                        <button type="button" class="lien-action"
-                                (click)="ouvrirStock('stock-seuil', v)">Seuil</button>
-                      }
-                    </span>
-                  }
-                </div>
-
-                <!-- Les trois compteurs ensemble. Séparés, on croirait
-                     qu'une réservation a fait disparaître la marchandise. -->
-                <dl class="stock__compteurs">
-                  <div>
-                    <dt>Disponible</dt>
-                    <dd [class.stock__rupture]="s.sousLeSeuil">{{ s.disponible }}</dd>
-                  </div>
-                  <div>
-                    <dt>Réservé</dt>
-                    <dd>{{ s.reserve }}</dd>
-                  </div>
-                  @if (s.endommage > 0) {
-                    <div>
-                      <dt>Endommagé</dt>
-                      <dd class="stock__abime">{{ s.endommage }}</dd>
-                    </div>
-                  }
-                  <div>
-                    <dt>Seuil d’alerte</dt>
-                    <dd class="stock__seuil">{{ s.seuilAlerte }}</dd>
-                  </div>
-                </dl>
-
-                @if (s.sousLeSeuil) {
-                  <p class="stock__alerte">
-                    @if (s.disponible === 0) {
-                      Rien à vendre. Une réception est nécessaire.
-                    } @else {
-                      Sous le seuil d’alerte. À réapprovisionner.
-                    }
-                  </p>
-                }
-
-                @if (ouvert('stock-reception', v.id) || ouvert('stock-inventaire', v.id)
-                     || ouvert('stock-seuil', v.id)) {
-                  <form class="encart" (ngSubmit)="enregistrerStock(v.id)" novalidate>
-                    @if (ouvert('stock-reception', v.id)) {
-                      <label class="gu-libelle" [for]="'qs-' + v.id">Quantité reçue</label>
-                      <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="1"
-                             class="gu-champ"
-                             [ngModel]="quantiteStock()"
-                             (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
-                      <p class="aide">Ce qui vient d’arriver, à ajouter au disponible.</p>
-
-                      <label class="gu-libelle" [for]="'ms-' + v.id">Commentaire</label>
-                      <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ"
-                             maxlength="500" placeholder="Livraison du fournisseur"
-                             [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
-
-                    } @else if (ouvert('stock-inventaire', v.id)) {
-                      <label class="gu-libelle" [for]="'qs-' + v.id">
-                        Quantité réellement comptée
-                      </label>
-                      <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
-                             class="gu-champ"
-                             [ngModel]="quantiteStock()"
-                             (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
-                      <!-- On envoie le CONSTAT, jamais l'écart : la quantité
-                           théorique a pu bouger depuis le comptage. -->
-                      <p class="aide">
-                        Ce que vous avez sous les yeux, pas l’écart. Le serveur
-                        calcule la différence au moment où il enregistre.
-                      </p>
-
-                      <label class="gu-libelle" [for]="'ms-' + v.id">Motif</label>
-                      <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ" required
-                             maxlength="500" placeholder="Inventaire du 7 septembre"
-                             [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
-                      <p class="aide">
-                        Obligatoire. Un ajustement sans explication est un trou
-                        que personne ne saura combler six mois plus tard.
-                      </p>
-
-                    } @else {
-                      <label class="gu-libelle" [for]="'qs-' + v.id">Seuil d’alerte</label>
-                      <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
-                             class="gu-champ"
-                             [ngModel]="quantiteStock()"
-                             (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
-                      <!-- À zéro, l'alerte ne se déclenche qu'à la rupture,
-                           c'est-à-dire trop tard : la marchandise met des
-                           jours à venir de Douala. -->
-                      <p class="aide">
-                        À partir de quelle quantité prévenir. À zéro, vous ne
-                        serez alerté qu’une fois à court.
-                      </p>
-                    }
-
-                    @if (erreurForm(); as m) {
-                      <p class="alerte" role="alert">{{ m }}</p>
-                    }
-
-                    <div class="boutons">
-                      <button type="button" class="gu-btn gu-btn--secondaire petit"
-                              (click)="fermer()">Annuler</button>
-                      <button type="submit" class="gu-btn gu-btn--primaire petit"
-                              [disabled]="action() !== null || quantiteStock() === null
-                                          || (ouvert('stock-inventaire', v.id)
-                                              && !motifStock().trim())">
-                        @if (action() === 'stock') {
-                          <gu-icone nom="circle-notch" tourne /> Enregistrement…
-                        } @else { Enregistrer }
-                      </button>
-                    </div>
-                  </form>
-                }
-              </div>
-            } @else {
-              <!-- ⚠️ Sans cette branche, le bloc DISPARAISSAIT en silence
-                   quand le stock n'était pas lisible — et on croyait la
-                   fonctionnalité absente. Une absence doit se dire. -->
-              <div class="stock stock--absent">
-                <div class="stock__entete">
-                  <span class="stock__titre">Stock</span>
-                  <button type="button" class="lien-action" (click)="chargerStock()">
-                    <gu-icone nom="arrows-rotate" /> Réessayer
-                  </button>
-                </div>
-                <p class="stock__alerte">
-                  Le stock de cette déclinaison n’a pas pu être lu.
+        <!-- ---------------- Le stock de la déclinaison choisie ---------------- -->
+        @if (session.peut('STOCK_CONSULTER')) {
+          <section class="gu-carte">
+            <header class="section-entete">
+              <div>
+                <h2>Stock</h2>
+                <!-- C'est en regardant un produit qu'on se demande combien il en
+                     reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
+                     retrouver la déclinaison, c'est séparer deux questions qu'on
+                     se pose ensemble. -->
+                <p class="aide sous-section">
+                  Ce qui reste, ce qui est promis, et quand prévenir.
                 </p>
               </div>
-            }
-          }
+            </header>
 
-          <!-- ==========================================================
-               DERNIÈRE ACTIVITÉ
-               ==========================================================
-               🎯 C'est ce qui répond à « POURQUOI N'EN RESTE-T-IL QUE
-               TROIS ? ». La quantité affichée au-dessus est une photo de
-               l'instant ; ces lignes sont les faits datés qui l'expliquent,
-               et elles ne s'effacent jamais.
+            <!-- ---------------- Le stock de CETTE déclinaison ----------------
+                 C'est en regardant un produit qu'on se demande combien il en
+                 reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
+                 retrouver la déclinaison, c'est séparer deux questions qu'on
+                 se pose ensemble. -->
+            @if (session.peut('STOCK_CONSULTER')) {
+              @if (stockDe(v.id); as s) {
+                <div class="stock" [class.stock--rupture]="s.sousLeSeuil">
+                  <div class="stock__entete">
+                    <span class="stock__titre">Stock</span>
 
-               Sans elles, un écart entre ce qu'on croit avoir et ce que le
-               système annonce n'a aucune explication consultable : on refait
-               un inventaire, on corrige, et la cause reste inconnue jusqu'à
-               la fois suivante.
-               -->
-          @if (mouvements().length > 0) {
-            <div class="journal">
-              <h3 class="journal__titre">Dernière activité</h3>
-              <ul class="journal__liste">
-                @for (m of mouvements().slice(0, 6); track m.id) {
-                  <li class="journal__ligne">
-                    <!-- Le signe porte l'information : « +20 » se distingue de
-                         « -3 » avant même qu'on ait lu de quel geste il
-                         s'agit. -->
-                    <span class="journal__quantite"
-                          [class.journal__quantite--sortie]="m.quantite < 0">
-                      @if (m.quantite > 0) { + }{{ m.quantite }}
-                    </span>
-                    <span class="journal__quoi">
-                      {{ libelleMouvement(m.type) }}
-                      @if (m.commentaire) {
-                        <span class="journal__note">{{ m.commentaire }}</span>
+                    @if (formulaire() === null) {
+                      <span class="stock__gestes">
+                        @if (session.peut('STOCK_ENTREE_ENREGISTRER')) {
+                          <button type="button" class="lien-action"
+                                  (click)="ouvrirStock('stock-reception', v)">
+                            <gu-icone nom="plus" /> Réception
+                          </button>
+                        }
+                        @if (session.peut('STOCK_AJUSTER')) {
+                          <button type="button" class="lien-action"
+                                  (click)="ouvrirStock('stock-inventaire', v)">Inventaire</button>
+                          <button type="button" class="lien-action"
+                                  (click)="ouvrirStock('stock-seuil', v)">Seuil</button>
+                        }
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Les trois compteurs ensemble. Séparés, on croirait
+                       qu'une réservation a fait disparaître la marchandise. -->
+                  <dl class="stock__compteurs">
+                    <div>
+                      <dt>Disponible</dt>
+                      <dd [class.stock__rupture]="s.sousLeSeuil">{{ s.disponible }}</dd>
+                    </div>
+                    <div>
+                      <dt>Réservé</dt>
+                      <dd>{{ s.reserve }}</dd>
+                    </div>
+                    @if (s.endommage > 0) {
+                      <div>
+                        <dt>Endommagé</dt>
+                        <dd class="stock__abime">{{ s.endommage }}</dd>
+                      </div>
+                    }
+                    <div>
+                      <dt>Seuil d’alerte</dt>
+                      <dd class="stock__seuil">{{ s.seuilAlerte }}</dd>
+                    </div>
+                  </dl>
+
+                  @if (s.sousLeSeuil) {
+                    <p class="stock__alerte">
+                      @if (s.disponible === 0) {
+                        Rien à vendre. Une réception est nécessaire.
+                      } @else {
+                        Sous le seuil d’alerte. À réapprovisionner.
                       }
-                    </span>
-                    <time class="journal__quand" [attr.datetime]="m.dateOperation">
-                      {{ quand(m.dateOperation) }}
-                    </time>
-                  </li>
-                }
-              </ul>
-            </div>
-          }
-        </section>
-      }
-    </div>
+                    </p>
+                  }
 
-  </div>
+                  @if (ouvert('stock-reception', v.id) || ouvert('stock-inventaire', v.id)
+                       || ouvert('stock-seuil', v.id)) {
+                    <form class="encart" (ngSubmit)="enregistrerStock(v.id)" novalidate>
+                      @if (ouvert('stock-reception', v.id)) {
+                        <label class="gu-libelle" [for]="'qs-' + v.id">Quantité reçue</label>
+                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="1"
+                               class="gu-champ"
+                               [ngModel]="quantiteStock()"
+                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                        <p class="aide">Ce qui vient d’arriver, à ajouter au disponible.</p>
+
+                        <label class="gu-libelle" [for]="'ms-' + v.id">Commentaire</label>
+                        <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ"
+                               maxlength="500" placeholder="Livraison du fournisseur"
+                               [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
+
+                      } @else if (ouvert('stock-inventaire', v.id)) {
+                        <label class="gu-libelle" [for]="'qs-' + v.id">
+                          Quantité réellement comptée
+                        </label>
+                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
+                               class="gu-champ"
+                               [ngModel]="quantiteStock()"
+                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                        <!-- On envoie le CONSTAT, jamais l'écart : la quantité
+                             théorique a pu bouger depuis le comptage. -->
+                        <p class="aide">
+                          Ce que vous avez sous les yeux, pas l’écart. Le serveur
+                          calcule la différence au moment où il enregistre.
+                        </p>
+
+                        <label class="gu-libelle" [for]="'ms-' + v.id">Motif</label>
+                        <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ" required
+                               maxlength="500" placeholder="Inventaire du 7 septembre"
+                               [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
+                        <p class="aide">
+                          Obligatoire. Un ajustement sans explication est un trou
+                          que personne ne saura combler six mois plus tard.
+                        </p>
+
+                      } @else {
+                        <label class="gu-libelle" [for]="'qs-' + v.id">Seuil d’alerte</label>
+                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
+                               class="gu-champ"
+                               [ngModel]="quantiteStock()"
+                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                        <!-- À zéro, l'alerte ne se déclenche qu'à la rupture,
+                             c'est-à-dire trop tard : la marchandise met des
+                             jours à venir de Douala. -->
+                        <p class="aide">
+                          À partir de quelle quantité prévenir. À zéro, vous ne
+                          serez alerté qu’une fois à court.
+                        </p>
+                      }
+
+                      @if (erreurForm(); as m) {
+                        <p class="alerte" role="alert">{{ m }}</p>
+                      }
+
+                      <div class="boutons">
+                        <button type="button" class="gu-btn gu-btn--secondaire petit"
+                                (click)="fermer()">Annuler</button>
+                        <button type="submit" class="gu-btn gu-btn--primaire petit"
+                                [disabled]="action() !== null || quantiteStock() === null
+                                            || (ouvert('stock-inventaire', v.id)
+                                                && !motifStock().trim())">
+                          @if (action() === 'stock') {
+                            <gu-icone nom="circle-notch" tourne /> Enregistrement…
+                          } @else { Enregistrer }
+                        </button>
+                      </div>
+                    </form>
+                  }
+                </div>
+              } @else {
+                <!-- ⚠️ Sans cette branche, le bloc DISPARAISSAIT en silence
+                     quand le stock n'était pas lisible — et on croyait la
+                     fonctionnalité absente. Une absence doit se dire. -->
+                <div class="stock stock--absent">
+                  <div class="stock__entete">
+                    <span class="stock__titre">Stock</span>
+                    <button type="button" class="lien-action" (click)="chargerStock()">
+                      <gu-icone nom="arrows-rotate" /> Réessayer
+                    </button>
+                  </div>
+                  <p class="stock__alerte">
+                    Le stock de cette déclinaison n’a pas pu être lu.
+                  </p>
+                </div>
+              }
+            }
+
+            <!-- ==========================================================
+                 DERNIÈRE ACTIVITÉ
+                 ==========================================================
+                 🎯 C'est ce qui répond à « POURQUOI N'EN RESTE-T-IL QUE
+                 TROIS ? ». La quantité affichée au-dessus est une photo de
+                 l'instant ; ces lignes sont les faits datés qui l'expliquent,
+                 et elles ne s'effacent jamais.
+
+                 Sans elles, un écart entre ce qu'on croit avoir et ce que le
+                 système annonce n'a aucune explication consultable : on refait
+                 un inventaire, on corrige, et la cause reste inconnue jusqu'à
+                 la fois suivante.
+                 -->
+            @if (mouvements().length > 0) {
+              <div class="journal">
+                <h3 class="journal__titre">Dernière activité</h3>
+                <ul class="journal__liste">
+                  @for (m of mouvements().slice(0, 6); track m.id) {
+                    <li class="journal__ligne">
+                      <!-- Le signe porte l'information : « +20 » se distingue de
+                           « -3 » avant même qu'on ait lu de quel geste il
+                           s'agit. -->
+                      <span class="journal__quantite"
+                            [class.journal__quantite--sortie]="m.quantite < 0">
+                        @if (m.quantite > 0) { + }{{ m.quantite }}
+                      </span>
+                      <span class="journal__quoi">
+                        {{ libelleMouvement(m.type) }}
+                        @if (m.commentaire) {
+                          <span class="journal__note">{{ m.commentaire }}</span>
+                        }
+                      </span>
+                      <time class="journal__quand" [attr.datetime]="m.dateOperation">
+                        {{ quand(m.dateOperation) }}
+                      </time>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </section>
+        }
+      </div>
+    </section>
+  }
 }

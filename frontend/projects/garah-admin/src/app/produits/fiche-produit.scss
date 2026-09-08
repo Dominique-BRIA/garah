@@ -80,7 +80,7 @@
 }
 
 // En dessous de 1100 px, la colonne laterale passe SOUS la principale. Les
-// photos et le stock restent accessibles, ils cessent seulement d etre a cote.
+// photos restent accessibles, elles cessent seulement d etre a cote du tableau.
 @media (max-width: 1100px) {
   .colonnes { grid-template-columns: minmax(0, 1fr); }
 }
@@ -281,6 +281,81 @@
 
   &:hover { text-decoration: underline; }
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// --- Le panneau de la ligne choisie ------------------------------------------
+//
+// 🎯 UNE PORTÉE PAR ZONE.
+//
+// Les prix et le stock vivaient dispersés : les paliers sous le tableau à
+// gauche, le stock en haut à droite entre les photos du PRODUIT et le reste.
+// Deux portées entremêlées dans les deux colonnes — on ne pouvait pas dire
+// d'un coup d'œil ce qui parlait de l'article et ce qui parlait de la ligne
+// sélectionnée.
+//
+// Le liseré de gauche reprend celui de la ligne surlignée dans le tableau :
+// c'est ce qui RATTACHE visuellement le panneau à la ligne qu'on a cliquée,
+// sans qu'aucun texte n'ait à le dire.
+.detail-ligne {
+  position: relative;
+  margin-top: 1.5rem;
+  padding-left: 1.25rem;
+  border-left: 3px solid var(--primary);
+}
+
+.detail-ligne__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+// Petit, gras, espacé : trois signes qui disent « ceci nomme une portée, pas
+// une donnée ». Sans lui, le nom de la déclinaison se lirait comme un titre de
+// section de plus, au même rang que « Déclinaisons » ou « Photos ».
+.detail-ligne__quoi {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.detail-ligne__nom {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.2rem 0 0;
+  font-size: 1.25rem;
+}
+
+.detail-ligne__sku {
+  font-size: 0.8rem;
+  color: var(--texte-attenue);
+}
+
+// Les deux sujets côte à côte : à quel prix, et combien il en reste. Ils se
+// répondent, et on les compare sans faire défiler.
+//
+// minmax(0, …) et non 1fr seul : sans le minimum à zéro, un tableau large
+// dans la colonne de gauche l'empêche de rétrécir et pousse le stock hors de
+// l'écran au lieu de passer à la ligne.
+.detail-ligne__corps {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+// Sous 1100 px, l'un sous l'autre. Deux colonnes de 300 px feraient tenir une
+// carte de palier par rangée : la grille dégressive ne se lirait plus
+// horizontalement, ce qui est tout son intérêt.
+@media (max-width: 1100px) {
+  .detail-ligne__corps { grid-template-columns: 1fr; }
 }
 
 // --- Les paliers, en cartes --------------------------------------------------
