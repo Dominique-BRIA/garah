@@ -1,0 +1,508 @@
+% =============================================================================
+%  GARAH — Dossier de présentation
+%  Compilable tel quel sur Overleaf (moteur : pdfLaTeX)
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+
+% --- Identité visuelle -------------------------------------------------------
+\definecolor{marque}{HTML}{12A594}   % le vert GARAH
+\definecolor{encre}{HTML}{0F172A}
+\definecolor{gris}{HTML}{64748B}
+\definecolor{fondclair}{HTML}{F1F5F9}
+
+\hypersetup{linkcolor=marque, urlcolor=marque, citecolor=marque}
+
+\titleformat{\section}{\Large\bfseries\color{marque}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{encre}}{\thesubsection.}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.6em}{0.7em}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{gris}GARAH — Dossier de présentation}
+\rfoot{\small\color{gris}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newtcolorbox{encadre}[1]{
+  colback=fondclair, colframe=marque, boxrule=0pt, leftrule=3pt,
+  arc=2pt, left=10pt, right=10pt, top=8pt, bottom=8pt,
+  title={\bfseries\color{marque}#1}, coltitle=marque,
+  fonttitle=\bfseries, colbacktitle=fondclair, titlerule=0pt
+}
+
+\newcommand{\chiffre}[2]{%
+  \begin{minipage}[t]{0.30\textwidth}
+    \centering
+    {\Huge\bfseries\color{marque}#1}\\[0.3em]
+    {\small\color{gris}#2}
+  \end{minipage}%
+}
+
+\setlist[itemize]{leftmargin=1.2em, itemsep=0.25em, topsep=0.4em}
+
+% =============================================================================
+\begin{document}
+
+% --- Couverture --------------------------------------------------------------
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+
+{\Huge\bfseries\color{marque} GARAH}\\[0.6em]
+{\Large\color{encre} Vendre, servir et acheminer}\\[0.3em]
+{\Large\color{encre} entre le Cameroun et la Centrafrique}\\[3cm]
+
+\begin{minipage}{0.8\textwidth}
+\centering\large\color{gris}
+Une plateforme unique qui relie le commerce en ligne,
+la relation client et le transport de marchandises
+sur le corridor Douala~--~Bertoua~--~Bangui.
+\end{minipage}
+
+\vfill
+{\color{gris}Dossier de présentation aux partenaires \\[0.3em]
+\today}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{En une page}
+% =============================================================================
+
+\subsection*{Le problème}
+
+Acheter un produit à Douala et le recevoir à Bangui relève aujourd'hui du
+système D. Le commerçant prend la commande par téléphone ou par messagerie,
+note le paiement sur un cahier, confie le colis à un transporteur, et
+répond au client « il est parti » sans pouvoir dire où il se trouve.
+
+Quand un colis se perd, personne ne sait à quelle étape. Quand un client
+conteste, personne ne peut rouvrir l'historique. Quand un marchand partenaire
+demande son argent, le calcul se refait à la main.
+
+\subsection*{La réponse}
+
+GARAH réunit dans un seul système ce qui est aujourd'hui éparpillé entre un
+cahier, une messagerie et un carnet de transporteur :
+
+\begin{itemize}
+  \item une \textbf{boutique en ligne} où le client choisit, négocie et paie
+        par Mobile Money~;
+  \item un \textbf{service client} intégré, où la discussion peut se conclure
+        par une vente~;
+  \item un \textbf{suivi de colis} étape par étape, consultable par le client
+        avec un simple numéro reçu par SMS~;
+  \item une \textbf{comptabilité automatique} des sommes dues à chaque
+        marchand partenaire.
+\end{itemize}
+
+\subsection*{L'état d'avancement}
+
+\vspace{0.6em}
+\noindent
+\chiffre{9 / 11}{lots fonctionnels\\livrés}
+\hfill
+\chiffre{100\,\%}{du back-office\\opérationnel}
+\hfill
+\chiffre{En ligne}{plateforme déployée\\et accessible}
+\vspace{1.2em}
+
+Le cœur du système fonctionne et tourne en production. Ce qui reste à
+construire est la boutique vue par le client final~: le moteur est en place,
+il faut lui poser la carrosserie.
+
+\newpage
+% =============================================================================
+\section{Le marché et le besoin}
+% =============================================================================
+
+\subsection{Un corridor commercial réel, mal outillé}
+
+L'axe \textbf{Douala~--~Bertoua~--~Bangui} est une route commerciale active.
+Des marchandises y circulent tous les jours~: produits manufacturés, textiles,
+équipements, pièces détachées. Mais la chaîne repose sur la confiance
+interpersonnelle et sur des traces écrites dispersées.
+
+\begin{encadre}{Ce que coûte l'absence d'outil}
+\begin{itemize}
+  \item \textbf{Le litige sans preuve.} Sans historique daté, un désaccord se
+        règle à la parole contre la parole. Le commerçant perd le client, ou
+        rembourse à tort.
+  \item \textbf{L'argent qui s'évapore.} Une commission oubliée sur une vente
+        ne se remarque qu'en fin de mois, quand elle n'est plus récupérable.
+  \item \textbf{Le client qui rappelle.} « Où est mon colis ? » occupe un
+        employé plusieurs fois par jour, pour une réponse que le système
+        devrait donner tout seul.
+\end{itemize}
+\end{encadre}
+
+\subsection{Trois publics, trois besoins distincts}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Public} & \textbf{Ce qu'il attend} \\
+\midrule
+Le \textbf{client final} &
+Voir ce qui est disponible, connaître le prix réel selon la quantité, payer
+avec son téléphone, et savoir où est sa commande sans appeler personne. \\
+\addlinespace
+Le \textbf{marchand partenaire} &
+Confier ses produits à une vitrine qui a du trafic, et être payé sur un
+décompte qu'il peut vérifier ligne par ligne. \\
+\addlinespace
+L'\textbf{entreprise} &
+Piloter les stocks, le transport, les réclamations et l'argent depuis un
+seul écran, avec la trace de qui a fait quoi. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\newpage
+% =============================================================================
+\section{Ce que la plateforme sait faire}
+% =============================================================================
+
+\subsection{Vendre}
+
+\begin{itemize}
+  \item \textbf{Un catalogue à déclinaisons.} Un même article existe en
+        tailles, couleurs et conditionnements~; chaque version a son propre
+        prix et son propre stock.
+  \item \textbf{Des prix dégressifs.} Le tarif dépend de la quantité commandée~:
+        un prix de 1 à 6 pièces, un autre au-delà. C'est le fonctionnement
+        réel du commerce de gros, pas une option.
+  \item \textbf{La négociation.} Le client discute avec un conseiller, et une
+        proposition de prix acceptée devient directement une commande. Le
+        marchandage n'est pas contourné~: il est outillé.
+  \item \textbf{Le paiement Mobile Money.} MTN MoMo et Orange Money, les
+        moyens réellement utilisés au Cameroun.
+\end{itemize}
+
+\begin{encadre}{Un choix qui protège l'entreprise}
+Les montants d'une commande sont \textbf{figés au moment de l'achat} —
+désignation, prix, taxe, commission, frais de livraison. Changer un tarif
+aujourd'hui ne réécrit pas une facture de mars. Sans cette règle, toute la
+comptabilité passée deviendrait fausse à chaque mise à jour de prix.
+\end{encadre}
+
+\subsection{Servir}
+
+\begin{itemize}
+  \item \textbf{Une file d'attente partagée.} Les conversations en attente sont
+        visibles de toute l'équipe~; le premier conseiller disponible prend le
+        dossier.
+  \item \textbf{Des réclamations et des retours traités séparément.} Une
+        réclamation est une plainte qu'un humain tranche~; un retour est une
+        marchandise qui revient physiquement. Ce ne sont ni les mêmes gestes,
+        ni les mêmes personnes.
+  \item \textbf{Un retour en cinq étapes} — accepté, reçu, contrôlé, validé,
+        clôturé. Un retour accepté n'est pas un retour reçu~: confondre les
+        deux, c'est rembourser une marchandise qui n'est jamais rentrée.
+  \item \textbf{Une évaluation après clôture seulement.} Demander un avis sur
+        un problème non résolu ne mesure pas la qualité du service, il mesure
+        l'agacement.
+\end{itemize}
+
+\subsection{Acheminer}
+
+\begin{itemize}
+  \item \textbf{Des points de transit et de récupération} le long du corridor.
+        Le client choisit où il vient chercher sa commande.
+  \item \textbf{Des itinéraires réutilisables}, qui annoncent un délai sans
+        jamais l'imposer~: une route coupée, cela arrive, et le système doit
+        pouvoir enregistrer la réalité.
+  \item \textbf{Un suivi par événements datés} — « réceptionné à Bertoua le
+        12/03 à 14~h par David » — et non par un simple statut qui s'écrase.
+        Le parcours reste lisible même après la livraison.
+  \item \textbf{Un suivi public.} Le client entre le numéro reçu par SMS et
+        voit où en est son colis, sans compte et sans mot de passe.
+  \item \textbf{Un comptoir de remise.} L'agent saisit le code, \emph{voit}
+        les colis qu'il désigne, puis confirme. Voir avant de remettre évite
+        de rendre la mauvaise marchandise.
+\end{itemize}
+
+\subsection{Compter}
+
+\begin{itemize}
+  \item \textbf{Un grand livre par marchand.} Chaque vente écrit une ligne,
+        commission comprise. Le solde est la somme de ces lignes, jamais un
+        total conservé à part — un total conservé finit toujours par mentir.
+  \item \textbf{Des règlements en deux temps} — préparer, puis confirmer. La
+        dette ne baisse qu'au moment où l'argent part réellement, et la
+        référence du virement est obligatoire~: c'est la seule preuve six mois
+        plus tard.
+  \item \textbf{Des corrections par ajout.} Une écriture fausse s'annule par
+        une autre écriture, avec son motif et son auteur. Un grand livre ne se
+        réécrit pas.
+  \item \textbf{Des statistiques de vente et d'audience} — chiffre d'affaires,
+        articles vendus, fiches consultées, produits qui montent — exportables
+        en PDF, Word et Excel.
+\end{itemize}
+
+\newpage
+% =============================================================================
+\section{Ce qui distingue GARAH}
+% =============================================================================
+
+\subsection{Un système pensé pour le litige, pas seulement pour la vente}
+
+La plupart des outils de commerce enregistrent ce qui se passe quand tout va
+bien. GARAH est construit autour de ce qui se passe quand ça va mal —~parce
+que c'est là que l'argent se perd.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Le réflexe habituel} & \textbf{Le choix de GARAH} \\
+\midrule
+Une colonne « statut » qu'on met à jour. &
+Un \textbf{journal d'événements} : on garde chaque étape, pas seulement la
+dernière. \\
+\addlinespace
+Supprimer ce qui ne sert plus. &
+\textbf{Désactiver}, jamais supprimer : des factures et des livraisons
+pointent vers ces lignes. \\
+\addlinespace
+Un total de solde stocké quelque part. &
+Un solde \textbf{recalculé} à partir des écritures, donc toujours juste. \\
+\addlinespace
+Un bouton qui échoue et affiche « erreur ». &
+L'écran dit \textbf{ce qui manque avant le clic}. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Une traçabilité qui tient devant un tiers}
+
+\begin{itemize}
+  \item \textbf{Qui a fait quoi} : un journal d'audit enregistre chaque
+        modification interne.
+  \item \textbf{Ce que le client a vécu} : son parcours est mesuré séparément.
+  \item \textbf{Ce qui touche à la sécurité} : connexions et alertes sont
+        journalisées à part.
+\end{itemize}
+
+Ces trois journaux ne se mélangent pas, précisément pour qu'une question
+—~« qui a annulé cette commande ? »~— trouve une réponse nette.
+
+\subsection{Des droits fins, et une séparation des pouvoirs}
+
+Le système distingue quatre niveaux d'accès, et \textbf{188 autorisations}
+distinctes que l'on assemble en profils métier (« gestionnaire de catalogue »,
+« agent de comptoir », « service client »).
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Niveau} & \textbf{Rôle} \\
+\midrule
+Super administrateur & Décide de ce que le système sait faire, et qui surveille qui. \\
+Administrateur & Décide qui travaille, et sur quoi. \\
+Chef de service & Encadre son équipe. \\
+Responsable & Exécute, selon les profils qu'on lui a donnés. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{encadre}{Pourquoi cela compte pour un investisseur}
+Un agent de service client ne peut pas déclencher un remboursement. Trancher
+un litige en faveur du client et rendre l'argent sont deux décisions
+séparées, avec deux autorisations différentes. C'est ce qui empêche qu'une
+seule personne puisse, seule, faire sortir de l'argent.
+\end{encadre}
+
+\subsection{Conçu pour les conditions locales}
+
+\begin{itemize}
+  \item \textbf{Léger sur les connexions lentes.} L'application se charge en
+        une centaine de kilo-octets~; les fonctions lourdes ne sont
+        téléchargées qu'au moment où on les utilise.
+  \item \textbf{Trois langues prévues} dès l'origine — français, anglais,
+        sango.
+  \item \textbf{Le franc CFA} comme monnaie de référence.
+  \item \textbf{Le Mobile Money} comme moyen de paiement principal, et non
+        comme option secondaire ajoutée après coup.
+\end{itemize}
+
+\newpage
+% =============================================================================
+\section{Où en est le projet}
+% =============================================================================
+
+\subsection{Ce qui est livré et fonctionne}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}Xc@{}}
+\toprule
+\textbf{Domaine} & \textbf{État} \\
+\midrule
+Catalogue, déclinaisons et grilles de prix & Livré \\
+Commandes et paiements & Livré \\
+Stocks et mouvements & Livré \\
+Logistique : lieux, itinéraires, expéditions, suivi, comptoir & Livré \\
+Réclamations et retours & Livré \\
+Service client et négociation & Livré \\
+Finance marchand : grand livre, règlements, commissions & Livré \\
+Clients, surveillance et audit & Livré \\
+Statistiques et exports & Livré \\
+\addlinespace
+Boutique vue par le client final & En cours \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Ce que ces chiffres veulent dire}
+
+\vspace{0.8em}
+\noindent
+\chiffre{64}{tables de données\\structurées}
+\hfill
+\chiffre{188}{autorisations\\distinctes}
+\hfill
+\chiffre{345}{contrôles automatiques\\au vert}
+\vspace{1.2em}
+
+Les \textbf{345 contrôles automatiques} méritent une explication. Ce sont des
+vérifications que la machine rejoue à chaque modification du système. Elles
+répondent à une question simple~: « est-ce que ce qui marchait hier marche
+encore aujourd'hui ? »
+
+\begin{encadre}{Pourquoi c'est un argument financier}
+Sur un logiciel sans ces contrôles, chaque évolution risque de casser
+silencieusement autre chose, et le défaut n'apparaît que chez le client. Le
+coût de maintenance grimpe avec le temps, jusqu'à ce que plus personne n'ose
+toucher au système.
+
+Ici, une régression est détectée \textbf{en quelques minutes}, avant d'être
+mise en ligne. C'est ce qui rend le projet évolutif sur la durée, et non
+seulement fonctionnel aujourd'hui.
+\end{encadre}
+
+\subsection{Une décision, une trace}
+
+Le projet tient un \textbf{journal des décisions} — 31 entrées à ce jour.
+Chacune écrit ce qui a été choisi, pourquoi, et ce qu'on y perd.
+
+C'est inhabituel, et c'est délibéré~: dans deux ans, quand quelqu'un voudra
+modifier un comportement qui semble arbitraire, il trouvera la raison au lieu
+de rouvrir un problème déjà résolu. Le savoir ne repose pas sur la mémoire
+d'une personne.
+
+\newpage
+% =============================================================================
+\section{Les fondations techniques}
+% =============================================================================
+
+\emph{Cette section est volontairement brève. Elle sert à établir que les
+choix sont solides et courants, pas exotiques.}
+
+\subsection{Ce sur quoi c'est construit}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Élément} & \textbf{Choix, et ce que cela garantit} \\
+\midrule
+Serveur applicatif & \textbf{Java / Spring Boot} — la technologie des banques
+et des assurances. Compétences largement disponibles. \\
+\addlinespace
+Base de données & \textbf{PostgreSQL} — libre, éprouvée, sans coût de licence.
+Hébergée en Europe. \\
+\addlinespace
+Interfaces & \textbf{Angular} — maintenu par Google, adapté aux applications
+de gestion lourdes. \\
+\addlinespace
+Hébergement & \textbf{Microsoft Azure}, région France. Serveur toujours actif,
+sans temps de réveil. \\
+\addlinespace
+Fichiers et photos & Stockage objet dédié, avec adresses signées à durée
+limitée. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Deux garanties d'exploitation}
+
+\begin{itemize}
+  \item \textbf{Aucune dépendance à un fournisseur unique.} Toutes les briques
+        sont standard et remplaçables. Le système a déjà été déplacé d'un
+        hébergeur à un autre en cours de route, sans réécriture.
+  \item \textbf{Mise en ligne automatisée.} Chaque modification est vérifiée
+        par les 345 contrôles, puis déployée sans intervention manuelle. Une
+        version défectueuse n'atteint pas la production.
+\end{itemize}
+
+\newpage
+% =============================================================================
+\section{La suite}
+% =============================================================================
+
+\subsection{Prochaine étape : la boutique client}
+
+C'est le dernier grand chantier. Le serveur expose déjà tout ce dont elle a
+besoin~: catalogue, panier, commande, paiement, suivi, réclamations,
+conversations. Il s'agit de construire les écrans que verra le client final.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Écran} & \textbf{Fonction} \\
+\midrule
+Vitrine et catégories & Le catalogue public. \\
+Fiche produit & Choix de la déclinaison, prix selon la quantité. \\
+Panier et commande & Adresse, point de récupération, récapitulatif. \\
+Paiement & MTN MoMo et Orange Money. \\
+Mes commandes et suivi & Où en est chaque colis. \\
+Réclamations et conversation & Le service client, côté client. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Ce qu'un partenariat permettrait d'accélérer}
+
+\begin{itemize}
+  \item \textbf{Finir la boutique client} et ouvrir la plateforme au public.
+  \item \textbf{Recruter les marchands partenaires} du corridor, et les
+        accompagner à la mise en ligne de leur catalogue.
+  \item \textbf{Équiper les points de récupération} — le comptoir de remise
+        existe, il faut le déployer sur le terrain.
+  \item \textbf{Conventionner les opérateurs Mobile Money} pour des conditions
+        adaptées au volume.
+\end{itemize}
+
+\vspace{1.5em}
+\begin{encadre}{Ce qui est déjà acquis}
+Le risque technique principal d'un projet de cette nature —~construire un
+système fiable qui tienne la comptabilité, la logistique et le service
+client ensemble~— est \textbf{derrière nous}. Le système existe, il tourne,
+il est vérifié en continu et documenté.
+
+Ce qui reste relève de l'exécution commerciale et du déploiement terrain.
+\end{encadre}
+
+\vfill
+\begin{center}
+\color{gris}\small
+GARAH — Document de présentation aux partenaires \\
+Ce document décrit l'état du projet à la date indiquée en couverture.
+\end{center}
+
+\end{document}
