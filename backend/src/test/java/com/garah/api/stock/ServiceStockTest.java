@@ -57,6 +57,33 @@ class ServiceStockTest {
         em.flush();
     }
 
+    /**
+     * 🎯 CE TEST REPRODUIT UN BOGUE DE PRODUCTION.
+     *
+     * <p>Tous les tests de cette classe enregistraient leurs mouvements avec
+     * un auteur {@code null}. La colonne qui le porte referencait la table
+     * {@code responsable} — et un ADMIN n'y a aucune ligne : il agit sur le
+     * systeme, il n'occupe pas un poste.</p>
+     *
+     * <p>Consequence a l'ecran : un administrateur qui saisissait une
+     * reception recevait « L'operation est en conflit avec des donnees
+     * existantes » — une violation de cle etrangere, non traduite. Aucun test
+     * ne pouvait le voir, puisque aucun ne nommait d'auteur.</p>
+     */
+    @Test
+    @DisplayName("un administrateur peut enregistrer une réception")
+    void receptionParUnAdministrateur() {
+        Long adminId = jdbc.queryForObject("""
+                INSERT INTO utilisateur (type, nom, email, mot_de_passe)
+                VALUES ('ADMIN', 'Mbarga', 'admin.stock.test@garah.cm', 'x')
+                RETURNING id
+                """, Long.class);
+
+        EtatStock apres = stock.entrer(varianteId, 20, adminId, "Livré aujourd'hui");
+        em.flush();
+
+        assertThat(apres.disponible()).isEqualTo(30);
+    }
     @Test
     @DisplayName("une réception augmente le disponible")
     void reception() {

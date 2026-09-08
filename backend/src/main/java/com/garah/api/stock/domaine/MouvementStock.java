@@ -50,8 +50,19 @@ public class MouvementStock {
     @Column(name = "origine_id")
     private Long origineId;
 
-    @Column(name = "responsable_id")
-    private Long responsableId;
+    /**
+     * Qui a enregistre ce mouvement — un UTILISATEUR, quel que soit son type.
+     *
+     * <p>⚠️ La colonne s appelait {@code responsable_id} et referencait la
+     * table {@code responsable}. Un ADMIN n y a aucune ligne : il agit sur le
+     * systeme, il n occupe pas un poste. Une reception saisie par un
+     * administrateur violait donc une cle etrangere (V28).</p>
+     *
+     * <p>{@code null} quand le mouvement vient du systeme : une reservation
+     * posee par une commande n a pas d auteur humain.</p>
+     */
+    @Column(name = "auteur_id")
+    private Long auteurId;
 
     @Column(columnDefinition = "text")
     private String commentaire;
@@ -64,7 +75,7 @@ public class MouvementStock {
 
     MouvementStock(Long stockId, TypeMouvement type, CompteurStock compteur, int quantite,
                    int quantiteAvant, OrigineMouvement origineType, Long origineId,
-                   Long responsableId, String commentaire) {
+                   Long auteurId, String commentaire) {
         this.stockId = stockId;
         this.type = type;
         this.compteur = compteur;
@@ -73,7 +84,7 @@ public class MouvementStock {
         this.quantiteApres = quantiteAvant + quantite;   // respecte le CHECK I-16
         this.origineType = origineType;
         this.origineId = origineId;
-        this.responsableId = responsableId;
+        this.auteurId = auteurId;
         this.commentaire = commentaire;
     }
 
@@ -86,7 +97,7 @@ public class MouvementStock {
     public int getQuantiteApres() { return quantiteApres; }
     public OrigineMouvement getOrigineType() { return origineType; }
     public Long getOrigineId() { return origineId; }
-    public Long getResponsableId() { return responsableId; }
+    public Long getAuteurId() { return auteurId; }
     public String getCommentaire() { return commentaire; }
     public Instant getDateOperation() { return dateOperation; }
 }

@@ -27,7 +27,7 @@ public record VueMouvement(
         int quantiteApres,
         String origineType,
         Long origineId,
-        Long responsableId,
+        Long auteurId,
         String commentaire,
         Instant dateOperation) {
 
@@ -41,7 +41,7 @@ public record VueMouvement(
                 m.getQuantiteApres(),
                 m.getOrigineType() == null ? null : m.getOrigineType().name(),
                 m.getOrigineId(),
-                m.getResponsableId(),
+                m.getAuteurId(),
                 m.getCommentaire(),
                 m.getDateOperation());
     }

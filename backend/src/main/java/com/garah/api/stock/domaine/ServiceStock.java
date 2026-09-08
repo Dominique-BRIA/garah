@@ -80,12 +80,12 @@ public class ServiceStock {
 
     /** Réception de marchandise. */
     @Transactional
-    public EtatStock entrer(Long varianteId, int quantite, Long responsableId, String commentaire) {
+    public EtatStock entrer(Long varianteId, int quantite, Long auteurId, String commentaire) {
         exigerQuantitePositive(quantite);
         Stock stock = verrouiller(varianteId);
 
         appliquer(stock, TypeMouvement.ENTREE, CompteurStock.DISPONIBLE, quantite,
-                OrigineMouvement.MANUEL, null, responsableId, commentaire);
+                OrigineMouvement.MANUEL, null, auteurId, commentaire);
 
         return EtatStock.de(stock);
     }
@@ -204,7 +204,7 @@ public class ServiceStock {
      * s'expliquer.</p>
      */
     @Transactional
-    public EtatStock ajuster(Long varianteId, int quantiteReelle, Long responsableId, String motif) {
+    public EtatStock ajuster(Long varianteId, int quantiteReelle, Long auteurId, String motif) {
         if (quantiteReelle < 0) {
             throw new RegleMetierViolee("QUANTITE_INVALIDE",
                     "Une quantité constatée ne peut pas être négative.");
@@ -222,7 +222,7 @@ public class ServiceStock {
         }
 
         appliquer(stock, TypeMouvement.AJUSTEMENT, CompteurStock.DISPONIBLE, ecart,
-                OrigineMouvement.INVENTAIRE, null, responsableId, motif);
+                OrigineMouvement.INVENTAIRE, null, auteurId, motif);
 
         return EtatStock.de(stock);
     }
@@ -403,11 +403,11 @@ public class ServiceStock {
     /** Applique la variation ET journalise, toujours ensemble. */
     private void appliquer(Stock stock, TypeMouvement type, CompteurStock compteur, int variation,
                            OrigineMouvement origineType, Long origineId,
-                           Long responsableId, String commentaire) {
+                           Long auteurId, String commentaire) {
         int avant = stock.valeur(compteur);
         stock.appliquer(compteur, variation);
 
         mouvements.save(new MouvementStock(stock.getId(), type, compteur, variation,
-                avant, origineType, origineId, responsableId, commentaire));
+                avant, origineType, origineId, auteurId, commentaire));
     }
 }

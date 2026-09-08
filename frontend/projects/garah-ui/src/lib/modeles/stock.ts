@@ -42,7 +42,13 @@ export interface MouvementStock {
   readonly quantiteApres: number;
   readonly origineType: OrigineMouvement | null;
   readonly origineId: number | null;
-  readonly responsableId: number | null;
+  /**
+   * Qui a enregistre ce mouvement — un UTILISATEUR, quel que soit son type.
+   *
+   * Nul quand il vient du systeme : une reservation posee par une commande
+   * n'a pas d'auteur humain.
+   */
+  readonly auteurId: number | null;
   readonly commentaire: string | null;
   readonly dateOperation: string;
 }
