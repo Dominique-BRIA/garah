@@ -306,6 +306,58 @@ public class ServiceExpedition {
         return retrait;
     }
 
+    /**
+     * Le retrait de MA commande — code compris.
+     *
+     * <h2>🎯 La seule route de retrait ouverte au client</h2>
+     *
+     * <p>Toutes les autres exigent une autorité du back-office. Sans
+     * celle-ci, le client ne pouvait <b>pas</b> connaître le code qui lui est
+     * pourtant destiné : il fallait le lui lire au téléphone, et le seul
+     * moyen de prouver une remise circulait donc à la voix.</p>
+     *
+     * <h2>⚠️ Une liste, et non un retrait</h2>
+     *
+     * <p>Une commande passée chez deux marchands part rarement d'un seul
+     * entrepôt le même jour : elle a alors <b>deux</b> expéditions, donc deux
+     * codes, à retirer séparément. Rendre le premier trouvé enverrait le
+     * client chercher la moitié de sa commande en croyant tout emporter.</p>
+     *
+     * <h2>⚠️ « Introuvable », jamais « interdit »</h2>
+     *
+     * <p>Même raison que {@code detailPourClient} : un 403 confirmerait que la
+     * commande existe, et parcourir les identifiants suffirait à reconstituer
+     * le volume d'affaires de la plateforme. Une commande qui n'est pas la
+     * sienne se comporte donc exactement comme une commande qui n'existe pas.</p>
+     *
+     * <p>Le filtre porte sur le <b>propriétaire du retrait</b>, pas sur celui
+     * de la commande : c'est lui qui désigne la personne autorisée à repartir
+     * avec la marchandise, et c'est la seule vérification qui protège le code.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<MonRetrait> mesRetraits(Long commandeId, Long clientId) {
+        // ⚠️ La propriété se vérifie AVANT de regarder s'il existe un retrait,
+        //    et non en filtrant la liste obtenue.
+        //
+        //    Filtrer aurait confondu deux situations très différentes : une
+        //    commande légitime dont le retrait n'est pas encore préparé, et la
+        //    commande de quelqu'un d'autre. Les deux rendent une liste vide.
+        Long proprietaire = expeditions.proprietaireDe(commandeId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Commande", commandeId));
+
+        if (!proprietaire.equals(clientId)) {
+            throw RessourceIntrouvable.de("Commande", commandeId);
+        }
+
+        // Vide tant que rien n'est parti, ou tant que l'agent n'a pas préparé
+        // le retrait. Ce n'est pas une erreur : c'est l'état normal d'une
+        // commande qu'on vient de payer, et l'écran doit savoir le dire.
+        return expeditions.findByCommandeId(commandeId).stream()
+                .flatMap(e -> retraits.findByExpeditionId(e.getId()).stream()
+                        .map(r -> MonRetrait.de(r, e)))
+                .toList();
+    }
+
     @Transactional
     public RetraitMarchandise refuserRetrait(String codeRetrait, String motif) {
         RetraitMarchandise retrait = retraits.findByCodeRetrait(codeRetrait)

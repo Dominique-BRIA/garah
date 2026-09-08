@@ -1,5 +1,6 @@
 package com.garah.api.logistique.web;
 
+import com.garah.api.logistique.domaine.MonRetrait;
 import com.garah.api.logistique.domaine.ResumeExpedition;
 import com.garah.api.logistique.domaine.ServiceExpedition;
 import com.garah.api.logistique.domaine.StatutExpedition;
@@ -117,6 +118,34 @@ public class ControleurExpedition {
     @PreAuthorize("hasAuthority('EXPEDITION_CONSULTER')")
     public List<ResumeExpedition> parCommande(@PathVariable Long commandeId) {
         return expeditions.parCommande(commandeId);
+    }
+
+    /**
+     * Mon code de retrait.
+     *
+     * <h2>🎯 La seule route de retrait sans autorité de back-office</h2>
+     *
+     * <p>Toutes les autres exigent {@code RETRAIT_CONSULTER} ou
+     * {@code RETRAIT_CONFIRMER}. Le client, lui, n'a aucune autorité — il a
+     * seulement un compte. Sans cette route, le code qui lui est destiné ne
+     * pouvait lui parvenir qu'à la voix : le seul moyen de prouver une remise
+     * circulait au téléphone.</p>
+     *
+     * <p>⚠️ <b>Pas de {@code PreAuthorize} ici, et ce n'est pas un oubli.</b>
+     * Le contrôle n'est pas une autorité mais une <b>propriété</b> : le
+     * service compare le porteur du jeton au client de la commande. Une
+     * autorité dirait « ce rôle a le droit de voir des retraits » ; ce qu'il
+     * faut dire, c'est « celui-ci a le droit de voir CE retrait-là ».</p>
+     *
+     * <p>Rend une <b>liste</b> : une commande passée chez deux marchands a deux
+     * expéditions, donc deux codes, à retirer séparément. Vide tant que rien
+     * n'est parti — ce n'est pas une erreur, c'est l'état d'une commande qu'on
+     * vient de payer.</p>
+     */
+    @GetMapping("/commandes/{commandeId}/mon-retrait")
+    public List<MonRetrait> monRetrait(@PathVariable Long commandeId,
+                                       @AuthenticationPrincipal Jwt jeton) {
+        return expeditions.mesRetraits(commandeId, utilisateur(jeton));
     }
 
     @PostMapping("/{id}/colis")

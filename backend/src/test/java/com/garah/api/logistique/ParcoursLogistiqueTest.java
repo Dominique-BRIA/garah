@@ -10,6 +10,7 @@ import com.garah.api.commerce.domaine.*;
 import com.garah.api.commerce.infra.LigneCommandeRepository;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
+import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.iam.domaine.*;
 import com.garah.api.iam.infra.ClientRepository;
 import com.garah.api.iam.infra.ResponsableRepository;
@@ -403,6 +404,45 @@ class ParcoursLogistiqueTest {
 
         expeditions.confirmerRetrait(retrait.getCodeRetrait(), responsableId);
         assertThat(expeditions.auComptoir(retrait.getCodeRetrait()).dejaRemis()).isTrue();
+    }
+
+    @Test
+    @DisplayName("le client lit son code, et personne d'autre")
+    void monRetrait() {
+        Colis colis = colisPret();
+        Long expeditionId = colis.getExpedition().getId();
+
+        // Rien n'est encore parti : la liste est VIDE, et ce n'est pas une
+        // erreur. Un 404 ici ferait croire à une commande perdue le jour même
+        // où elle vient d'être payée.
+        assertThat(expeditions.mesRetraits(commande.id(), clientId)).isEmpty();
+
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+        RetraitMarchandise retrait = expeditions.preparerRetrait(expeditionId);
+
+        List<MonRetrait> miens = expeditions.mesRetraits(commande.id(), clientId);
+        assertThat(miens).singleElement()
+                .satisfies(m -> {
+                    assertThat(m.codeRetrait()).isEqualTo(retrait.getCodeRetrait());
+                    assertThat(m.statut()).isEqualTo("EN_ATTENTE");
+                });
+
+        // ⚠️ La commande d'un autre répond « introuvable », jamais
+        //    « interdit ». Un 403 confirmerait qu'elle existe, et parcourir les
+        //    identifiants suffirait à reconstituer le volume d'affaires.
+        assertThatThrownBy(() -> expeditions.mesRetraits(commande.id(), clientId + 9999))
+                .isInstanceOf(RessourceIntrouvable.class);
+
+        // Une fois la marchandise remise, le code DISPARAÎT. Le laisser ferait
+        // revenir au comptoir pour un colis déjà emporté.
+        expeditions.confirmerRetrait(retrait.getCodeRetrait(), responsableId);
+        assertThat(expeditions.mesRetraits(commande.id(), clientId))
+                .singleElement()
+                .satisfies(m -> {
+                    assertThat(m.codeRetrait()).isNull();
+                    assertThat(m.statut()).isEqualTo("CONFIRME");
+                });
     }
 
     @Test

@@ -108,6 +108,22 @@ public interface ExpeditionRepository extends JpaRepository<Expedition, Long> {
     Optional<Long> destinationDe(@Param("commandeId") Long commandeId);
 
     /**
+     * À qui appartient cette commande.
+     *
+     * <p>Même procédé que {@link #clientDe(Long)} : {@code Commande} est
+     * nommée dans la requête et <b>jamais importée</b>. Une importation ferait
+     * dépendre {@code logistique} de {@code commerce}, qui dépend déjà de
+     * {@code logistique} — et le test de cycles refuserait la compilation.</p>
+     *
+     * <p>Elle sert à répondre « introuvable » sur la commande d'un autre
+     * <b>avant</b> de regarder s'il existe un retrait : sans elle, une
+     * commande légitime dont le retrait n'est pas encore préparé se
+     * confondrait avec la commande de quelqu'un d'autre.</p>
+     */
+    @Query("SELECT c.clientId FROM Commande c WHERE c.id = :commandeId")
+    Optional<Long> proprietaireDe(@Param("commandeId") Long commandeId);
+
+    /**
      * Ce qui est deja parti pour une commande.
      *
      * <p>Meme projection que {@link #administration}, meme raison d y faire
