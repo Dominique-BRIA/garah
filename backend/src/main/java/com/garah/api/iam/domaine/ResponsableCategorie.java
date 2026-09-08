@@ -73,6 +73,20 @@ public class ResponsableCategorie {
     @Column(nullable = false)
     private boolean principale = false;
 
+    /**
+     * Ce responsable <b>dirige</b> ce service.
+     *
+     * <p>⚠️ Un seul à {@code true} par <b>service</b> — garanti par un index
+     * unique partiel (V31). Sans lui, deux chefs pourraient se désactiver l'un
+     * l'autre, et on ne saurait pas lequel a raison.</p>
+     *
+     * <p>Le chef est nécessairement membre du service : c'est la même ligne qui
+     * porte l'appartenance et la direction. Un chef qui ne serait pas membre
+     * serait un supérieur sans équipe.</p>
+     */
+    @Column(nullable = false)
+    private boolean chef = false;
+
     @Column(name = "date_affectation", nullable = false, updatable = false)
     private Instant dateAffectation = Instant.now();
 
@@ -89,6 +103,19 @@ public class ResponsableCategorie {
     public Responsable getResponsable() { return responsable; }
     public CategorieResponsable getCategorie() { return categorie; }
     public boolean estPrincipale() { return principale; }
+    public boolean estChef() { return chef; }
+
+    /**
+     * Nomme ou démet le chef de ce service.
+     *
+     * <p>Le contrôle de <b>qui a le droit</b> de le faire n'est pas ici : il
+     * vit dans le service, seul à connaître l'appelant. Une entité qui
+     * vérifierait des permissions aurait besoin de savoir qui la manipule, et
+     * ne pourrait plus être construite dans un test.</p>
+     */
+    void nommerChef(boolean chef) {
+        this.chef = chef;
+    }
 
     /**
      * ⚠️ <b>Ne PAS fonder equals/hashCode sur la clé composite.</b>
