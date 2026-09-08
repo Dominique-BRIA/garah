@@ -22,12 +22,16 @@ exécution l'écraserait.
 | **Vert** | `#4FBF4B` | la signature « au-delà des frontières » |
 | **Nuit** | `#101C3D` | le fond des icônes et des blocs sombres |
 
-Le symbole est un **téléphone dont le flanc se prolonge en chariot** : on
-achète depuis son téléphone, et la marchandise part. Les deux formes ne sont
-pas posées côte à côte — l'anse du chariot naît du téléphone.
+Le symbole est **un seul ruban**. Le téléphone n'est pas posé sur un chariot :
+son flanc droit descend, tourne, et devient le bord haut du panier. On achète
+depuis son téléphone, et la marchandise part.
 
-Tout est en **trait**, jamais en aplat. C'est ce qui le fait survivre au
-tampon, à la broderie et au fax, et non seulement à l'écran.
+⚠️ Le bord haut du panier est donc **en pente**, et la première rangée de trous
+suit cette pente. C'est ce détail qui rend la forme lisible : à plat, on
+verrait une caisse posée sous un téléphone, et le lien se perdrait.
+
+Le panier est une forme **pleine percée de trous**, et non une grille de
+barreaux. Des barreaux en trait se refermeraient en pâté dès 48 px.
 
 ---
 
@@ -38,12 +42,12 @@ Un logo qui rétrécit ne se contente pas de rétrécir. Le symbole existe en
 
 | Palier | À partir de | Ce qu'il garde |
 |---|---|---|
-| Complet | 48 px | tout — barreaux, roues, barre de poussée |
-| Simplifié | 32 px | téléphone, anse, panse, roues — traits épaissis |
-| Minuscule | 16 px | téléphone et panse, rien d'autre |
+| Complet | 64 px | dix trous, roues en anneaux, barre de poussée |
+| Simplifié | 32 px | quatre trous plus grands, roues pleines, traits épaissis |
+| Minuscule | 16 px | téléphone et panier plein, rien d'autre |
 
-Sans ces paliers, le favicon de 16 px n'est qu'une tache bleue : l'anse, les
-roues et la panse tiennent dans huit pixels de haut.
+Sans ces paliers, le favicon de 16 px n'est qu'une tache bleue : dix trous de
+38 unités y font des carrés d'un pixel, qui se remplissent d'anticrénelage.
 
 ---
 

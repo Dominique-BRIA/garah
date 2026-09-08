@@ -2,9 +2,10 @@
      role="img" aria-label="GARAH">
   <title>GARAH — favicon 16 px</title>
   <rect width="512" height="512" rx="96" fill="#101C3D"/>
-  <g transform="translate(-45 23)" fill="none" stroke="#2E9CE9"
-     stroke-linecap="round" stroke-linejoin="round">
-    <rect x="180" y="36" width="164" height="204" rx="34" stroke-width="46"/>
-    <path d="M186 316 H418 L384 396 H222 Z" stroke-width="46"/>
+  <g transform="translate(-4 25)" fill="#2E9CE9">
+    <path fill="none" stroke="#2E9CE9" stroke-width="52"
+          stroke-linecap="round" stroke-linejoin="round"
+          d="M126 250 V 84 a38 38 0 0 1 38-38 H 356 a38 38 0 0 1 38 38 V 244"/>
+    <path d="M100 344 L404 262 L404 408 a34 34 0 0 1 -34 34 H134 a34 34 0 0 1 -34 -34 Z"/>
   </g>
 </svg>

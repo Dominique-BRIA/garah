@@ -3,18 +3,28 @@
   <title>GARAH — le symbole sur fond nuit</title>
   <rect width="512" height="512" rx="112" fill="#101C3D"/>
   <g transform="translate(256 256) scale(0.78) translate(-256 -256)">
-  <g transform="translate(-45 23)" fill="none" stroke="#2E9CE9"
-     stroke-linecap="round" stroke-linejoin="round">
-    <rect x="186" y="40" width="150" height="206" rx="26" stroke-width="26"/>
-    <path d="M239 74 h44" stroke-width="16"/>
-    <path d="M150 186 C 150 262, 168 296, 200 304" stroke-width="24"/>
-    <path d="M200 304 H408 L382 376 H236 Z" stroke-width="24"/>
-    <path d="M414 296 L454 252" stroke-width="20"/>
-    <g stroke-width="14">
-      <path d="M254 306 v68"/><path d="M302 306 v68"/><path d="M350 306 v68"/>
-    </g>
-    <circle cx="264" cy="412" r="17" stroke-width="22"/>
-    <circle cx="348" cy="412" r="17" stroke-width="22"/>
+  <g transform="translate(-37 -6.5)" fill="#2E9CE9">
+    <path fill="none" stroke="#2E9CE9" stroke-width="30"
+          stroke-linecap="round" stroke-linejoin="round"
+          d="M118 262 V 74 a30 30 0 0 1 30-30 H 370 a30 30 0 0 1 30 30 V 252"/>
+    <path fill="none" stroke="#2E9CE9" stroke-width="22" stroke-linecap="round"
+          d="M224 92 h70"/>
+    <path fill="none" stroke="#2E9CE9" stroke-width="26" stroke-linecap="round"
+          d="M406 288 L470 258"/>
+    <path fill-rule="evenodd" d="
+      M104 330 L400 252 L400 414 a28 28 0 0 1 -28 28 H132 a28 28 0 0 1 -28 -28 Z
+      M129 347 h38 v30 h-38 z
+      M181 334 h38 v30 h-38 z
+      M233 320 h38 v30 h-38 z
+      M285 306 h38 v30 h-38 z
+      M337 293 h38 v30 h-38 z
+      M129 388 h38 v30 h-38 z
+      M181 388 h38 v30 h-38 z
+      M233 388 h38 v30 h-38 z
+      M285 388 h38 v30 h-38 z
+      M337 388 h38 v30 h-38 z"/>
+    <circle cx="176" cy="468" r="18" fill="none" stroke="#2E9CE9" stroke-width="20"/>
+    <circle cx="328" cy="468" r="18" fill="none" stroke="#2E9CE9" stroke-width="20"/>
   </g>
   </g>
 </svg>

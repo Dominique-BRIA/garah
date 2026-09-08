@@ -38,47 +38,76 @@ if (!CHROME) throw new Error('Chrome introuvable : compléter la liste CHROMES.'
 /**
  * Le symbole, centré dans une boîte de 512.
  *
- * Un téléphone dont le flanc se prolonge en chariot : on achète depuis son
- * téléphone, et la marchandise part. Les deux formes ne sont pas posées côte
- * à côte — l'anse du chariot NAÎT du téléphone.
+ * 🎯 UN SEUL RUBAN. Le téléphone n'est pas posé sur un chariot : son flanc
+ *    droit descend, tourne, et devient le bord haut du panier. C'est ce trait
+ *    continu qui fait le dessin — deux formes voisines ne le remplaceraient
+ *    pas. On achète depuis son téléphone, et la marchandise part.
  *
- * ⚠️ Les épaisseurs vont du plus fort au plus fin — téléphone, chariot,
- *    barreaux. À épaisseur égale, les barreaux bouchent la panse dès 32 px.
+ * ⚠️ Le bord haut du panier est donc EN PENTE, et la première rangée de trous
+ *    SUIT cette pente. C'est le détail qui rend la forme lisible : à plat, on
+ *    verrait une caisse posée sous un téléphone, et le lien se perdrait.
+ *
+ * ⚠️ Le panier est une forme PLEINE percée de trous, pas une grille de
+ *    barreaux. `fill-rule="evenodd"` creuse les rectangles intérieurs au lieu
+ *    de les peindre. Des barreaux en trait se refermeraient en pâté dès 48 px.
  */
 function symbole(couleur = BLEU) {
-  return `  <g transform="translate(-45 23)" fill="none" stroke="${couleur}"
-     stroke-linecap="round" stroke-linejoin="round">
-    <rect x="186" y="40" width="150" height="206" rx="26" stroke-width="26"/>
-    <path d="M239 74 h44" stroke-width="16"/>
-    <path d="M150 186 C 150 262, 168 296, 200 304" stroke-width="24"/>
-    <path d="M200 304 H408 L382 376 H236 Z" stroke-width="24"/>
-    <path d="M414 296 L454 252" stroke-width="20"/>
-    <g stroke-width="14">
-      <path d="M254 306 v68"/><path d="M302 306 v68"/><path d="M350 306 v68"/>
-    </g>
-    <circle cx="264" cy="412" r="17" stroke-width="22"/>
-    <circle cx="348" cy="412" r="17" stroke-width="22"/>
+  // ⚠️ Recentré. Le dessin naturel penche à droite — la barre de poussée
+  //    dépasse — et vers le bas : sans ce décalage, toutes les compositions
+  //    héritent du déséquilibre, et on le corrige ensuite cinq fois.
+  return `  <g transform="translate(-37 -6.5)" fill="${couleur}">
+    <path fill="none" stroke="${couleur}" stroke-width="30"
+          stroke-linecap="round" stroke-linejoin="round"
+          d="M118 262 V 74 a30 30 0 0 1 30-30 H 370 a30 30 0 0 1 30 30 V 252"/>
+    <path fill="none" stroke="${couleur}" stroke-width="22" stroke-linecap="round"
+          d="M224 92 h70"/>
+    <path fill="none" stroke="${couleur}" stroke-width="26" stroke-linecap="round"
+          d="M406 288 L470 258"/>
+    <path fill-rule="evenodd" d="
+      M104 330 L400 252 L400 414 a28 28 0 0 1 -28 28 H132 a28 28 0 0 1 -28 -28 Z
+      M129 347 h38 v30 h-38 z
+      M181 334 h38 v30 h-38 z
+      M233 320 h38 v30 h-38 z
+      M285 306 h38 v30 h-38 z
+      M337 293 h38 v30 h-38 z
+      M129 388 h38 v30 h-38 z
+      M181 388 h38 v30 h-38 z
+      M233 388 h38 v30 h-38 z
+      M285 388 h38 v30 h-38 z
+      M337 388 h38 v30 h-38 z"/>
+    <circle cx="176" cy="468" r="18" fill="none" stroke="${couleur}" stroke-width="20"/>
+    <circle cx="328" cy="468" r="18" fill="none" stroke="${couleur}" stroke-width="20"/>
   </g>`;
 }
 
 /**
- * Le symbole SIMPLIFIÉ, pour 32 px et moins.
+ * Le symbole SIMPLIFIÉ, pour 48 px et moins.
  *
  * 🎯 UN LOGO QUI RÉTRÉCIT NE SE CONTENTE PAS DE RÉTRÉCIR.
  *
- * En dessous de 32 px, les barreaux, les roues et la barre de poussée se
- * touchent : le dessin devient une tache. Cette version garde ce qui reste
- * lisible — le téléphone, la panse, l'anse — et jette le reste. Les traits
- * sont épaissis, parce qu'un trait fin disparaît avant de se brouiller.
+ * Dix trous de 38 unités font, à 48 px, des carrés de trois pixels et demi :
+ * ils se remplissent d'anticrénelage et le panier redevient un bloc sale.
+ * On passe à SIX trous, plus grands, sur une seule rangée — la pente reste
+ * lisible, et c'est elle qui porte le sens.
+ *
+ * Les roues deviennent pleines : un anneau de deux pixels d'épaisseur n'est
+ * plus un anneau, c'est un point flou.
  */
 function symbolePetit(couleur = BLEU) {
-  return `  <g transform="translate(-45 23)" fill="none" stroke="${couleur}"
-     stroke-linecap="round" stroke-linejoin="round">
-    <rect x="182" y="44" width="158" height="202" rx="30" stroke-width="38"/>
-    <path d="M150 190 C 150 268, 172 302, 208 310" stroke-width="36"/>
-    <path d="M204 312 H410 L378 384 H240 Z" stroke-width="36"/>
-    <circle cx="262" cy="424" r="14" stroke-width="30"/>
-    <circle cx="352" cy="424" r="14" stroke-width="30"/>
+  return `  <g transform="translate(-36.5 -5)" fill="${couleur}">
+    <path fill="none" stroke="${couleur}" stroke-width="36"
+          stroke-linecap="round" stroke-linejoin="round"
+          d="M120 258 V 76 a32 32 0 0 1 32-32 H 368 a32 32 0 0 1 32 32 V 250"/>
+    <path fill="none" stroke="${couleur}" stroke-width="30" stroke-linecap="round"
+          d="M408 292 L470 262"/>
+    <path fill-rule="evenodd" d="
+      M100 332 L402 250 L402 412 a30 30 0 0 1 -30 30 H130 a30 30 0 0 1 -30 -30 Z
+      M132 356 h50 v48 h-50 z
+      M198 338 h50 v48 h-50 z
+      M264 320 h50 v48 h-50 z
+      M330 302 h50 v48 h-50 z"/>
+    <circle cx="176" cy="470" r="26" fill="${couleur}"/>
+    <circle cx="330" cy="470" r="26" fill="${couleur}"/>
   </g>`;
 }
 
@@ -86,19 +115,20 @@ function symbolePetit(couleur = BLEU) {
  * Le symbole RÉDUIT À L'OS, pour 16 px.
  *
  * 🎯 Trois paliers, pas deux. À 16 px, même la version simplifiée se referme :
- *    l'anse, les roues et la panse tiennent dans huit pixels de haut, et il
- *    n'en reste qu'une tache bleue.
+ *    quatre trous et deux roues tiennent dans huit pixels de haut, et il n'en
+ *    reste qu'une tache bleue.
  *
- * Ce qui survit : le téléphone, et la panse sous lui. Deux formes, deux
- * traits épais, un vide franc entre les deux. On ne lit plus « chariot »,
- * on lit « quelque chose sous un téléphone » — et à cette taille, c'est tout
- * ce qu'un favicon doit faire : se distinguer des vingt autres onglets.
+ * Ce qui survit : le téléphone, et le panier plein en pente sous lui. Deux
+ * masses, un vide franc entre les deux. On ne lit plus « chariot », on lit
+ * « quelque chose sous un téléphone » — et à cette taille, c'est tout ce
+ * qu'un favicon doit faire : se distinguer des vingt autres onglets.
  */
 function symboleMinuscule(couleur = BLEU) {
-  return `  <g transform="translate(-45 23)" fill="none" stroke="${couleur}"
-     stroke-linecap="round" stroke-linejoin="round">
-    <rect x="180" y="36" width="164" height="204" rx="34" stroke-width="46"/>
-    <path d="M186 316 H418 L384 396 H222 Z" stroke-width="46"/>
+  return `  <g transform="translate(-4 25)" fill="${couleur}">
+    <path fill="none" stroke="${couleur}" stroke-width="52"
+          stroke-linecap="round" stroke-linejoin="round"
+          d="M126 250 V 84 a38 38 0 0 1 38-38 H 356 a38 38 0 0 1 38 38 V 244"/>
+    <path d="M100 344 L404 262 L404 408 a34 34 0 0 1 -34 34 H134 a34 34 0 0 1 -34 -34 Z"/>
   </g>`;
 }
 
@@ -192,10 +222,10 @@ function horizontal({ fond, couleurMot, couleurSignature }) {
   //    et il reste 32 de marge en haut comme en bas. À 0,6 les roues
   //    touchaient le bord bas — invisible sur fond nuit, très visible dès
   //    qu'on pose le bloc sur autre chose.
-  s += `  <g transform="translate(-8 6.5) scale(0.52)">\n` + symbole() + '\n  </g>\n';
-  s += `  <text x="300" y="152" font-family="Arial, Helvetica, sans-serif" font-weight="700"
+  s += `  <g transform="translate(9.6 22.1) scale(0.46)">\n` + symbole() + '\n  </g>\n';
+  s += `  <text x="280" y="152" font-family="Arial, Helvetica, sans-serif" font-weight="700"
         font-size="112" letter-spacing="16" fill="${couleurMot}">GARAH</text>\n`;
-  s += `  <text x="306" y="208" font-family="Arial, Helvetica, sans-serif" font-weight="600"
+  s += `  <text x="286" y="208" font-family="Arial, Helvetica, sans-serif" font-weight="600"
         font-size="30" letter-spacing="6" fill="${couleurSignature}">AU-DELÀ DES FRONTIÈRES</text>\n`;
   return s + '</svg>\n';
 }
