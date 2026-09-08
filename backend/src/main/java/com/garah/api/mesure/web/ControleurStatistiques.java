@@ -77,6 +77,18 @@ public class ControleurStatistiques {
     // Les favoris du client
     // -------------------------------------------------------------------------
 
+    /**
+     * Ma liste d'envies — <b>des identifiants</b>.
+     *
+     * <p>La vitrine la complète avec {@code /produits/par-ids} pour obtenir
+     * photos et prix. Faire rendre les produits ici ferait dépendre la mesure
+     * du catalogue, c'est-à-dire de ce qu'elle mesure.</p>
+     */
+    @GetMapping("/favoris/miens")
+    public List<Long> mesFavoris(@AuthenticationPrincipal Jwt jeton) {
+        return statistiques.mesFavoris(Long.valueOf(jeton.getSubject()));
+    }
+
     @PutMapping("/favoris/{produitId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void ajouterFavori(@PathVariable Long produitId,

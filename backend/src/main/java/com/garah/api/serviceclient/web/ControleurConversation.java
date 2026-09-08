@@ -35,6 +35,9 @@ import java.util.List;
 @RequestMapping("/api/conversations")
 public class ControleurConversation {
 
+    /** Borne la taille de page : une URL se rallonge a la main en une seconde. */
+    private static final int TAILLE_MAX = 100;
+
     /**
      * Durée de validité d'une proposition de prix.
      *
@@ -85,6 +88,22 @@ public class ControleurConversation {
                                @AuthenticationPrincipal Jwt jeton) {
         conversations.exigerAcces(id, utilisateur(jeton), estClient(jeton));
         return conversations.vue(id);
+    }
+
+    /**
+     * Mes conversations.
+     *
+     * <p>⚠️ Aucune permission, comme le fil : le filtre est le porteur du
+     * jeton, jamais un paramètre. Une liste « mienne » filtrée par un
+     * identifiant reçu du navigateur est la liste de qui veut bien
+     * l'écrire.</p>
+     */
+    @GetMapping("/miennes")
+    public Page<VueConversation> miennes(@RequestParam(defaultValue = "0") int page,
+                                         @RequestParam(defaultValue = "20") int taille,
+                                         @AuthenticationPrincipal Jwt jeton) {
+        return conversations.miennes(utilisateur(jeton),
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)));
     }
 
     @PostMapping("/{id}/messages")

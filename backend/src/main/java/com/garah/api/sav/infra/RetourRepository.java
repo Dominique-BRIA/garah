@@ -25,6 +25,16 @@ public interface RetourRepository extends JpaRepository<Retour, Long> {
             """)
     Optional<Retour> chargerAvecLignes(Long id);
 
+    /**
+     * Les retours d UN client, du plus recent au plus ancien.
+     *
+     * <p>⚠️ L ordre est l INVERSE de celui du back-office. La file de gestion
+     * montre les plus anciens d abord — un retour qui traine est un client qui
+     * attend son argent. Mais le client, lui, vient voir ce qu il a demande
+     * HIER : le mettre en bas l obligerait a chercher.</p>
+     */
+    Page<Retour> findByClientIdOrderByDateCreationDesc(Long clientId, Pageable pagination);
+
     @Query(value = "SELECT nextval('retour_numero_seq')", nativeQuery = true)
     long prochainNumero();
 

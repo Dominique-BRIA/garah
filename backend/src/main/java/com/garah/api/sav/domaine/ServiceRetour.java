@@ -223,6 +223,28 @@ public class ServiceRetour {
         return retour;
     }
 
+    /**
+     * Mes retours.
+     *
+     * <p>Le client suit l'argent qu'il attend. Sans cet écran, une fois la
+     * demande envoyée il n'avait <b>plus rien</b> : ni numéro, ni statut, ni
+     * moyen de savoir si le colis avait été reçu — seulement l'attente, qui
+     * produit exactement les réclamations qu'on cherche à éviter.</p>
+     *
+     * <p>⚠️ Le filtre est le {@code clientId}, jamais un paramètre de requête.
+     * Une liste « mienne » filtrée par un identifiant reçu du navigateur
+     * n'est pas une liste mienne : c'est la liste de qui veut bien
+     * l'écrire.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<VueRetour> mesRetours(Long clientId, Pageable pagination) {
+        // ⚠️ VueRetour.resume et non complete : getLignes() est paresseux, et
+        //    une page de vingt retours ferait vingt requêtes de plus. La liste
+        //    n'affiche pas le détail des lignes — la fiche, si.
+        return retours.findByClientIdOrderByDateCreationDesc(clientId, pagination)
+                .map(VueRetour::resume);
+    }
+
     @Transactional(readOnly = true)
     public List<Retour> pourCommande(Long commandeId) {
         return retours.findByCommandeId(commandeId);

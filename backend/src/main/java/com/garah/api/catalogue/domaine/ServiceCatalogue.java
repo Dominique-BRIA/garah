@@ -9,6 +9,7 @@ import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.marchand.domaine.ServiceMarchand;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -712,6 +713,42 @@ public class ServiceCatalogue {
     }
 
     /**
+     * Les vignettes de produits dont on connaît déjà les identifiants.
+     *
+     * <h2>🎯 Elle sert deux écrans qui ont le même besoin</h2>
+     *
+     * <p>Les <b>tendances</b> rendent un classement d'identifiants, les
+     * <b>favoris</b> une liste d'identifiants. Ni l'un ni l'autre ne porte de
+     * photo ni de prix : ce sont des agrégats, pas du catalogue. Sans cette
+     * méthode, chaque écran demanderait une fiche par ligne — exactement ce
+     * qu'on s'interdit.</p>
+     *
+     * <h2>⚠️ L'ordre demandé est l'ordre rendu</h2>
+     *
+     * <p>Pour les tendances, <b>l'ordre EST le classement</b> : le rendre dans
+     * l'ordre de la base transformerait un palmarès en liste alphabétique,
+     * sans que rien ne le signale.</p>
+     *
+     * <p>Un identifiant inconnu ou dépublié disparaît simplement de la
+     * réponse. C'est voulu : un produit retiré de la vente ne doit pas
+     * réapparaître dans une liste de favoris, et une place vide dans un
+     * classement vaut mieux qu'un article qu'on ne peut plus acheter.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<ResumeProduit> parIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, ResumeProduit> parId = enrichir(
+                produits.vitrineParIds(StatutProduit.PUBLIE, Set.copyOf(ids)))
+                .stream()
+                .collect(Collectors.toMap(ResumeProduit::id, r -> r));
+
+        return ids.stream().map(parId::get).filter(java.util.Objects::nonNull).toList();
+    }
+
+    /**
      * La liste du back-office : tous les statuts, brouillons compris.
      *
      * <p>Distincte du catalogue public, et pas par excès de prudence : une
@@ -807,15 +844,28 @@ public class ServiceCatalogue {
      * ne l'est plus sur une base distante et une connexion mobile.</p>
      */
     private Page<ResumeProduit> enrichir(Page<Produit> page) {
-        if (page.isEmpty()) {
-            return page.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique, null, null, 0));
+        return new PageImpl<>(enrichir(page.getContent()), page.getPageable(),
+                page.getTotalElements());
+    }
+
+    /**
+     * Le même enrichissement, sur une liste.
+     *
+     * <p>C'est ici que vit la logique ; la variante paginée ne fait que la
+     * rhabiller. Les écrire deux fois ferait diverger la liste et la page le
+     * jour où l'une gagne une colonne — et ce jour-là, seule l'une des deux
+     * afficherait le prix.</p>
+     */
+    private List<ResumeProduit> enrichir(List<Produit> trouves) {
+        if (trouves.isEmpty()) {
+            return List.of();
         }
 
-        Set<Long> idsMarchands = page.getContent().stream()
+        Set<Long> idsMarchands = trouves.stream()
                 .map(Produit::getMarchandId)
                 .collect(Collectors.toSet());
 
-        List<Long> idsProduits = page.getContent().stream()
+        List<Long> idsProduits = trouves.stream()
                 .map(Produit::getId)
                 .toList();
 
@@ -836,11 +886,13 @@ public class ServiceCatalogue {
                         VarianteRepository.DisponibiliteProduit::getProduitId,
                         VarianteRepository.DisponibiliteProduit::getDisponible));
 
-        return page.map(p -> ResumeProduit.de(p, urlsMedias::urlPublique,
-                nomsMarchands.get(p.getMarchandId()), prix.get(p.getId()),
-                // Absent de la table : le produit n'a aucune ligne de stock,
-                // ce qui vaut zéro et non « inconnu ».
-                disponibles.getOrDefault(p.getId(), 0)));
+        return trouves.stream()
+                .map(p -> ResumeProduit.de(p, urlsMedias::urlPublique,
+                        nomsMarchands.get(p.getMarchandId()), prix.get(p.getId()),
+                        // Absent de la table : le produit n'a aucune ligne de
+                        // stock, ce qui vaut zéro et non « inconnu ».
+                        disponibles.getOrDefault(p.getId(), 0)))
+                .toList();
     }
 
     /**

@@ -197,6 +197,27 @@ public class ServiceConversation {
         return evaluations.save(new EvaluationConversation(conversationId, note, commentaire));
     }
 
+    /**
+     * Mes conversations.
+     *
+     * <h2>🎯 Le client aussi a besoin d'une liste</h2>
+     *
+     * <p>Toutes les listes de ce service servaient le back-office. Le client,
+     * lui, ouvrait une conversation et n'avait plus aucun moyen d'y revenir :
+     * il fallait garder l'onglet ouvert. Une négociation qui dure deux jours
+     * était donc perdue au premier rechargement.</p>
+     *
+     * <p>⚠️ Sans les messages ({@code resume}) : {@code getMessages()} est
+     * paresseux, et une page de vingt conversations ferait vingt requêtes de
+     * plus. Le fil complet se demande conversation par conversation, sur
+     * celle qu'on ouvre.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<VueConversation> miennes(Long clientId, Pageable pagination) {
+        return conversations.findByClientIdOrderByDateCreationDesc(clientId, pagination)
+                .map(VueConversation::resume);
+    }
+
     @Transactional(readOnly = true)
     public List<Conversation> fileDAttente() {
         return conversations.findByStatutOrderByDateCreationAsc(StatutConversation.WAITING);

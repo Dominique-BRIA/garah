@@ -117,6 +117,27 @@ public class ServiceStatistiques {
         }
     }
 
+    /**
+     * Les produits que J'AI mis en favori, du plus récent au plus ancien.
+     *
+     * <h2>⚠️ Elle rend des IDENTIFIANTS, pas des produits</h2>
+     *
+     * <p>Et ce n'est pas une paresse : {@code mesure} ne connaît pas l'entité
+     * {@code Produit}, et ne doit pas la connaître. Compter des vues et tenir
+     * une liste d'envies n'est pas le métier du catalogue — les lier ferait
+     * dépendre la mesure de ce qu'elle mesure.</p>
+     *
+     * <p>L'appelant complète avec {@code GET /api/produits/par-ids}, qui rend
+     * les vignettes en une seule requête. Deux appels pour un écran, jamais un
+     * par ligne.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<Long> mesFavoris(Long clientId) {
+        return favoris.findByCleClientIdOrderByDateAjoutDesc(clientId).stream()
+                .map(f -> f.getCle().getProduitId())
+                .toList();
+    }
+
     @Transactional
     public void retirerFavori(Long clientId, Long produitId) {
         favoris.deleteById(new Favori.Cle(clientId, produitId));

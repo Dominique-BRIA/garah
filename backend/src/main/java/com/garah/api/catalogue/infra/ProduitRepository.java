@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,27 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
                           @Param("categorieId") Long categorieId,
                           @Param("recherche") String recherche,
                           Pageable pagination);
+
+    /**
+     * Les produits publies dont on connait deja l identifiant.
+     *
+     * <p>🎯 Sert a tout ecran qui a des IDS et veut des VIGNETTES : les
+     * tendances, qui rendent un classement d identifiants, et les favoris, qui
+     * rendent une liste d identifiants. Sans elle, l appelant devrait demander
+     * chaque fiche separement — une requete par ligne, exactement ce qu on
+     * s interdit.</p>
+     *
+     * <p>⚠️ Le filtre sur le statut n est pas decoratif : un produit peut avoir
+     * ete depublie depuis qu il a ete mis en favori. Le rendre quand meme
+     * afficherait dans la boutique un article qu on ne peut plus acheter.</p>
+     */
+    @Query("""
+            SELECT p FROM Produit p
+             WHERE p.statut = :statut
+               AND p.id IN :ids
+            """)
+    List<Produit> vitrineParIds(@Param("statut") StatutProduit statut,
+                                @Param("ids") Collection<Long> ids);
 
     Page<Produit> findByCategorieIdAndStatut(Long categorieId, StatutProduit statut, Pageable pagination);
 

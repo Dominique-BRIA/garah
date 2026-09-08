@@ -183,6 +183,14 @@ public class ControleurSav {
                 demande.commandeId(), client(jeton), demande.motif(), lignes));
     }
 
+    @GetMapping("/retours/miens")
+    public Page<VueRetour> mesRetours(@RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "20") int taille,
+                                      @AuthenticationPrincipal Jwt jeton) {
+        return retours.mesRetours(client(jeton),
+                PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)));
+    }
+
     /**
      * La liste du back-office.
      *

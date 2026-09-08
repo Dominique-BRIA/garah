@@ -72,6 +72,28 @@ public class ControleurProduit {
                 Sort.by("nom")));
     }
 
+    /**
+     * Les vignettes d'une liste d'identifiants. <b>Route publique.</b>
+     *
+     * <p>Elle complète deux routes qui rendent des identifiants sans rien de
+     * ce qu'il faut pour dessiner une carte : {@code /produits/tendance} et
+     * les favoris. Sans elle, la vitrine demandait une fiche par ligne — ou,
+     * pire, affichait des cartes sans photo ni prix.</p>
+     *
+     * <p>⚠️ Elle est placée <b>avant</b> {@code /{slug}}, et ce n'est pas
+     * cosmétique : {@code par-ids} ressemble à un slug, et Spring choisit le
+     * motif le plus spécifique — mais l'ordre de lecture du fichier doit dire
+     * la même chose que le routeur, sinon la prochaine relecture conclura que
+     * la route est morte.</p>
+     */
+    @GetMapping("/par-ids")
+    public List<ResumeProduit> parIds(@RequestParam List<Long> ids) {
+        // Borné comme le reste : une URL est facile à rallonger à la main, et
+        // une liste de mille identifiants ferait une requête que personne n'a
+        // demandée.
+        return catalogue.parIds(ids.stream().limit(TAILLE_MAX).toList());
+    }
+
     @GetMapping("/{slug}")
     public DetailProduit fichePublique(@PathVariable String slug) {
         return catalogue.fichePublique(slug);
