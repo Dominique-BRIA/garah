@@ -8,6 +8,8 @@ import com.garah.api.iam.domaine.TypeUtilisateur;
 import com.garah.api.iam.domaine.Utilisateur;
 import com.garah.api.iam.infra.ClientRepository;
 import com.garah.api.iam.infra.UtilisateurRepository;
+import com.garah.api.commun.erreur.RegleMetierViolee;
+import com.garah.api.mesure.domaine.BilanPeriode;
 import com.garah.api.mesure.domaine.ProduitTendance;
 import com.garah.api.mesure.domaine.ServiceStatistiques;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +25,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @DisplayName("Mesure et statistiques")
@@ -89,6 +92,86 @@ class ServiceStatistiquesTest {
     }
 
     // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("le bilan additionne les agrégats, jamais le détail")
+    void bilanSurPeriode() {
+        LocalDate hier = LocalDate.now().minusDays(1);
+        LocalDate avantHier = LocalDate.now().minusDays(2);
+
+        agregat(produitA, hier, 100, 10);
+        agregat(produitA, avantHier, 50, 5);
+        agregat(produitB, hier, 20, 1);
+
+        // Ce test exécute réellement les trois requêtes du bilan — totaux,
+        // classement, courbe. Une requête cassée n'échouerait qu'ici.
+        BilanPeriode bilan = stats.bilan(avantHier, hier, 10);
+
+        assertThat(bilan.vues()).isEqualTo(170);
+        assertThat(bilan.quantiteVendue()).isEqualTo(16);
+
+        // 🎯 `jours` compte les jours COUVERTS PAR DES AGRÉGATS, pas la
+        //    longueur de la période. S'ils diffèrent, une nuit d'agrégation a
+        //    été manquée — et c'est ce que l'écran doit pouvoir dire au lieu
+        //    d'afficher un creux inexpliqué.
+        assertThat(bilan.jours()).isEqualTo(2);
+
+        assertThat(bilan.parJour()).hasSize(2);
+        assertThat(bilan.parJour().getFirst().jour()).isEqualTo(avantHier);
+
+        assertThat(bilan.meilleurs()).extracting(BilanPeriode.LigneBilan::produitId)
+                .contains(produitA, produitB);
+    }
+
+    @Test
+    @DisplayName("un produit sans aucune vue n'a pas de taux de conversion")
+    void tauxSansVue() {
+        LocalDate hier = LocalDate.now().minusDays(1);
+
+        // Vendu sans avoir été vu : le cas arrive quand la vue n'a pas été
+        // enregistrée (visiteur avec bloqueur, panne de la collecte).
+        jdbc.update("""
+                INSERT INTO statistique_produit_jour
+                    (produit_id, jour, vues, vues_uniques, commandes, quantite_vendue,
+                     chiffre_affaires)
+                VALUES (?, ?, 0, 0, 3, 3, 45000)
+                """, produitA, java.sql.Date.valueOf(hier));
+
+        BilanPeriode.LigneBilan ligne = stats.bilan(hier, hier, 10).meilleurs().stream()
+                .filter(l -> l.produitId().equals(produitA))
+                .findFirst()
+                .orElseThrow();
+
+        // Nul, et non zéro : « 0 % » accuserait une fiche que personne n'a
+        // ouverte, alors que le problème est ailleurs.
+        assertThat(ligne.tauxConversion()).isNull();
+        assertThat(ligne.commandes()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("une période sans agrégat rend des zéros, pas une erreur")
+    void periodeVide() {
+        LocalDate vieux = LocalDate.now().minusYears(5);
+
+        BilanPeriode bilan = stats.bilan(vieux, vieux.plusDays(7), 10);
+
+        // Un écran de statistiques doit savoir dire « rien sur cette période ».
+        // Lever une erreur ferait croire à une panne.
+        assertThat(bilan.jours()).isZero();
+        assertThat(bilan.vues()).isZero();
+        assertThat(bilan.chiffreAffaires()).isEqualByComparingTo("0");
+        assertThat(bilan.meilleurs()).isEmpty();
+        assertThat(bilan.parJour()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("une période à l'envers est refusée")
+    void periodeInversee() {
+        LocalDate hier = LocalDate.now().minusDays(1);
+
+        assertThatThrownBy(() -> stats.bilan(LocalDate.now(), hier, 10))
+                .isInstanceOf(RegleMetierViolee.class);
+    }
 
     @Test
     @DisplayName("une vue est enregistrée telle quelle")

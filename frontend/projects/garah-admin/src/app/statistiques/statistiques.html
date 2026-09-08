@@ -1,0 +1,172 @@
+<header class="entete">
+  <div>
+    <h1>Statistiques</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… } @else { {{ periodeLisible() }} }
+    </p>
+  </div>
+</header>
+
+<div class="barre-outils">
+  <div class="barre-outils__groupe">
+    <nav class="filtres" aria-label="Période">
+      @for (p of periodes; track p.jours) {
+        <button type="button" class="filtre" [class.filtre--actif]="jours() === p.jours"
+                (click)="changerPeriode(p.jours)">
+          {{ p.libelle }}
+        </button>
+      }
+    </nav>
+  </div>
+
+  <div class="barre-outils__groupe">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</div>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (bilan(); as b) {
+
+  <!-- ⚠️ UN TROU DANS LES DONNÉES SE DIT. Sans ce bandeau, une nuit
+       d'agrégation manquée apparaît comme une baisse d'activité — et on
+       cherche la cause du côté commercial pendant des jours.
+       Le jour en cours n'est pas compté : l'agrégation tourne la nuit, et
+       signaler cet écart tous les jours ferait passer l'alerte pour du bruit. -->
+  @if (journeesManquantes() > 0) {
+    <div class="gu-carte manque" role="status">
+      <gu-icone nom="triangle-exclamation" class="manque__icone" />
+      <div>
+        <p class="manque__titre">
+          {{ journeesManquantes() }} journée(s) sans données sur cette période
+        </p>
+        <p class="manque__texte">
+          Ce n’est pas une baisse d’activité : ces jours-là n’ont pas été
+          résumés. Les chiffres ci-dessous les ignorent.
+        </p>
+        @if (session.peut('STATISTIQUE_GENERALE_CONSULTER')) {
+          <button type="button" class="gu-btn gu-btn--secondaire petit"
+                  (click)="rattraper()" [disabled]="action() !== null">
+            @if (action() === 'agregation') { <gu-icone nom="circle-notch" tourne /> }
+            Rattraper la journée d’hier
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ================================================================== -->
+  <!-- Les totaux                                                          -->
+  <!-- ================================================================== -->
+  <section class="cartes">
+    <div class="gu-carte chiffre">
+      <p class="chiffre__label">Chiffre d’affaires</p>
+      <p class="chiffre__valeur">{{ montant(b.chiffreAffaires) }}</p>
+      <p class="chiffre__aide">{{ b.commandes }} commande(s)</p>
+    </div>
+
+    <div class="gu-carte chiffre">
+      <p class="chiffre__label">Articles vendus</p>
+      <p class="chiffre__valeur">{{ b.quantiteVendue }}</p>
+      <!-- Les retours à côté des ventes, jamais ailleurs : vendre 500 et en
+           reprendre 80 n'est pas la même chose que vendre 500. -->
+      <p class="chiffre__aide">{{ b.retours }} retour(s)</p>
+    </div>
+
+    <div class="gu-carte chiffre">
+      <p class="chiffre__label">Fiches consultées</p>
+      <p class="chiffre__valeur">{{ b.vues }}</p>
+      <!-- « Uniques » compte les visiteurs, « vues » compte les passages. Le
+           second est toujours plus grand, et confondre les deux fait croire à
+           une audience deux fois plus large. -->
+      <p class="chiffre__aide">{{ b.vuesUniques }} visiteur(s) distinct(s)</p>
+    </div>
+
+    <div class="gu-carte chiffre">
+      <p class="chiffre__label">Jours couverts</p>
+      <p class="chiffre__valeur">{{ b.jours }}</p>
+      <p class="chiffre__aide">sur {{ joursAttendus() }} demandé(s)</p>
+    </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- La courbe                                                           -->
+  <!-- ================================================================== -->
+  <section class="gu-carte bloc">
+    <h2>Consultations par jour</h2>
+
+    @if (b.parJour.length === 0) {
+      <p class="vide">
+        Aucune donnée sur cette période. Les statistiques ne se calculent pas
+        après coup : seul ce qui a été mesuré sur le moment existe.
+      </p>
+    } @else {
+      <!-- Un graphique en barres tracé en CSS, sans bibliothèque : c'est une
+           lecture d'appoint, et charger un moteur de graphiques pour trente
+           barres coûterait plus que la page entière. -->
+      <div class="courbe" role="img"
+           [attr.aria-label]="'Consultations quotidiennes sur ' + b.jours + ' jours'">
+        @for (p of b.parJour; track p.jour) {
+          <div class="courbe__colonne" [title]="jourLong(p)">
+            <div class="courbe__barre" [style.height.%]="hauteur(p)"
+                 [class.courbe__barre--vendu]="p.commandes > 0"></div>
+            <span class="courbe__jour">{{ jourCourt(p.jour) }}</span>
+          </div>
+        }
+      </div>
+      <p class="aide">
+        Les jours en couleur sont ceux où au moins une commande a été passée.
+      </p>
+    }
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- Le classement                                                       -->
+  <!-- ================================================================== -->
+  <section class="gu-carte bloc">
+    <h2>Ce qui rapporte le plus</h2>
+
+    @if (b.meilleurs.length === 0) {
+      <p class="vide">Aucun produit n’a été vu ni commandé sur cette période.</p>
+    } @else {
+      <div class="gu-tableau-defilant">
+        <table class="gu-tableau">
+          <thead>
+            <tr>
+              <th>Produit</th>
+              <th class="droite">Vues</th>
+              <th class="droite">Commandes</th>
+              <th class="droite">Conversion</th>
+              <th class="droite">Chiffre d’affaires</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of b.meilleurs; track l.produitId) {
+              <tr class="cliquable" [routerLink]="['/produits', l.produitId]">
+                <td class="nom">{{ l.nom }}</td>
+                <td class="droite nombre">{{ l.vues }}</td>
+                <td class="droite nombre">{{ l.commandes }}</td>
+                <!-- Nul se dit « — » et non « 0 % » : un taux calculé sur zéro
+                     vue accuserait une fiche que personne n'a ouverte. -->
+                <td class="droite nombre">{{ taux(l.tauxConversion) }}</td>
+                <td class="droite montant">{{ montant(l.chiffreAffaires) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

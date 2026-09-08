@@ -1,0 +1,133 @@
+// Les statistiques. Motifs communs dans ecrans-communs.scss.
+
+// --- Le bandeau « donnees manquantes » ---------------------------------------
+// Ambre et non rouge : ce n'est pas une panne, c'est une nuit d'agregation
+// sautee — et elle se rattrape en un clic.
+.manque {
+  display: flex;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.5rem;
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 7%, var(--verre-fond));
+}
+
+.manque__icone { color: var(--warning); font-size: 1.15rem; margin-top: 0.1rem; }
+.manque__titre { font-weight: 600; margin: 0 0 0.3rem; }
+
+.manque__texte {
+  margin: 0 0 0.75rem;
+  font-size: 0.86rem;
+  color: var(--texte-attenue);
+  line-height: 1.55;
+}
+
+// --- Les totaux --------------------------------------------------------------
+.cartes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.chiffre { padding: 1.25rem; }
+
+.chiffre__label {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.chiffre__valeur {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+// La ligne de contexte. Un chiffre seul se lit mal : « 500 vendus » ne dit
+// rien sans « 80 retours » a cote.
+.chiffre__aide {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--texte-attenue);
+}
+
+// --- Les blocs ---------------------------------------------------------------
+.bloc {
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+
+  h2 {
+    margin: 0 0 1.1rem;
+    font-size: 1rem;
+  }
+}
+
+.vide {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--texte-attenue);
+  line-height: 1.6;
+}
+
+// --- La courbe ---------------------------------------------------------------
+// Trace en CSS, sans bibliotheque : c'est une lecture d'appoint, et charger un
+// moteur de graphiques pour trente barres couterait plus que la page entiere.
+.courbe {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  height: 10rem;
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 1.25rem;   // place pour les dates sous les barres
+}
+
+.courbe__colonne {
+  position: relative;
+  flex: 1 0 1.1rem;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  min-width: 1.1rem;
+}
+
+.courbe__barre {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: var(--champ-bordure);
+  transition: var(--transition);
+}
+
+// Les jours qui ont VENDU. Tout colorer ne distinguerait rien ; c'est
+// justement le contraste qui porte l'information.
+.courbe__barre--vendu { background: var(--primary); }
+
+.courbe__jour {
+  position: absolute;
+  bottom: -1.15rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  color: var(--texte-attenue);
+  white-space: nowrap;
+}
+
+// Au-dela d'une trentaine de barres, les dates se chevauchent : on les cache
+// et le survol reste la source de verite.
+@media (max-width: 900px) {
+  .courbe__jour { display: none; }
+  .courbe { padding-bottom: 0; }
+}
+
+// --- Le classement -----------------------------------------------------------
+.nombre,
+.montant { font-variant-numeric: tabular-nums; }
+
+.montant { font-weight: 600; }
+.nom { font-weight: 600; }

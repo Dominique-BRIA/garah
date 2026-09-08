@@ -137,53 +137,62 @@ section 6 — c'est la vitrine (lot 10) qui débloquera la recette manuelle.
 
 ---
 
-## Lot 5 — SAV : réclamations et retours
+## Lot 5 — SAV : réclamations et retours ✅ *fait*
 
 | Fonctionnalité | Intention | Attention |
 |---|---|---|
 | Réclamations à traiter | Prise en charge puis résolution. | |
 | Retours : acceptation, refus, réception, validation, clôture | Cinq étapes, pas un booléen. | Un retour accepté n'est pas un retour reçu, ni un retour remboursé. Les fondre fait rembourser de la marchandise jamais rentrée. |
 | Un retour **en bon état** redevient vendable | Un retour abîmé rejoint le compteur `ENDOMMAGEE`. | Sans cette distinction, on revend un article inutilisable. |
-
-**Backend manquant :** `GET /api/sav/retours` (liste).
+| Deux chiffres par retour, jamais un | *Articles annoncés* est ce que le client **déclare** ; *montant remboursé* est ce qui a été **constaté** après ouverture du colis. | Les afficher comme un seul « montant du retour » serait un contresens : entre les deux, quelqu'un a vu la marchandise. Le second vaut zéro tant que le retour n'est pas validé. |
+| Réclamations et retours : **deux écrans**, pas deux onglets | Une réclamation est une plainte qu'un humain tranche ; un retour est une marchandise qui revient. | Les gestes, les permissions et les gens ne sont pas les mêmes. |
+| Trancher en faveur du client **ne rembourse pas** | Rendre l'argent est une décision distincte, avec sa propre permission. | Lier les deux ferait qu'un agent de SAV déclenche des mouvements d'argent sans en avoir le droit. |
+| Les plus **anciennes** en tête | L'inverse des listes de catalogue, et c'est voulu. | Une réclamation qui traîne est un client qui s'énerve : c'est celle-là qu'il faut voir en haut, pas la dernière arrivée. |
 
 ---
 
-## Lot 6 — Service client et négociation
+## Lot 6 — Service client et négociation ✅ *fait*
 
 | Fonctionnalité | Intention | Attention |
 |---|---|---|
 | File d'attente, affectation, réaffectation | Qui traite quoi. | |
 | Messages et pièces jointes | | |
 | **Propositions de prix** | Le client négocie ; une proposition acceptée devient une commande. | C'est un vrai flux commercial, pas une messagerie. |
-| Évaluation après clôture | | |
-
-**Backend manquant :** liste des conversations d'un agent (seule la file
-d'attente se liste).
+| Évaluation après clôture | Uniquement sur une conversation **fermée**. | Demander un avis sur un problème non résolu ne mesure pas le service, il mesure l'agacement. |
+| Le chiffre qui trie est celui des **non lus** | Un agent qui ouvre l'écran se pose une seule question : « laquelle attend ma réponse ? ». | Le total des messages n'y répond pas — une conversation de quarante messages tous lus n'attend rien. |
+| Filtre « mes dossiers », responsable lu dans le **jeton** | Jamais un `?responsableId=`. | Un paramètre laisserait n'importe quel agent lire la file d'un collègue, et se l'attribuer. |
+| La file est **partagée** : le premier qui clique gagne | `UPDATE … WHERE statut = 'WAITING'`, et on compte les lignes modifiées. | Un échec est un `409`, pas une erreur de l'utilisateur : le monde a changé entre l'affichage et le clic. L'écran recharge la liste, sinon on reclique sur des dossiers déjà partis. |
+| Le sens d'une proposition vient du **jeton**, jamais du corps | Un client qui pourrait écrire `sens: "RESPONSABLE"` contournerait le seul garde-fou de la négociation. | Il s'accorderait n'importe quelle remise, en une ligne de JSON. |
 
 ---
 
-## Lot 7 — Finance marchand
+## Lot 7 — Finance marchand ✅ *fait*
 
 | Fonctionnalité | Intention | Attention |
 |---|---|---|
 | Solde d'un marchand | C'est une **somme d'écritures**, jamais un total stocké. | Un total stocké finit par mentir. |
 | Grand livre | Chaque vente crée une écriture, commission comprise. | |
-| Règlements : création, confirmation, annulation | | |
-| Ajustements | | |
-| Règles de commission | Table `regle_commission`, **aucune route**. | Sans elle, le taux appliqué à la commande ne peut pas être configuré. |
-
-**Backend manquant :** liste des marchands avec leur solde, routes sur les
-règles de commission.
+| Règlements : **préparer** puis **confirmer** | Un règlement `PRÉVU` n'écrit rien : la dette ne baisse qu'au moment où l'argent part. | Fondre les deux gestes ferait qu'un virement raté laisserait quand même une dette soldée dans nos livres. La référence de versement est obligatoire — c'est la seule preuve six mois plus tard. |
+| Ajustements : on **ajoute**, on ne corrige pas | Une écriture fausse s'annule par une autre écriture. | Un grand livre ne se réécrit pas. Le libellé est obligatoire et l'auteur enregistré. |
+| Règles de commission | Table `regle_commission` depuis V11, lue à chaque vente, **et aucune route pour y écrire**. | 🎯 Le symptôme est trompeur : *rien n'échoue*. Les commandes passent, le grand livre s'écrit, et les marchands sont crédités de 100 % de la vente. La perte ne se voit qu'en lisant les écritures, longtemps après. |
+| L'écran classe les règles dans l'ordre du **calcul** | Priorité, puis marchand nommé, puis catégorie nommée — miroir exact du `ORDER BY` du dépôt. | S'ils divergent, la liste montre une règle en tête et la vente en applique une autre : un écart qu'on ne remarque qu'en comparant deux factures. |
+| Une règle se **ferme**, ne se supprime pas | Elle est datée ; on pose une date de fin. | Les commandes passées ont figé leur taux. Effacer la règle rendrait inexplicable une ligne du grand livre vieille de six mois. Les règles expirées et futures restent listées — les masquer ferait chercher pourquoi un taux paramétré ne s'applique pas. |
+| Un taux > 50 % demande confirmation | Garde-fou contre la virgule mal placée, pas une limite métier. | « 4,5 » saisi « 45 » multiplie la commission par dix, et rien ne le signalerait avant le premier règlement. |
+| Un marchand sans écriture a un solde de **zéro**, et reste listé | L'agrégat ne le renvoie pas ; c'est le service qui complète. | Sinon il disparaît d'une liste qui prétend montrer tous les marchands. |
 
 ---
 
-## Lot 8 — Clients et surveillance
+## Lot 8 — Clients et surveillance ✅ *fait*
 
 | Fonctionnalité | Intention | Attention |
 |---|---|---|
-| **Contrôleur `Client` entier** | Les 7 permissions du module `CLIENT` ne sont branchées nulle part. | |
-| Fiche client : commandes, adresses, activité | | |
+| **Contrôleur `Client` entier** | Les 7 permissions du module `CLIENT` ne menaient nulle part. | Réservé aux comptes internes : un client gère le sien par `/api/profil`, une route qui ne connaît que **lui**. Les fusionner derrière un `if (estResponsable)` ouvrirait toutes les fiches au premier oubli de condition. |
+| La liste est une **projection**, jamais l'entité | Huit colonnes construites en SQL. | Le jour où `Utilisateur` gagne une colonne sensible, la réponse ne la reçoit pas. Un test vérifie la **forme du record** — ajouter un champ sans y penser le fait passer au rouge. |
+| Recherche sur code, nom **et** e-mail à la fois | Un agent au téléphone a l'un des trois, jamais les trois. | Obliger à choisir un champ ferait échouer une recherche sur deux. |
+| Suspendre met `INACTIF`, **jamais** `BLOQUE` | `INACTIF` est administratif ; `BLOQUE` est une décision de **sécurité**, prise sur alerte. | Les confondre ferait passer pour fraudeur un client simplement désactivé. Un blocage ne se lève pas depuis la fiche : il se tranche depuis l'alerte qui l'a motivé. |
+| Ni suppression, ni changement d'e-mail, ni réinitialisation de mot de passe | Le client porte des commandes, des paiements, des écritures ; l'e-mail identifie le compte et sert à s'y connecter. | Effacer rendrait inexplicables des lignes qui restent. Changer l'e-mail depuis le back-office reviendrait à donner un compte à quelqu'un d'autre, sans que le premier soit prévenu. |
+| « Adresse non confirmée » affiché dans la liste | Ce compte ne reçoit **aucun** courriel. | C'est la réponse à « je n'ai rien reçu », et elle est visible sans ouvrir la fiche. |
+| « Ne s'est jamais connecté » s'écrit en toutes lettres | Une date nulle est une **information**, pas un trou. | Un compte créé et jamais utilisé explique la moitié des litiges de ce genre. |
 | Score de risque **explicable** | L'écran doit répondre à « pourquoi HIGH ? » par la liste des signaux. | Un score sans explication ne permet aucune décision. |
 | Alertes et décision | La surveillance **observe**, elle ne décide pas. Un humain tranche. | Bloquer automatiquement sur un score, c'est refuser des clients légitimes sans recours. |
 | Journal d'audit | Qui a modifié quoi. | Ne pas mélanger avec `activite_client` (parcours) ni `evenement_securite` (authentification). |

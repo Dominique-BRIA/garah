@@ -70,6 +70,7 @@ export const routes: Routes = [
       // Les clients. « /clients » et non « /utilisateurs » : les comptes
       // internes se gerent sous /equipe, et les deux ne se melangent pas.
       { path: 'clients', loadComponent: () => import('./clients/clients').then((m) => m.Clients) },
+      { path: 'statistiques', loadComponent: () => import('./statistiques/statistiques').then((m) => m.Statistiques) },
       { path: 'lieux', loadComponent: () => import('./lieux/lieux').then((m) => m.Lieux) },
       // Les itineraires vivent dans le meme dossier que les lieux : un trajet
       // n'est rien d'autre qu'une suite de lieux, et on ne peut en definir un

@@ -28,6 +28,7 @@ export * from './lib/modeles/sav';
 export * from './lib/modeles/serviceclient';
 export * from './lib/modeles/finance';
 export * from './lib/modeles/client';
+export * from './lib/modeles/statistiques';
 
 // --- Les listes ---
 export * from './lib/liste/bascule-vue';

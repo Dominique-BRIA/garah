@@ -1,5 +1,6 @@
 package com.garah.api.mesure.domaine;
 
+import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.mesure.infra.FavoriRepository;
 import com.garah.api.mesure.infra.VueProduitRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -268,5 +269,99 @@ public class ServiceStatistiques {
     @Transactional(readOnly = true)
     public long favorisDe(Long produitId) {
         return favoris.countByCleProduitId(produitId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Le bilan d'une période
+    // -------------------------------------------------------------------------
+
+    /**
+     * Ce que le catalogue a produit entre deux dates.
+     *
+     * <h2>Lu dans les agrégats, jamais recalculé depuis le détail</h2>
+     *
+     * <p>🎯 {@code vue_produit} est <b>purgé</b> à 90 jours (D-15). Recalculer
+     * un bilan depuis le détail donnerait donc des chiffres justes sur les
+     * dernières semaines et faux au-delà, sans que rien ne signale la
+     * bascule — le pire des deux mondes.</p>
+     *
+     * <p>Trois requêtes, quelle que soit la période : les totaux, le
+     * classement, la courbe. Les agréger en Java demanderait de ramener une
+     * ligne par produit et par jour, soit des dizaines de milliers de lignes
+     * pour afficher six chiffres.</p>
+     */
+    @Transactional(readOnly = true)
+    public BilanPeriode bilan(LocalDate du, LocalDate au, int limite) {
+        if (du.isAfter(au)) {
+            throw new RegleMetierViolee("PERIODE_INVALIDE",
+                    "La date de début doit précéder la date de fin.");
+        }
+
+        BilanPeriode totaux = jdbc.queryForObject("""
+                SELECT COALESCE(COUNT(DISTINCT jour), 0)   AS jours,
+                       COALESCE(SUM(vues), 0)              AS vues,
+                       COALESCE(SUM(vues_uniques), 0)      AS vues_uniques,
+                       COALESCE(SUM(commandes), 0)         AS commandes,
+                       COALESCE(SUM(quantite_vendue), 0)   AS quantite,
+                       COALESCE(SUM(chiffre_affaires), 0)  AS montant,
+                       COALESCE(SUM(retours), 0)           AS retours
+                  FROM statistique_produit_jour
+                 WHERE jour BETWEEN ? AND ?
+                """,
+                (rs, i) -> new BilanPeriode(du, au,
+                        rs.getInt("jours"), rs.getLong("vues"), rs.getLong("vues_uniques"),
+                        rs.getLong("commandes"), rs.getLong("quantite"),
+                        rs.getBigDecimal("montant"), rs.getLong("retours"),
+                        List.of(), List.of()),
+                du, au);
+
+        List<BilanPeriode.LigneBilan> meilleurs = jdbc.query("""
+                SELECT s.produit_id,
+                       p.nom,
+                       SUM(s.vues)             AS vues,
+                       SUM(s.commandes)        AS commandes,
+                       SUM(s.quantite_vendue)  AS quantite,
+                       SUM(s.chiffre_affaires) AS montant
+                  FROM statistique_produit_jour s
+                  JOIN produit p ON p.id = s.produit_id
+                 WHERE s.jour BETWEEN ? AND ?
+                 GROUP BY s.produit_id, p.nom
+                HAVING SUM(s.vues) > 0 OR SUM(s.commandes) > 0
+                 ORDER BY montant DESC, commandes DESC
+                 LIMIT ?
+                """,
+                (rs, i) -> {
+                    long vues = rs.getLong("vues");
+                    long commandes = rs.getLong("commandes");
+                    // Nul, et non zéro : un taux calculé sur zéro vue
+                    // accuserait à tort une fiche que personne n'a ouverte.
+                    Double taux = vues == 0 ? null : (double) commandes / vues;
+
+                    return new BilanPeriode.LigneBilan(
+                            rs.getLong("produit_id"), rs.getString("nom"),
+                            vues, commandes, rs.getLong("quantite"),
+                            rs.getBigDecimal("montant"), taux);
+                },
+                du, au, limite);
+
+        List<BilanPeriode.PointJour> courbe = jdbc.query("""
+                SELECT jour,
+                       SUM(vues)             AS vues,
+                       SUM(commandes)        AS commandes,
+                       SUM(chiffre_affaires) AS montant
+                  FROM statistique_produit_jour
+                 WHERE jour BETWEEN ? AND ?
+                 GROUP BY jour
+                 ORDER BY jour ASC
+                """,
+                (rs, i) -> new BilanPeriode.PointJour(
+                        rs.getObject("jour", LocalDate.class),
+                        rs.getLong("vues"), rs.getLong("commandes"),
+                        rs.getBigDecimal("montant")),
+                du, au);
+
+        return new BilanPeriode(du, au, totaux.jours(), totaux.vues(), totaux.vuesUniques(),
+                totaux.commandes(), totaux.quantiteVendue(), totaux.chiffreAffaires(),
+                totaux.retours(), meilleurs, courbe);
     }
 }

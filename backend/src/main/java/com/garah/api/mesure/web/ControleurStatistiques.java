@@ -1,16 +1,19 @@
 package com.garah.api.mesure.web;
 
 import com.garah.api.commun.web.AdresseClient;
+import com.garah.api.mesure.domaine.BilanPeriode;
 import com.garah.api.mesure.domaine.ProduitTendance;
 import com.garah.api.mesure.domaine.ServiceStatistiques;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Size;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -91,6 +94,32 @@ public class ControleurStatistiques {
     // -------------------------------------------------------------------------
     // Le back-office
     // -------------------------------------------------------------------------
+
+    /**
+     * Le bilan d'une période.
+     *
+     * <p>Lu dans les <b>agrégats quotidiens</b>, jamais recalculé depuis le
+     * détail : {@code vue_produit} est purgé à 90 jours (D-15), et un bilan
+     * recalculé serait donc juste sur les dernières semaines et faux au-delà,
+     * sans que rien ne le signale.</p>
+     *
+     * <p>Les deux dates sont facultatives : par défaut les <b>trente derniers
+     * jours</b>, la question qu'on se pose neuf fois sur dix.</p>
+     */
+    @GetMapping("/statistiques/bilan")
+    @PreAuthorize("hasAuthority('STATISTIQUE_GENERALE_CONSULTER')")
+    public BilanPeriode bilan(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate du,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate au,
+            @RequestParam(defaultValue = "10") int limite) {
+
+        LocalDate fin = au == null ? LocalDate.now() : au;
+        LocalDate debut = du == null ? fin.minusDays(29) : du;
+
+        return statistiques.bilan(debut, fin, Math.clamp(limite, 1, 50));
+    }
 
     @GetMapping("/statistiques/produits/{produitId}")
     @PreAuthorize("hasAuthority('STATISTIQUE_PRODUIT_CONSULTER')")
