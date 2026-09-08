@@ -109,39 +109,43 @@
   }
 
   <div class="colonnes">
-    <!-- ---------------- Déclinaisons et prix ---------------- -->
-    <section class="gu-carte">
-      <header class="section-entete">
-        <div>
-          <h2>Déclinaisons</h2>
-          <!-- Sans cette ligne, « déclinaison » se confond avec « palier de
-               prix » : les deux vivent dans le même bloc, et rien ne dit
-               lequel porte quoi. -->
-          <p class="aide sous-section">
-            Taille, couleur, conditionnement. Chacune se vend séparément et
-            porte ses propres prix.
-          </p>
-        </div>
-        @if (session.peut('VARIANTE_CREER') && formulaire() === null) {
-          <div class="entete-actions">
-            <!-- La grille EN PREMIER, et en bouton primaire : c'est le chemin
-                 recommandé. La saisie libre reste possible pour ce qui ne suit
-                 aucune dimension du référentiel, mais elle ne doit plus être
-                 le réflexe — c'est elle qui a produit « 42 » en intitulé et
-                 « Taille » en référence. -->
-            <button type="button" class="gu-btn gu-btn--primaire petit"
-                    (click)="ouvrirGrille()">
-              <gu-icone nom="layer-group" /> Par dimensions
-            </button>
-            <button type="button" class="gu-btn gu-btn--secondaire petit"
-                    (click)="ouvrirCreationVariante()">
-              <gu-icone nom="plus" /> Saisie libre
-            </button>
-          </div>
-        }
-      </header>
+    <!-- ================================================================== -->
+    <!-- Colonne principale : ce qu'on vend, et à quel prix                  -->
+    <!-- ================================================================== -->
+    <div class="colonne-principale">
 
-      <!-- ---------------- La création par grille ---------------- -->
+      <!-- ---------------- Déclinaisons ---------------- -->
+      <section class="gu-carte">
+        <header class="section-entete">
+          <div>
+            <h2>Déclinaisons</h2>
+            <!-- Sans cette ligne, « déclinaison » se confond avec « palier de
+                 prix » : les deux vivent dans la même page, et rien ne dit
+                 lequel porte quoi. -->
+            <p class="aide sous-section">
+              Taille, couleur, conditionnement. Chacune se vend séparément et
+              porte ses propres prix et son propre stock.
+            </p>
+          </div>
+          @if (session.peut('VARIANTE_CREER') && formulaire() === null) {
+            <div class="entete-actions">
+              <!-- La grille EN PREMIER, et en bouton primaire : c'est le chemin
+                   recommandé. La saisie libre reste possible pour ce qui ne suit
+                   aucune dimension du référentiel, mais elle ne doit plus être
+                   le réflexe — c'est elle qui a produit « 42 » en intitulé et
+                   « Taille » en référence. -->
+              <button type="button" class="gu-btn gu-btn--primaire petit"
+                      (click)="ouvrirGrille()">
+                <gu-icone nom="layer-group" /> Par dimensions
+              </button>
+              <button type="button" class="gu-btn gu-btn--secondaire petit"
+                      (click)="ouvrirCreationVariante()">
+                <gu-icone nom="plus" /> Saisie libre
+              </button>
+            </div>
+          }
+        </header>
+
       @if (ouvert('variante-grille')) {
         <form class="encart" (ngSubmit)="creerGrille()" novalidate>
           @if (chargementAttributs()) {
@@ -238,225 +242,257 @@
         </form>
       }
 
-      @if (variantes().length === 0) {
-        <p class="vide">
-          Aucune déclinaison. Un article sans variante en a quand même une :
-          créez-en une, même unique.
-        </p>
-      } @else {
-        @for (v of variantes(); track v.id) {
-          <article class="variante" [class.variante--inactive]="v.statut !== 'ACTIVE'">
-            <div class="variante__entete">
-              <div>
-                <span class="variante__libelle">{{ v.libelle }}</span>
-                <code>{{ v.sku }}</code>
+        @if (variantes().length === 0) {
+          <p class="vide">
+            Aucune déclinaison. Un article sans variante en a quand même une :
+            créez-en une, même unique.
+          </p>
+        } @else {
+          <!-- ==============================================================
+               UN TABLEAU, ET NON UNE PILE DE FICHES
+               ==============================================================
+               🎯 Chaque déclinaison portait sa grille tarifaire et son bloc de
+               stock, empilés. Deux tailles et quinze couleurs font trente
+               déclinaisons : on cherchait une référence en faisant défiler, et
+               on ne pouvait comparer aucun prix puisqu'ils n'étaient jamais
+               alignés.
 
-                <!-- Les valeurs de dimension, quand la déclinaison en porte.
-                     C'est ce qui distingue « Taille 42 » d'un intitulé tapé au
-                     clavier : ici, la valeur est CHOISIE dans le référentiel,
-                     donc filtrable et affichable en sélecteur sur la vitrine. -->
-                @for (val of v.valeurs; track val.valeurId) {
-                  <span class="valeur-dim" [attr.title]="val.attribut">
-                    @if (val.valeurAffichage) {
-                      <span class="valeur-dim__couleur"
-                            [style.background]="val.valeurAffichage" aria-hidden="true"></span>
-                    }
-                    {{ val.libelle }}
-                  </span>
-                }
-
-                @if (v.parDefaut) {
-                  <span class="gu-badge gu-badge--neutre petit-badge">par défaut</span>
-                }
-                @if (v.statut !== 'ACTIVE') {
-                  <span class="gu-badge gu-badge--alerte petit-badge">inactive</span>
-                }
-              </div>
-
-              @if (formulaire() === null) {
-                <div class="variante__actions">
-                  @if (session.peut('VARIANTE_MODIFIER')) {
-                    <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
-                            (click)="ouvrirEditionVariante(v)"
-                            aria-label="Modifier cette déclinaison" title="Modifier">
-                      <gu-icone nom="pen" />
-                    </button>
+               Le tableau répond à « LAQUELLE ? » — une ligne par déclinaison,
+               des colonnes qu'on balaie. Les panneaux répondent à « ET
+               ALORS ? » pour celle qu'on a choisie : ses paliers dessous, son
+               stock à côté.
+               -->
+          <div class="gu-tableau-defilant">
+            <table class="declinaisons">
+              <thead>
+                <tr>
+                  <th scope="col">Déclinaison &amp; référence</th>
+                  @if (session.peut('STOCK_CONSULTER')) {
+                    <th scope="col">Disponibilité</th>
+                    <th scope="col" class="droite">Réservé / seuil</th>
                   }
-                  @if (v.statut === 'ACTIVE' && session.peut('VARIANTE_DESACTIVER')) {
-                    <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
-                            (click)="basculerVariante(v)"
-                            [disabled]="action() !== null"
-                            aria-label="Désactiver cette déclinaison" title="Désactiver">
-                      <gu-icone nom="eye-slash" />
-                    </button>
-                  }
-                  @if (v.statut !== 'ACTIVE' && session.peut('VARIANTE_ACTIVER')) {
-                    <button type="button" class="gu-btn-icone gu-btn-icone--activer"
-                            (click)="basculerVariante(v)"
-                            [disabled]="action() !== null"
-                            aria-label="Activer cette déclinaison" title="Activer">
-                      <gu-icone nom="eye" />
-                    </button>
-                  }
-                </div>
-              }
-            </div>
+                  <th scope="col" class="droite">Prix unitaire</th>
+                  <th scope="col">Paliers</th>
+                  <th scope="col"><span class="gu-visuellement-cache">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (v of variantes(); track v.id) {
+                  <tr class="declinaison"
+                      [class.declinaison--inactive]="v.statut !== 'ACTIVE'"
+                      [class.declinaison--choisie]="estChoisie(v.id)">
+                    <td>
+                      <!-- Toute la cellule est cliquable, pas une case à cocher :
+                           viser une cible de dix pixels sur un téléphone est un
+                           geste qu'on rate. -->
+                      <button type="button" class="declinaison__nom"
+                              (click)="choisir(v.id)"
+                              [attr.aria-pressed]="estChoisie(v.id)">
+                        <span class="declinaison__point" aria-hidden="true"></span>
+                        <span class="declinaison__texte">
+                          <span class="declinaison__libelle">
+                            {{ v.libelle }}
 
-            @if (ouvert('variante-edition', v.id)) {
-              <form class="encart" (ngSubmit)="enregistrerVariante(v.id)" novalidate>
-                <label class="gu-libelle" [for]="'lib-' + v.id">Intitulé</label>
-                <input [id]="'lib-' + v.id" name="libelle" class="gu-champ" required maxlength="200"
-                       [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
-
-                <label class="gu-libelle" [for]="'sku-' + v.id">Référence</label>
-                <input [id]="'sku-' + v.id" name="sku" class="gu-champ" required maxlength="50"
-                       [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
-
-                @if (erreurForm(); as m) {
-                  <p class="alerte" role="alert">{{ m }}</p>
-                }
-
-                <div class="boutons">
-                  <button type="button" class="gu-btn gu-btn--secondaire petit"
-                          (click)="fermer()">Annuler</button>
-                  <button type="submit" class="gu-btn gu-btn--primaire petit"
-                          [disabled]="action() !== null || !sku() || !libelle()">Enregistrer</button>
-                </div>
-              </form>
-            }
-
-            <!-- ============================================================
-                 La grille tarifaire de CETTE déclinaison
-                 ============================================================
-                 🎯 UN TABLEAU, ET NON UNE LISTE SUIVIE D'UN FORMULAIRE.
-
-                 Les deux disaient la même chose et se lisaient différemment :
-                 la liste montrait « 1 à 6 — 5 000 FCFA », le formulaire
-                 demandait « À partir de / Jusqu'à / Prix unitaire ». Il fallait
-                 traduire mentalement de l'un vers l'autre pour comprendre ce
-                 qu'on remplissait.
-
-                 Ici, les colonnes sont nommées une fois. Une ligne existante
-                 se lit dessous ; une ligne qu'on ajoute se remplit dessous
-                 aussi, dans les mêmes colonnes. Il n'y a plus rien à traduire.
-                 -->
-            <section class="tarifs">
-              <header class="tarifs__entete">
-                <h3 class="tarifs__titre">Prix par quantité</h3>
-                @if (session.peut('PRIX_CREER') && formulaire() === null && !grilleFermee(v)) {
-                  <button type="button" class="lien-action" (click)="ouvrirCreationPalier(v)">
-                    <gu-icone nom="plus" /> Ajouter un prix
-                  </button>
-                }
-              </header>
-
-              @if (v.paliers.length === 0 && !ouvert('palier-creation', v.id)) {
-                <p class="vide petit-texte">
-                  Aucun prix. Le tarif dépend de la quantité commandée : un prix
-                  pour 1 à 6, un autre au-delà.
-                </p>
-              } @else {
-                <table class="tarifs__table">
-                  <thead>
-                    <tr>
-                      <th scope="col">À partir de</th>
-                      <th scope="col">Jusqu’à</th>
-                      <th scope="col" class="droite">Prix unitaire</th>
-                      <th scope="col"><span class="gu-visuellement-cache">Actions</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (palier of v.paliers; track palier.id) {
-                      <!-- ⚠️ La ligne se modifie SUR PLACE. Elle ouvrait
-                           auparavant un formulaire en dessous : on perdait de
-                           vue la plage qu'on était en train de retarifer. -->
-                      @if (ouvert('palier-prix', v.id, palier.id)) {
-                        <tr class="tarifs__ligne tarifs__ligne--edition">
-                          <td>{{ palier.quantiteMin }}</td>
-                          <td>
-                            @if (palier.quantiteMax) { {{ palier.quantiteMax }} }
-                            @else { <span class="attenue">et plus</span> }
-                          </td>
-                          <td class="droite">
-                            <input [id]="'p-' + palier.id" name="prix" type="number" min="1"
-                                   class="gu-champ tarifs__champ"
-                                   [attr.aria-label]="'Prix unitaire en FCFA, TTC'"
-                                   [ngModel]="prix()"
-                                   (ngModelChange)="prix.set($event === '' ? null : +$event)" />
-                          </td>
-                          <td class="droite">
-                            <span class="tarifs__gestes">
-                              <button type="button" class="gu-btn gu-btn--secondaire petit"
-                                      (click)="fermer()">Annuler</button>
-                              <button type="button" class="gu-btn gu-btn--primaire petit"
-                                      [disabled]="action() !== null || !prix()"
-                                      (click)="enregistrerPrix(v.id, palier.id)">Enregistrer</button>
-                            </span>
-                          </td>
-                        </tr>
-                        @if (erreurForm(); as m) {
-                          <tr>
-                            <td colspan="4"><p class="alerte" role="alert">{{ m }}</p></td>
-                          </tr>
-                        }
-                      } @else {
-                        <tr class="tarifs__ligne">
-                          <td>{{ palier.quantiteMin }}</td>
-                          <td>
-                            @if (palier.quantiteMax) { {{ palier.quantiteMax }} }
-                            @else { <span class="attenue">et plus</span> }
-                          </td>
-                          <td class="droite montant">
-                            {{ montant(palier.prixUnitaire, palier.devise) }}
-                          </td>
-                          <td class="droite">
-                            @if (formulaire() === null) {
-                              <span class="tarifs__gestes">
-                                @if (session.peut('PRIX_MODIFIER')) {
-                                  <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
-                                          (click)="ouvrirPrix(v, palier)"
-                                          aria-label="Modifier ce prix" title="Modifier le prix">
-                                    <gu-icone nom="pen" />
-                                  </button>
+                            <!-- Les valeurs de dimension, quand la déclinaison
+                                 en porte. C'est ce qui distingue « Taille 42 »
+                                 d'un intitulé tapé au clavier : ici la valeur
+                                 est CHOISIE dans le référentiel, donc filtrable
+                                 et affichable en sélecteur sur la vitrine. -->
+                            @for (val of v.valeurs; track val.valeurId) {
+                              <span class="valeur-dim" [attr.title]="val.attribut">
+                                @if (val.valeurAffichage) {
+                                  <span class="valeur-dim__couleur"
+                                        [style.background]="val.valeurAffichage"
+                                        aria-hidden="true"></span>
                                 }
-                                @if (session.peut('PRIX_SUPPRIMER')) {
-                                  <button type="button" class="gu-btn-icone gu-btn-icone--supprimer"
-                                          (click)="supprimerPalier(v.id, palier.id)"
-                                          [disabled]="action() !== null"
-                                          aria-label="Retirer ce prix" title="Retirer">
-                                    <gu-icone nom="trash" />
-                                  </button>
-                                }
+                                {{ val.libelle }}
                               </span>
                             }
-                          </td>
-                        </tr>
-                      }
+                            @if (v.parDefaut) {
+                              <span class="gu-badge gu-badge--neutre petit-badge">par défaut</span>
+                            }
+                            @if (v.statut !== 'ACTIVE') {
+                              <span class="gu-badge gu-badge--alerte petit-badge">inactive</span>
+                            }
+                          </span>
+                          <code class="declinaison__sku">{{ v.sku }}</code>
+                        </span>
+                      </button>
+                    </td>
+
+                    @if (session.peut('STOCK_CONSULTER')) {
+                      <td>
+                        @if (stockDe(v.id); as s) {
+                          <span class="gu-badge" [class]="etatVariante(v).classe">
+                            {{ etatVariante(v).libelle }}
+                            @if (v.statut === 'ACTIVE') { · {{ s.disponible }} }
+                          </span>
+                        } @else {
+                          <span class="attenue">—</span>
+                        }
+                      </td>
+                      <td class="droite">
+                        @if (stockDe(v.id); as s) {
+                          <!-- Le réservé et le seuil ENSEMBLE : « 2 réservés »
+                               ne dit rien sans savoir à partir de quand on
+                               s'inquiète. -->
+                          <span class="nombre">{{ s.reserve }}</span>
+                          <span class="declinaison__seuil">alerte à {{ s.seuilAlerte }}</span>
+                        } @else {
+                          <span class="attenue">—</span>
+                        }
+                      </td>
                     }
 
-                    <!-- La ligne qu'on ajoute : mêmes colonnes, même ordre.
-                         C'est tout l'intérêt du tableau — on remplit sous les
-                         en-têtes qu'on vient de lire. -->
-                    @if (ouvert('palier-creation', v.id)) {
+                    <td class="droite">
+                      <!-- ⚠️ Le palier le plus BAS, pas « le » prix : une
+                           déclinaison a une grille par quantité. Écrire un
+                           montant seul ferait croire à un prix fixe — le
+                           malentendu que la grille existe pour éviter. -->
+                      <span class="montant">{{ prixDepart(v) }}</span>
+                      @if (nbPaliers(v) > 1) {
+                        <span class="declinaison__seuil">à partir de</span>
+                      }
+                    </td>
+
+                    <td>
+                      @if (nbPaliers(v) === 0) {
+                        <span class="gu-badge gu-badge--alerte petit-badge">aucun prix</span>
+                      } @else {
+                        <span class="gu-badge gu-badge--info petit-badge">
+                          {{ nbPaliers(v) }} palier(s)
+                        </span>
+                      }
+                    </td>
+
+                    <td class="droite">
+                      @if (formulaire() === null) {
+                        <div class="variante__actions">
+                          @if (session.peut('VARIANTE_MODIFIER')) {
+                            <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                                    (click)="ouvrirEditionVariante(v)"
+                                    aria-label="Modifier cette déclinaison" title="Modifier">
+                              <gu-icone nom="pen" />
+                            </button>
+                          }
+                          @if (v.statut === 'ACTIVE' && session.peut('VARIANTE_DESACTIVER')) {
+                            <button type="button" class="gu-btn-icone gu-btn-icone--retirer"
+                                    (click)="basculerVariante(v)"
+                                    [disabled]="action() !== null"
+                                    aria-label="Désactiver cette déclinaison" title="Désactiver">
+                              <gu-icone nom="eye-slash" />
+                            </button>
+                          }
+                          @if (v.statut !== 'ACTIVE' && session.peut('VARIANTE_ACTIVER')) {
+                            <button type="button" class="gu-btn-icone gu-btn-icone--activer"
+                                    (click)="basculerVariante(v)"
+                                    [disabled]="action() !== null"
+                                    aria-label="Activer cette déclinaison" title="Activer">
+                              <gu-icone nom="eye" />
+                            </button>
+                          }
+                        </div>
+                      }
+                    </td>
+                  </tr>
+
+                  <!-- Le formulaire de renommage s'ouvre SOUS la ligne qu'il
+                       modifie, jamais ailleurs : posé dans un panneau, on ne
+                       saurait plus quelle déclinaison on renomme. -->
+                  @if (ouvert('variante-edition', v.id)) {
+                    <tr class="declinaison__edition">
+                      <td [attr.colspan]="session.peut('STOCK_CONSULTER') ? 6 : 4">
+                          @if (ouvert('variante-edition', v.id)) {
+                            <form class="encart" (ngSubmit)="enregistrerVariante(v.id)" novalidate>
+                              <label class="gu-libelle" [for]="'lib-' + v.id">Intitulé</label>
+                              <input [id]="'lib-' + v.id" name="libelle" class="gu-champ" required maxlength="200"
+                                     [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
+
+                              <label class="gu-libelle" [for]="'sku-' + v.id">Référence</label>
+                              <input [id]="'sku-' + v.id" name="sku" class="gu-champ" required maxlength="50"
+                                     [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
+
+                              @if (erreurForm(); as m) {
+                                <p class="alerte" role="alert">{{ m }}</p>
+                              }
+
+                              <div class="boutons">
+                                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                                        (click)="fermer()">Annuler</button>
+                                <button type="submit" class="gu-btn gu-btn--primaire petit"
+                                        [disabled]="action() !== null || !sku() || !libelle()">Enregistrer</button>
+                              </div>
+                            </form>
+                          }
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <p class="aide declinaisons__pied">
+            {{ nbActives() }} déclinaison(s) active(s) sur {{ variantes().length }}.
+          </p>
+        }
+      </section>
+
+      <!-- ---------------- Les paliers de la déclinaison choisie ---------------- -->
+      @if (selection(); as v) {
+        <section class="gu-carte">
+          <header class="section-entete">
+            <div>
+              <h2>Paliers tarifaires</h2>
+              <p class="aide sous-section">
+                Le tarif dépend de la quantité commandée : un prix pour 1 à 6,
+                un autre au-delà. Configuration de
+                <strong>{{ v.libelle }}</strong> <code>{{ v.sku }}</code>.
+              </p>
+            </div>
+          </header>
+
+          <section class="tarifs">
+            <header class="tarifs__entete">
+              <h3 class="tarifs__titre">Prix par quantité</h3>
+              @if (session.peut('PRIX_CREER') && formulaire() === null && !grilleFermee(v)) {
+                <button type="button" class="lien-action" (click)="ouvrirCreationPalier(v)">
+                  <gu-icone nom="plus" /> Ajouter un prix
+                </button>
+              }
+            </header>
+
+            @if (v.paliers.length === 0 && !ouvert('palier-creation', v.id)) {
+              <p class="vide petit-texte">
+                Aucun prix. Le tarif dépend de la quantité commandée : un prix
+                pour 1 à 6, un autre au-delà.
+              </p>
+            } @else {
+              <table class="tarifs__table">
+                <thead>
+                  <tr>
+                    <th scope="col">À partir de</th>
+                    <th scope="col">Jusqu’à</th>
+                    <th scope="col" class="droite">Prix unitaire</th>
+                    <th scope="col"><span class="gu-visuellement-cache">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (palier of v.paliers; track palier.id) {
+                    <!-- ⚠️ La ligne se modifie SUR PLACE. Elle ouvrait
+                         auparavant un formulaire en dessous : on perdait de
+                         vue la plage qu'on était en train de retarifer. -->
+                    @if (ouvert('palier-prix', v.id, palier.id)) {
                       <tr class="tarifs__ligne tarifs__ligne--edition">
+                        <td>{{ palier.quantiteMin }}</td>
                         <td>
-                          <input [id]="'qmin-' + v.id" name="qmin" type="number" min="1"
-                                 class="gu-champ tarifs__champ"
-                                 aria-label="Quantité à partir de laquelle ce prix s’applique"
-                                 [ngModel]="quantiteMin()"
-                                 (ngModelChange)="quantiteMin.set(+$event)" />
-                        </td>
-                        <td>
-                          <input [id]="'qmax-' + v.id" name="qmax" type="number" min="1"
-                                 class="gu-champ tarifs__champ" placeholder="et plus"
-                                 aria-label="Quantité jusqu’à laquelle ce prix s’applique. Vide pour « et au-delà »"
-                                 [ngModel]="quantiteMax()"
-                                 (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
+                          @if (palier.quantiteMax) { {{ palier.quantiteMax }} }
+                          @else { <span class="attenue">et plus</span> }
                         </td>
                         <td class="droite">
-                          <input [id]="'prix-' + v.id" name="prix" type="number" min="1"
+                          <input [id]="'p-' + palier.id" name="prix" type="number" min="1"
                                  class="gu-champ tarifs__champ"
-                                 aria-label="Prix unitaire en FCFA, TTC"
+                                 [attr.aria-label]="'Prix unitaire en FCFA, TTC'"
                                  [ngModel]="prix()"
                                  (ngModelChange)="prix.set($event === '' ? null : +$event)" />
                         </td>
@@ -466,7 +502,7 @@
                                     (click)="fermer()">Annuler</button>
                             <button type="button" class="gu-btn gu-btn--primaire petit"
                                     [disabled]="action() !== null || !prix()"
-                                    (click)="definirPalier(v.id)">Ajouter</button>
+                                    (click)="enregistrerPrix(v.id, palier.id)">Enregistrer</button>
                           </span>
                         </td>
                       </tr>
@@ -475,181 +511,107 @@
                           <td colspan="4"><p class="alerte" role="alert">{{ m }}</p></td>
                         </tr>
                       }
+                    } @else {
+                      <tr class="tarifs__ligne">
+                        <td>{{ palier.quantiteMin }}</td>
+                        <td>
+                          @if (palier.quantiteMax) { {{ palier.quantiteMax }} }
+                          @else { <span class="attenue">et plus</span> }
+                        </td>
+                        <td class="droite montant">
+                          {{ montant(palier.prixUnitaire, palier.devise) }}
+                        </td>
+                        <td class="droite">
+                          @if (formulaire() === null) {
+                            <span class="tarifs__gestes">
+                              @if (session.peut('PRIX_MODIFIER')) {
+                                <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                                        (click)="ouvrirPrix(v, palier)"
+                                        aria-label="Modifier ce prix" title="Modifier le prix">
+                                  <gu-icone nom="pen" />
+                                </button>
+                              }
+                              @if (session.peut('PRIX_SUPPRIMER')) {
+                                <button type="button" class="gu-btn-icone gu-btn-icone--supprimer"
+                                        (click)="supprimerPalier(v.id, palier.id)"
+                                        [disabled]="action() !== null"
+                                        aria-label="Retirer ce prix" title="Retirer">
+                                  <gu-icone nom="trash" />
+                                </button>
+                              }
+                            </span>
+                          }
+                        </td>
+                      </tr>
                     }
-                  </tbody>
-                </table>
+                  }
 
-                <p class="aide tarifs__aide">
-                  « Jusqu’à » vide signifie « et au-delà » : c’est le dernier
-                  palier de la grille.
+                  <!-- La ligne qu'on ajoute : mêmes colonnes, même ordre.
+                       C'est tout l'intérêt du tableau — on remplit sous les
+                       en-têtes qu'on vient de lire. -->
+                  @if (ouvert('palier-creation', v.id)) {
+                    <tr class="tarifs__ligne tarifs__ligne--edition">
+                      <td>
+                        <input [id]="'qmin-' + v.id" name="qmin" type="number" min="1"
+                               class="gu-champ tarifs__champ"
+                               aria-label="Quantité à partir de laquelle ce prix s’applique"
+                               [ngModel]="quantiteMin()"
+                               (ngModelChange)="quantiteMin.set(+$event)" />
+                      </td>
+                      <td>
+                        <input [id]="'qmax-' + v.id" name="qmax" type="number" min="1"
+                               class="gu-champ tarifs__champ" placeholder="et plus"
+                               aria-label="Quantité jusqu’à laquelle ce prix s’applique. Vide pour « et au-delà »"
+                               [ngModel]="quantiteMax()"
+                               (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
+                      </td>
+                      <td class="droite">
+                        <input [id]="'prix-' + v.id" name="prix" type="number" min="1"
+                               class="gu-champ tarifs__champ"
+                               aria-label="Prix unitaire en FCFA, TTC"
+                               [ngModel]="prix()"
+                               (ngModelChange)="prix.set($event === '' ? null : +$event)" />
+                      </td>
+                      <td class="droite">
+                        <span class="tarifs__gestes">
+                          <button type="button" class="gu-btn gu-btn--secondaire petit"
+                                  (click)="fermer()">Annuler</button>
+                          <button type="button" class="gu-btn gu-btn--primaire petit"
+                                  [disabled]="action() !== null || !prix()"
+                                  (click)="definirPalier(v.id)">Ajouter</button>
+                        </span>
+                      </td>
+                    </tr>
+                    @if (erreurForm(); as m) {
+                      <tr>
+                        <td colspan="4"><p class="alerte" role="alert">{{ m }}</p></td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+
+              <p class="aide tarifs__aide">
+                « Jusqu’à » vide signifie « et au-delà » : c’est le dernier
+                palier de la grille.
+              </p>
+
+              @if (grilleFermee(v) && session.peut('PRIX_CREER')) {
+                <p class="aide">
+                  Le dernier palier n’a pas de limite haute. Retirez-le pour
+                  prolonger la grille.
                 </p>
-
-                @if (grilleFermee(v) && session.peut('PRIX_CREER')) {
-                  <p class="aide">
-                    Le dernier palier n’a pas de limite haute. Retirez-le pour
-                    prolonger la grille.
-                  </p>
-                }
-              }
-            </section>
-
-            <!-- ---------------- Le stock de CETTE déclinaison ----------------
-                 C'est en regardant un produit qu'on se demande combien il en
-                 reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
-                 retrouver la déclinaison, c'est séparer deux questions qu'on
-                 se pose ensemble. -->
-            @if (session.peut('STOCK_CONSULTER')) {
-              @if (stockDe(v.id); as s) {
-                <div class="stock" [class.stock--rupture]="s.sousLeSeuil">
-                  <div class="stock__entete">
-                    <span class="stock__titre">Stock</span>
-
-                    @if (formulaire() === null) {
-                      <span class="stock__gestes">
-                        @if (session.peut('STOCK_ENTREE_ENREGISTRER')) {
-                          <button type="button" class="lien-action"
-                                  (click)="ouvrirStock('stock-reception', v)">
-                            <gu-icone nom="plus" /> Réception
-                          </button>
-                        }
-                        @if (session.peut('STOCK_AJUSTER')) {
-                          <button type="button" class="lien-action"
-                                  (click)="ouvrirStock('stock-inventaire', v)">Inventaire</button>
-                          <button type="button" class="lien-action"
-                                  (click)="ouvrirStock('stock-seuil', v)">Seuil</button>
-                        }
-                      </span>
-                    }
-                  </div>
-
-                  <!-- Les trois compteurs ensemble. Séparés, on croirait
-                       qu'une réservation a fait disparaître la marchandise. -->
-                  <dl class="stock__compteurs">
-                    <div>
-                      <dt>Disponible</dt>
-                      <dd [class.stock__rupture]="s.sousLeSeuil">{{ s.disponible }}</dd>
-                    </div>
-                    <div>
-                      <dt>Réservé</dt>
-                      <dd>{{ s.reserve }}</dd>
-                    </div>
-                    @if (s.endommage > 0) {
-                      <div>
-                        <dt>Endommagé</dt>
-                        <dd class="stock__abime">{{ s.endommage }}</dd>
-                      </div>
-                    }
-                    <div>
-                      <dt>Seuil d’alerte</dt>
-                      <dd class="stock__seuil">{{ s.seuilAlerte }}</dd>
-                    </div>
-                  </dl>
-
-                  @if (s.sousLeSeuil) {
-                    <p class="stock__alerte">
-                      @if (s.disponible === 0) {
-                        Rien à vendre. Une réception est nécessaire.
-                      } @else {
-                        Sous le seuil d’alerte. À réapprovisionner.
-                      }
-                    </p>
-                  }
-
-                  @if (ouvert('stock-reception', v.id) || ouvert('stock-inventaire', v.id)
-                       || ouvert('stock-seuil', v.id)) {
-                    <form class="encart" (ngSubmit)="enregistrerStock(v.id)" novalidate>
-                      @if (ouvert('stock-reception', v.id)) {
-                        <label class="gu-libelle" [for]="'qs-' + v.id">Quantité reçue</label>
-                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="1"
-                               class="gu-champ"
-                               [ngModel]="quantiteStock()"
-                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
-                        <p class="aide">Ce qui vient d’arriver, à ajouter au disponible.</p>
-
-                        <label class="gu-libelle" [for]="'ms-' + v.id">Commentaire</label>
-                        <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ"
-                               maxlength="500" placeholder="Livraison du fournisseur"
-                               [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
-
-                      } @else if (ouvert('stock-inventaire', v.id)) {
-                        <label class="gu-libelle" [for]="'qs-' + v.id">
-                          Quantité réellement comptée
-                        </label>
-                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
-                               class="gu-champ"
-                               [ngModel]="quantiteStock()"
-                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
-                        <!-- On envoie le CONSTAT, jamais l'écart : la quantité
-                             théorique a pu bouger depuis le comptage. -->
-                        <p class="aide">
-                          Ce que vous avez sous les yeux, pas l’écart. Le serveur
-                          calcule la différence au moment où il enregistre.
-                        </p>
-
-                        <label class="gu-libelle" [for]="'ms-' + v.id">Motif</label>
-                        <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ" required
-                               maxlength="500" placeholder="Inventaire du 7 septembre"
-                               [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
-                        <p class="aide">
-                          Obligatoire. Un ajustement sans explication est un trou
-                          que personne ne saura combler six mois plus tard.
-                        </p>
-
-                      } @else {
-                        <label class="gu-libelle" [for]="'qs-' + v.id">Seuil d’alerte</label>
-                        <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
-                               class="gu-champ"
-                               [ngModel]="quantiteStock()"
-                               (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
-                        <!-- À zéro, l'alerte ne se déclenche qu'à la rupture,
-                             c'est-à-dire trop tard : la marchandise met des
-                             jours à venir de Douala. -->
-                        <p class="aide">
-                          À partir de quelle quantité prévenir. À zéro, vous ne
-                          serez alerté qu’une fois à court.
-                        </p>
-                      }
-
-                      @if (erreurForm(); as m) {
-                        <p class="alerte" role="alert">{{ m }}</p>
-                      }
-
-                      <div class="boutons">
-                        <button type="button" class="gu-btn gu-btn--secondaire petit"
-                                (click)="fermer()">Annuler</button>
-                        <button type="submit" class="gu-btn gu-btn--primaire petit"
-                                [disabled]="action() !== null || quantiteStock() === null
-                                            || (ouvert('stock-inventaire', v.id)
-                                                && !motifStock().trim())">
-                          @if (action() === 'stock') {
-                            <gu-icone nom="circle-notch" tourne /> Enregistrement…
-                          } @else { Enregistrer }
-                        </button>
-                      </div>
-                    </form>
-                  }
-                </div>
-              } @else {
-                <!-- ⚠️ Sans cette branche, le bloc DISPARAISSAIT en silence
-                     quand le stock n'était pas lisible — et on croyait la
-                     fonctionnalité absente. Une absence doit se dire. -->
-                <div class="stock stock--absent">
-                  <div class="stock__entete">
-                    <span class="stock__titre">Stock</span>
-                    <button type="button" class="lien-action" (click)="chargerStock()">
-                      <gu-icone nom="arrows-rotate" /> Réessayer
-                    </button>
-                  </div>
-                  <p class="stock__alerte">
-                    Le stock de cette déclinaison n’a pas pu être lu.
-                  </p>
-                </div>
               }
             }
-          </article>
-        }
+          </section>
+        </section>
       }
-    </section>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- Colonne latérale : ce qui accompagne, et ce qui se fait vite        -->
+    <!-- ================================================================== -->
+    <div class="colonne-laterale">
 
     <!-- ---------------- Photos ---------------- -->
     <section class="gu-carte">
@@ -693,5 +655,179 @@
         </div>
       }
     </section>
+
+      <!-- ---------------- Le stock de la déclinaison choisie ---------------- -->
+      @if (session.peut('STOCK_CONSULTER') && selection(); as v) {
+        <section class="gu-carte">
+          <header class="section-entete">
+            <div>
+              <h2>Stock</h2>
+              <!-- C'est en regardant un produit qu'on se demande combien il en
+                   reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
+                   retrouver la déclinaison, c'est séparer deux questions qu'on
+                   se pose ensemble. -->
+              <p class="aide sous-section">
+                <strong>{{ v.libelle }}</strong> <code>{{ v.sku }}</code>
+              </p>
+            </div>
+          </header>
+
+          <!-- ---------------- Le stock de CETTE déclinaison ----------------
+               C'est en regardant un produit qu'on se demande combien il en
+               reste. Obliger à quitter la fiche, ouvrir l'inventaire et y
+               retrouver la déclinaison, c'est séparer deux questions qu'on
+               se pose ensemble. -->
+          @if (session.peut('STOCK_CONSULTER')) {
+            @if (stockDe(v.id); as s) {
+              <div class="stock" [class.stock--rupture]="s.sousLeSeuil">
+                <div class="stock__entete">
+                  <span class="stock__titre">Stock</span>
+
+                  @if (formulaire() === null) {
+                    <span class="stock__gestes">
+                      @if (session.peut('STOCK_ENTREE_ENREGISTRER')) {
+                        <button type="button" class="lien-action"
+                                (click)="ouvrirStock('stock-reception', v)">
+                          <gu-icone nom="plus" /> Réception
+                        </button>
+                      }
+                      @if (session.peut('STOCK_AJUSTER')) {
+                        <button type="button" class="lien-action"
+                                (click)="ouvrirStock('stock-inventaire', v)">Inventaire</button>
+                        <button type="button" class="lien-action"
+                                (click)="ouvrirStock('stock-seuil', v)">Seuil</button>
+                      }
+                    </span>
+                  }
+                </div>
+
+                <!-- Les trois compteurs ensemble. Séparés, on croirait
+                     qu'une réservation a fait disparaître la marchandise. -->
+                <dl class="stock__compteurs">
+                  <div>
+                    <dt>Disponible</dt>
+                    <dd [class.stock__rupture]="s.sousLeSeuil">{{ s.disponible }}</dd>
+                  </div>
+                  <div>
+                    <dt>Réservé</dt>
+                    <dd>{{ s.reserve }}</dd>
+                  </div>
+                  @if (s.endommage > 0) {
+                    <div>
+                      <dt>Endommagé</dt>
+                      <dd class="stock__abime">{{ s.endommage }}</dd>
+                    </div>
+                  }
+                  <div>
+                    <dt>Seuil d’alerte</dt>
+                    <dd class="stock__seuil">{{ s.seuilAlerte }}</dd>
+                  </div>
+                </dl>
+
+                @if (s.sousLeSeuil) {
+                  <p class="stock__alerte">
+                    @if (s.disponible === 0) {
+                      Rien à vendre. Une réception est nécessaire.
+                    } @else {
+                      Sous le seuil d’alerte. À réapprovisionner.
+                    }
+                  </p>
+                }
+
+                @if (ouvert('stock-reception', v.id) || ouvert('stock-inventaire', v.id)
+                     || ouvert('stock-seuil', v.id)) {
+                  <form class="encart" (ngSubmit)="enregistrerStock(v.id)" novalidate>
+                    @if (ouvert('stock-reception', v.id)) {
+                      <label class="gu-libelle" [for]="'qs-' + v.id">Quantité reçue</label>
+                      <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="1"
+                             class="gu-champ"
+                             [ngModel]="quantiteStock()"
+                             (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                      <p class="aide">Ce qui vient d’arriver, à ajouter au disponible.</p>
+
+                      <label class="gu-libelle" [for]="'ms-' + v.id">Commentaire</label>
+                      <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ"
+                             maxlength="500" placeholder="Livraison du fournisseur"
+                             [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
+
+                    } @else if (ouvert('stock-inventaire', v.id)) {
+                      <label class="gu-libelle" [for]="'qs-' + v.id">
+                        Quantité réellement comptée
+                      </label>
+                      <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
+                             class="gu-champ"
+                             [ngModel]="quantiteStock()"
+                             (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                      <!-- On envoie le CONSTAT, jamais l'écart : la quantité
+                           théorique a pu bouger depuis le comptage. -->
+                      <p class="aide">
+                        Ce que vous avez sous les yeux, pas l’écart. Le serveur
+                        calcule la différence au moment où il enregistre.
+                      </p>
+
+                      <label class="gu-libelle" [for]="'ms-' + v.id">Motif</label>
+                      <input [id]="'ms-' + v.id" name="motifStock" class="gu-champ" required
+                             maxlength="500" placeholder="Inventaire du 7 septembre"
+                             [ngModel]="motifStock()" (ngModelChange)="motifStock.set($event)" />
+                      <p class="aide">
+                        Obligatoire. Un ajustement sans explication est un trou
+                        que personne ne saura combler six mois plus tard.
+                      </p>
+
+                    } @else {
+                      <label class="gu-libelle" [for]="'qs-' + v.id">Seuil d’alerte</label>
+                      <input [id]="'qs-' + v.id" name="quantiteStock" type="number" min="0"
+                             class="gu-champ"
+                             [ngModel]="quantiteStock()"
+                             (ngModelChange)="quantiteStock.set($event === '' ? null : +$event)" />
+                      <!-- À zéro, l'alerte ne se déclenche qu'à la rupture,
+                           c'est-à-dire trop tard : la marchandise met des
+                           jours à venir de Douala. -->
+                      <p class="aide">
+                        À partir de quelle quantité prévenir. À zéro, vous ne
+                        serez alerté qu’une fois à court.
+                      </p>
+                    }
+
+                    @if (erreurForm(); as m) {
+                      <p class="alerte" role="alert">{{ m }}</p>
+                    }
+
+                    <div class="boutons">
+                      <button type="button" class="gu-btn gu-btn--secondaire petit"
+                              (click)="fermer()">Annuler</button>
+                      <button type="submit" class="gu-btn gu-btn--primaire petit"
+                              [disabled]="action() !== null || quantiteStock() === null
+                                          || (ouvert('stock-inventaire', v.id)
+                                              && !motifStock().trim())">
+                        @if (action() === 'stock') {
+                          <gu-icone nom="circle-notch" tourne /> Enregistrement…
+                        } @else { Enregistrer }
+                      </button>
+                    </div>
+                  </form>
+                }
+              </div>
+            } @else {
+              <!-- ⚠️ Sans cette branche, le bloc DISPARAISSAIT en silence
+                   quand le stock n'était pas lisible — et on croyait la
+                   fonctionnalité absente. Une absence doit se dire. -->
+              <div class="stock stock--absent">
+                <div class="stock__entete">
+                  <span class="stock__titre">Stock</span>
+                  <button type="button" class="lien-action" (click)="chargerStock()">
+                    <gu-icone nom="arrows-rotate" /> Réessayer
+                  </button>
+                </div>
+                <p class="stock__alerte">
+                  Le stock de cette déclinaison n’a pas pu être lu.
+                </p>
+              </div>
+            }
+          }
+        </section>
+      }
+    </div>
+
   </div>
 }

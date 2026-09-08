@@ -196,6 +196,138 @@ export class FicheProduit {
     return this.stocks().find((s) => s.varianteId === varianteId) ?? null;
   }
 
+  // -------------------------------------------------------------------------
+  // Le tableau des déclinaisons
+  // -------------------------------------------------------------------------
+
+  /**
+   * La déclinaison sur laquelle on travaille.
+   *
+   * <p>🎯 <b>UNE À LA FOIS, ET TOUJOURS UNE.</b> Chaque déclinaison portait sa
+   * grille tarifaire et son bloc de stock, empilés. Deux tailles et quinze
+   * couleurs font trente déclinaisons : on cherchait une référence en faisant
+   * défiler, et on ne pouvait comparer aucun prix puisqu'ils n'étaient jamais
+   * alignés.</p>
+   *
+   * <p>Le tableau répond à « laquelle ? » — une ligne par déclinaison, des
+   * colonnes qu'on balaie. Les panneaux répondent à « et alors ? » pour celle
+   * qu'on a choisie : ses paliers dessous, ses mouvements de stock à côté.</p>
+   *
+   * <p>⚠️ Jamais vide tant qu'il existe une déclinaison. Un écran qui demande
+   * de cliquer avant de montrer quoi que ce soit fait croire à une panne — on
+   * ouvre la première.</p>
+   */
+  private readonly choisie = signal<number | null>(null);
+
+  protected readonly selection = computed<Variante | null>(() => {
+    const liste = this.variantes();
+    if (liste.length === 0) {
+      return null;
+    }
+    return liste.find((v) => v.id === this.choisie()) ?? liste[0];
+  });
+
+  protected estChoisie(varianteId: number): boolean {
+    return this.selection()?.id === varianteId;
+  }
+
+  protected choisir(varianteId: number): void {
+    this.choisie.set(varianteId);
+  }
+
+  // --- Ce que le bandeau annonce, avant d'entrer dans le détail ------------
+
+  /** Le disponible de TOUTES les déclinaisons. Nul si le stock n'est pas lisible. */
+  protected readonly stockTotal = computed(() =>
+    this.stocks().reduce((somme, s) => somme + s.disponible, 0),
+  );
+
+  /**
+   * Ce qui est réservé, donc promis à une commande.
+   *
+   * <p>À côté du disponible et jamais à sa place : vendre 500 et en avoir 80
+   * réservés n'est pas la même chose que 500 libres.</p>
+   */
+  protected readonly reserveTotal = computed(() =>
+    this.stocks().reduce((somme, s) => somme + s.reserve, 0),
+  );
+
+  protected readonly nbActives = computed(
+    () => this.variantes().filter((v) => v.statut === 'ACTIVE').length,
+  );
+
+  /**
+   * L'écart d'un palier au premier, en pourcentage.
+   *
+   * <p>Calculé, jamais saisi : c'est ce qui empêche l'étiquette « −20 % » de
+   * survivre à un changement de prix qui n'en fait plus que 12. Nul sur le
+   * premier palier — il n'y a rien avant lui.</p>
+   */
+  protected remise(v: Variante, palier: Variante['paliers'][number]): number | null {
+    const base = v.paliers.reduce((a, b) => (a.quantiteMin <= b.quantiteMin ? a : b));
+    if (base.id === palier.id || base.prixUnitaire === 0) {
+      return null;
+    }
+    return Math.round(((base.prixUnitaire - palier.prixUnitaire) / base.prixUnitaire) * 100);
+  }
+
+  /**
+   * Le prix d'entrée d'une déclinaison, tel qu'il se lit dans un tableau.
+   *
+   * <p>⚠️ Une déclinaison n'a pas UN prix : elle a une grille par quantité.
+   * La colonne annonce donc le palier le plus bas, celui qu'on paie en
+   * achetant une pièce — et le dépli montre la grille entière.</p>
+   *
+   * <p>Écrire un seul montant sans dire qu'il en existe d'autres ferait croire
+   * à un prix fixe, et c'est exactement le malentendu que la grille existe
+   * pour éviter.</p>
+   */
+  protected prixDepart(v: Variante): string {
+    if (v.paliers.length === 0) {
+      return '—';
+    }
+    const bas = v.paliers.reduce((a, b) => (a.quantiteMin <= b.quantiteMin ? a : b));
+    return this.montant(bas.prixUnitaire, bas.devise);
+  }
+
+  /** Combien de paliers, pour dire qu'un seul montant ne dit pas tout. */
+  protected nbPaliers(v: Variante): number {
+    return v.paliers.length;
+  }
+
+  /**
+   * L'état d'une déclinaison en un mot, et la teinte qui va avec.
+   *
+   * <p>L'ordre des cas est l'ordre de gravité : une déclinaison retirée de la
+   * vitrine ne se vend plus, son stock n'a plus d'importance. L'annoncer « en
+   * rupture » enverrait réapprovisionner quelque chose que personne ne peut
+   * commander.</p>
+   */
+  protected etatVariante(v: Variante): { readonly libelle: string; readonly classe: string } {
+    if (v.statut !== 'ACTIVE') {
+      return { libelle: 'Inactive', classe: 'gu-badge--neutre' };
+    }
+
+    // Sans le droit de voir le stock, la colonne ne dit que ce qu'elle sait :
+    // la déclinaison est en vente. Annoncer « stock inconnu » à quelqu'un qui
+    // n'a pas à le connaître ferait passer un droit manquant pour une panne.
+    if (!this.session.peut('STOCK_CONSULTER')) {
+      return { libelle: 'En vente', classe: 'gu-badge--succes' };
+    }
+
+    const s = this.stockDe(v.id);
+    if (!s) {
+      return { libelle: 'Stock inconnu', classe: 'gu-badge--neutre' };
+    }
+    if (s.disponible === 0) {
+      return { libelle: 'Rupture', classe: 'gu-badge--danger' };
+    }
+    if (s.sousLeSeuil) {
+      return { libelle: 'Sous le seuil', classe: 'gu-badge--alerte' };
+    }
+    return { libelle: 'En stock', classe: 'gu-badge--succes' };
+  }
+
   /**
    * Remplace une déclinaison dans la liste.
    *

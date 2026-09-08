@@ -62,17 +62,145 @@
   line-height: 1.7;
 }
 
-// --- Les deux colonnes -------------------------------------------------------
+// 🎯 DEUX COLONNES QUI NE DISENT PAS LA MEME CHOSE.
 //
-// auto-fit : à l'étroit, les sections passent l'une sous l'autre sans point de
-// rupture à maintenir. La barre latérale se replie déjà à 900px, et un palier
-// fixe ignorerait ce cas.
+// A gauche CE QU ON VEND : les declinaisons, puis les paliers de celle qu on
+// a choisie. A droite CE QUI L ACCOMPAGNE : les photos, et les gestes de
+// stock. Le rapport 2/1 n est pas decoratif — il dit lequel des deux est le
+// sujet de la page.
+//
+// ⚠️ auto-fit a ete abandonne ici : il rendait les deux colonnes egales, et
+//    un tableau de six colonnes coince dans la moitie de l ecran defile
+//    lateralement des la premiere declinaison.
 .colonnes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
   gap: 1.25rem;
   align-items: start;
 }
+
+// En dessous de 1100 px, la colonne laterale passe SOUS la principale. Les
+// photos et le stock restent accessibles, ils cessent seulement d etre a cote.
+@media (max-width: 1100px) {
+  .colonnes { grid-template-columns: minmax(0, 1fr); }
+}
+
+.colonne-principale,
+.colonne-laterale {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  // Sans cela, un tableau large pousse la colonne au-dela de la grille au
+  // lieu de defiler dans son propre cadre.
+  min-width: 0;
+}
+
+// --- Le tableau des declinaisons ---------------------------------------------
+.declinaisons {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+
+  th {
+    padding: 0 0.75rem 0.5rem;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--texte-attenue);
+    border-bottom: 1px solid var(--verre-bordure);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.6rem 0.75rem;
+    vertical-align: middle;
+    color: var(--texte-attenue);
+  }
+
+  .montant {
+    color: var(--texte);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nombre { font-variant-numeric: tabular-nums; }
+
+  // La colonne des gestes ne prend que sa place.
+  th:last-child,
+  td:last-child { width: 1%; white-space: nowrap; }
+}
+
+.declinaison + .declinaison { border-top: 1px solid var(--verre-bordure); }
+
+// Une declinaison retiree de la vitrine reste lisible mais recule : elle ne se
+// vend plus, elle ne doit plus attirer l oeil autant que les autres.
+.declinaison--inactive { opacity: 0.55; }
+
+// 🎯 CELLE SUR LAQUELLE ON TRAVAILLE. Les panneaux du dessous et de droite
+// parlent d elle : sans marque visible, on lit des paliers sans savoir de quoi.
+.declinaison--choisie {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+
+  td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+
+  .declinaison__libelle { color: var(--texte); }
+  .declinaison__point { background: var(--primary); }
+}
+
+// Le nom est un BOUTON : c est lui qui choisit la declinaison. Il garde
+// l apparence d un texte — un bouton dessine dans chaque ligne ferait une
+// colonne de boutons, et on ne lirait plus les noms.
+.declinaison__nom {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.declinaison__point {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--champ-bordure);
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+.declinaison__texte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.declinaison__libelle { font-weight: 600; color: var(--texte-attenue); }
+
+.declinaison__sku {
+  font-size: 0.72rem;
+  color: var(--texte-attenue);
+}
+
+// La precision sous un chiffre : « alerte a 5 » sous le nombre reserve. Plus
+// petite et attenuee, elle legende sans se disputer la lecture.
+.declinaison__seuil {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--texte-attenue);
+}
+
+.declinaison__edition td { padding: 0; }
+
+.declinaisons__pied { margin-top: 0.9rem; }
 
 .section-entete {
   display: flex;
@@ -100,28 +228,9 @@
 .petit-texte { font-size: 0.8rem; }
 
 // --- Déclinaisons ------------------------------------------------------------
-.variante {
-  padding: 1.5rem 0;
-  border-top: 1px solid var(--verre-bordure);
-
-  &:first-of-type { border-top: none; padding-top: 0; }
-}
 
 // Une déclinaison désactivée reste lisible mais recule : elle ne se vend plus,
 // elle ne doit plus attirer l'œil autant que les autres.
-.variante--inactive {
-  opacity: 0.6;
-}
-
-.variante__entete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
-}
-
-.variante__libelle { font-weight: 600; margin-right: 0.5rem; }
 
 .petit-badge {
   margin-left: 0.4rem;
