@@ -74,7 +74,11 @@
 
   // Le verre dépoli : une surface translucide posée sur un fond dégradé.
   --verre-fond: rgba(255, 255, 255, 0.7);
-  --verre-bordure: rgba(226, 232, 240, 0.8);
+  // ⚠️ slate-300 a 55 %, et non slate-200 a 80 %. Le liseré précédent se
+  //    devinait plus qu il ne se voyait : sur un écran de bureau bien réglé
+  //    il passait, sur un portable a faible contraste les cartes n avaient
+  //    plus de contour du tout et le contenu flottait.
+  --verre-bordure: rgba(148, 163, 184, 0.55);
   --verre-ombre: 0 8px 32px rgba(15, 23, 42, 0.05);
 
   --surface: #ffffff;
@@ -83,7 +87,7 @@
 
   --champ-fond: rgba(255, 255, 255, 0.8);
   --champ-fond-actif: #ffffff;
-  --champ-bordure: rgba(0, 0, 0, 0.1);
+  --champ-bordure: rgba(0, 0, 0, 0.18);
 
   --ombre-large: 0 10px 25px -5px rgba(15, 23, 42, 0.1),
                  0 8px 10px -6px rgba(15, 23, 42, 0.1);
@@ -114,7 +118,9 @@
   --texte-attenue: #9ca3af;
 
   --verre-fond: rgba(18, 18, 30, 0.75);
-  --verre-bordure: rgba(170, 59, 255, 0.15);
+  // En sombre, « plus visible » veut dire PLUS OPAQUE, pas plus foncé : un
+  // liseré plus sombre que le fond disparaîtrait tout à fait.
+  --verre-bordure: rgba(170, 59, 255, 0.32);
   --verre-ombre: 0 8px 32px rgba(0, 0, 0, 0.4);
 
   --surface: #12121e;
@@ -123,7 +129,7 @@
 
   --champ-fond: rgba(255, 255, 255, 0.03);
   --champ-fond-actif: rgba(26, 26, 42, 0.95);
-  --champ-bordure: rgba(255, 255, 255, 0.1);
+  --champ-bordure: rgba(255, 255, 255, 0.18);
 
   --ombre-large: 0 10px 25px -5px rgba(0, 0, 0, 0.5),
                  0 8px 10px -6px rgba(0, 0, 0, 0.5);
