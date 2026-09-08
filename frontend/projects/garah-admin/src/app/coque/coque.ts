@@ -51,6 +51,10 @@ export class Coque {
     // c'est le geste de l'agent au point de recuperation, pas celui du
     // back-office qui regarde la chaine.
     { libelle: 'Retraits', chemin: '/retraits', icone: 'check', permission: 'RETRAIT_CONFIRMER' },
+    // L ecran du CHEF. Garde par SERVICE_MEMBRE_CONSULTER : sans ce droit,
+    // il n aurait rien a y voir. Un chef qui ne dirige rien ne l a pas non
+    // plus — c est l Admin qui accorde la permission au profil.
+    { libelle: 'Mon service', chemin: '/mon-service', icone: 'users', permission: 'SERVICE_MEMBRE_CONSULTER' },
     { libelle: 'Reclamations', chemin: '/reclamations', icone: 'life-ring', permission: 'RECLAMATION_CONSULTER' },
     { libelle: 'Retours', chemin: '/retours', icone: 'arrows-rotate', permission: 'RETOUR_CONSULTER' },
     { libelle: 'Service client', chemin: '/conversations', icone: 'comments', permission: 'CONVERSATION_CONSULTER' },

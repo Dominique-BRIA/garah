@@ -82,6 +82,10 @@ export const routes: Routes = [
       // sont aussi des utilisateurs, et ils ne se gerent pas ici.
       { path: 'equipe', loadComponent: () => import('./equipe/equipe').then((m) => m.Equipe) },
       { path: 'profils', loadComponent: () => import('./equipe/profils').then((m) => m.Profils) },
+      // L ecran du CHEF, distinct de celui de l Admin : il ne montre que ce
+      // qu on dirige. Aucun garde de permission sur la route — la reponse est
+      // simplement vide pour qui ne dirige rien.
+      { path: 'mon-service', loadComponent: () => import('./equipe/mon-service').then((m) => m.MonService) },
     ],
   },
   { path: '**', redirectTo: '' },

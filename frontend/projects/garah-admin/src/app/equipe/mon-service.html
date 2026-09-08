@@ -1,0 +1,93 @@
+<header class="entete">
+  <div>
+    <h1>Mon service</h1>
+    <p class="sous-titre">Les personnes que vous dirigez.</p>
+  </div>
+</header>
+
+@if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" class="tourne" />
+    Chargement…
+  </div>
+} @else if (mesServices().length === 0) {
+  <!-- 🎯 Ne dirige personne : on le DIT, et on dit qui peut y changer quelque
+       chose. Un écran vide ferait chercher une panne. -->
+  <div class="gu-carte etat">
+    <p><strong>Vous ne dirigez aucun service.</strong></p>
+    <p class="aide">
+      C’est un administrateur qui nomme les chefs de service, depuis l’écran
+      des profils.
+    </p>
+  </div>
+} @else {
+  <!-- Plusieurs services possibles : quelqu'un qui cumule deux profils peut
+       diriger l'un sans diriger l'autre. Un seul, et on n'affiche pas
+       d'onglets — choisir entre une option est un clic pour rien. -->
+  @if (mesServices().length > 1) {
+    <nav class="onglets" aria-label="Mes services">
+      @for (s of mesServices(); track s.id) {
+        <button type="button" class="onglet"
+                [class.onglet--actif]="s.id === serviceChoisi()"
+                (click)="choisir(s.id)">
+          {{ s.nom }}
+        </button>
+      }
+    </nav>
+  }
+
+  @if (erreur(); as m) {
+    <div class="gu-carte etat etat--erreur" role="alert">
+      <gu-icone nom="triangle-exclamation" /> {{ m }}
+    </div>
+  }
+
+  @if (serviceCourant(); as service) {
+    <p class="compte">
+      {{ membres().length }} personne(s) dans {{ service.nom }}.
+    </p>
+
+    <div class="membres">
+      @for (m of membres(); track m.id) {
+        <article class="gu-carte membre" [class.membre--inactif]="m.statut !== 'ACTIF'">
+          <gu-avatar [nom]="m.nom" [url]="m.urlPhoto" taille="2.5rem" />
+
+          <div class="membre__texte">
+            <p class="membre__nom">
+              {{ m.prenom }} {{ m.nom }}
+              @if (estMoi(m)) { <span class="membre__vous">vous</span> }
+            </p>
+            <p class="membre__detail">
+              {{ m.email }}
+              @if (m.matricule) { · {{ m.matricule }} }
+            </p>
+            @if (m.statut !== 'ACTIF') {
+              <p class="membre__suspendu">Compte suspendu</p>
+            }
+          </div>
+
+          <!-- ⚠️ Aucun bouton sur SOI-MÊME : c'est le seul geste qu'aucune
+               hiérarchie ne rattrape — plus personne pour rendre la main. Le
+               serveur le refuse aussi ; ici on évite de le proposer. -->
+          @if (!estMoi(m)) {
+            <div class="membre__actions">
+              @if (m.statut === 'ACTIF' && session.peut('SERVICE_MEMBRE_DESACTIVER')) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        [disabled]="action() === m.id"
+                        (click)="basculerActivation(m)">
+                  Suspendre
+                </button>
+              } @else if (m.statut !== 'ACTIF' && session.peut('SERVICE_MEMBRE_ACTIVER')) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        [disabled]="action() === m.id"
+                        (click)="basculerActivation(m)">
+                  Réactiver
+                </button>
+              }
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+}
