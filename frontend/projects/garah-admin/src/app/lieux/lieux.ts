@@ -1,17 +1,17 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   Icone,
-  Lieu,
-  PAYS_DESSERVIS,
-  ReponseErreur,
-  ServiceSession,
-  TYPES_LIEU,
-  TypeLieu,
-  libelleTypeLieu,
   libellePays,
+  libelleTypeLieu,
+  Lieu,
+  messageErreur,
   montantLisible,
+  PAYS_DESSERVIS,
+  ServiceSession,
+  TypeLieu,
+  TYPES_LIEU,
 } from 'garah-ui';
 
 /**
@@ -97,7 +97,7 @@ export class Lieux {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les lieux n’ont pas pu être chargés.'));
+        this.erreur.set(messageErreur(e, 'Les lieux n’ont pas pu être chargés.'));
       },
     });
   }
@@ -176,7 +176,7 @@ export class Lieux {
       error: (e: unknown) => {
         this.enregistrement.set(false);
         this.erreurFormulaire.set(
-          message(e, existant
+          messageErreur(e, existant
             ? 'Le lieu n’a pas pu être enregistré.'
             : 'Le lieu n’a pas pu être créé.'),
         );
@@ -198,7 +198,7 @@ export class Lieux {
 
     requete.subscribe({
       next: () => this.charger(),
-      error: (e: unknown) => this.erreur.set(message(e, 'L’opération a échoué.')),
+      error: (e: unknown) => this.erreur.set(messageErreur(e, 'L’opération a échoué.')),
     });
   }
 
@@ -230,18 +230,3 @@ export class Lieux {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    if (e.status === 403) {
-      return 'Votre compte n’a pas le droit de gérer ce type de lieu.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

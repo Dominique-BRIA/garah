@@ -1,22 +1,22 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
+  badgeStatutConversation,
+  badgeStatutProposition,
   Conversation,
   Icone,
+  libelleStatutConversation,
+  libelleStatutProposition,
+  messageErreur,
+  montantLisible,
   Page,
   Pagination,
   Proposition,
-  ReponseErreur,
   ResumeConversation,
-  STATUTS_CONVERSATION,
   ServiceSession,
   StatutConversation,
-  badgeStatutConversation,
-  badgeStatutProposition,
-  libelleStatutConversation,
-  libelleStatutProposition,
-  montantLisible,
+  STATUTS_CONVERSATION,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -133,7 +133,7 @@ export class Conversations {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les conversations n’ont pas pu être chargées.'));
+        this.erreur.set(messageErreur(e, 'Les conversations n’ont pas pu être chargées.'));
       },
     });
   }
@@ -174,7 +174,7 @@ export class Conversations {
       },
       error: (e: unknown) => {
         this.chargementFil.set(false);
-        this.erreurFil.set(message(e, 'Cette conversation n’a pas pu être ouverte.'));
+        this.erreurFil.set(messageErreur(e, 'Cette conversation n’a pas pu être ouverte.'));
       },
     });
   }
@@ -225,7 +225,7 @@ export class Conversations {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreur.set(message(e, 'Cette conversation n’a pas pu être prise.'));
+        this.erreur.set(messageErreur(e, 'Cette conversation n’a pas pu être prise.'));
         this.charger();
       },
     });
@@ -252,7 +252,7 @@ export class Conversations {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurFil.set(message(e, 'La réponse n’a pas pu être envoyée.'));
+          this.erreurFil.set(messageErreur(e, 'La réponse n’a pas pu être envoyée.'));
         },
       });
   }
@@ -272,7 +272,7 @@ export class Conversations {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreurFil.set(message(e, 'La conversation n’a pas pu être fermée.'));
+        this.erreurFil.set(messageErreur(e, 'La conversation n’a pas pu être fermée.'));
       },
     });
   }
@@ -360,15 +360,3 @@ export class Conversations {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

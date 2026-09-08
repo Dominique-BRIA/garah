@@ -1,18 +1,18 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
+  badgeStatutExpedition,
   Icone,
+  libelleStatutExpedition,
+  messageErreur,
   Page,
   Pagination,
-  ReponseErreur,
   ResumeExpedition,
-  STATUTS_EXPEDITION,
   ServiceSession,
   StatutExpedition,
-  badgeStatutExpedition,
-  libelleStatutExpedition,
+  STATUTS_EXPEDITION,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -85,7 +85,7 @@ export class Expeditions {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e));
+        this.erreur.set(messageErreur(e, { repli: 'Les expéditions n’ont pas pu être chargées.', sujet: 'les expéditions' }));
       },
     });
   }
@@ -144,19 +144,3 @@ export class Expeditions {
   }
 }
 
-function message(e: unknown): string {
-  if (!(e instanceof HttpErrorResponse)) {
-    return 'Les expéditions n’ont pas pu être chargées.';
-  }
-  if (e.status === 0) {
-    return 'Le service ne répond pas. Il peut être en train de se réveiller : réessayez dans deux minutes.';
-  }
-  if (e.status === 403) {
-    return 'Votre compte n’a pas le droit de consulter les expéditions.';
-  }
-  if (e.status >= 500) {
-    return 'Le service a rencontré une erreur. Réessayez dans un instant.';
-  }
-  const corps = e.error as ReponseErreur | null;
-  return corps?.message ?? 'Les expéditions n’ont pas pu être chargées.';
-}

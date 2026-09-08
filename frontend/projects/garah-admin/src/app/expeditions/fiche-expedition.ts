@@ -1,21 +1,21 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
+  badgeStatutExpedition,
   Colis,
   Expedition,
   Icone,
-  Lieu,
-  ParcoursColis,
-  ReponseErreur,
-  Retrait,
-  ServiceSession,
-  TYPES_EVENEMENT,
-  TypeEvenement,
-  badgeStatutExpedition,
   libelleEvenement,
   libelleStatutExpedition,
+  Lieu,
+  messageErreur,
+  ParcoursColis,
+  Retrait,
+  ServiceSession,
+  TypeEvenement,
+  TYPES_EVENEMENT,
 } from 'garah-ui';
 
 /**
@@ -82,7 +82,7 @@ export class FicheExpedition {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Cette expédition n’a pas pu être chargée.'));
+        this.erreur.set(messageErreur(e, 'Cette expédition n’a pas pu être chargée.'));
       },
     });
 
@@ -142,7 +142,7 @@ export class FicheExpedition {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'Le colis n’a pas pu être ajouté.'));
+          this.erreurForm.set(messageErreur(e, 'Le colis n’a pas pu être ajouté.'));
         },
       });
   }
@@ -200,7 +200,7 @@ export class FicheExpedition {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'L’étape n’a pas pu être enregistrée.'));
+          this.erreurForm.set(messageErreur(e, 'L’étape n’a pas pu être enregistrée.'));
         },
       });
   }
@@ -231,7 +231,7 @@ export class FicheExpedition {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreur.set(message(e, 'Le retrait n’a pas pu être préparé.'));
+          this.erreur.set(messageErreur(e, 'Le retrait n’a pas pu être préparé.'));
         },
       });
   }
@@ -277,15 +277,3 @@ export class FicheExpedition {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

@@ -13,6 +13,7 @@ export * from './lib/api/service-session';
 
 // --- Les modeles, alignes sur les DTO du backend -----------------------------
 export * from './lib/modeles/authentification';
+export * from './lib/modeles/erreur';
 export * from './lib/modeles/profil';
 export * from './lib/modeles/page';
 export * from './lib/modeles/catalogue';

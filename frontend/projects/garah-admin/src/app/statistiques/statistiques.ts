@@ -1,15 +1,15 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   BilanPeriode,
   Icone,
+  messageErreur,
+  montantLisible,
   PERIODES,
   PointJour,
-  ReponseErreur,
   ServiceSession,
-  montantLisible,
   tauxLisible,
 } from 'garah-ui';
 
@@ -112,7 +112,7 @@ export class Statistiques {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Le bilan n’a pas pu être chargé.'));
+        this.erreur.set(messageErreur(e, 'Le bilan n’a pas pu être chargé.'));
       },
     });
   }
@@ -147,7 +147,7 @@ export class Statistiques {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreur.set(message(e, 'L’agrégation n’a pas pu être relancée.'));
+        this.erreur.set(messageErreur(e, 'L’agrégation n’a pas pu être relancée.'));
       },
     });
   }
@@ -325,15 +325,3 @@ function iso(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -6,14 +6,14 @@ import {
   Avatar,
   BasculeVue,
   Icone,
+  libellePays,
   Marchand,
-  PAYS_DESSERVIS,
+  messageErreur,
   Page,
-  ReponseErreur,
+  PAYS_DESSERVIS,
   ServiceSession,
   TypeMarchand,
   TypeVue,
-  libellePays,
 } from 'garah-ui';
 
 @Component({
@@ -88,7 +88,7 @@ export class Marchands {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'La liste des marchands n’a pas pu être chargée.'));
+        this.erreur.set(messageErreur(e, 'La liste des marchands n’a pas pu être chargée.'));
       },
     });
   }
@@ -158,7 +158,7 @@ export class Marchands {
       error: (e: unknown) => {
         this.enregistrement.set(false);
         this.erreurFormulaire.set(
-          message(
+          messageErreur(
             e,
             existant
               ? 'Le marchand n’a pas pu être enregistré.'
@@ -184,21 +184,8 @@ export class Marchands {
 
     requete.subscribe({
       next: () => this.charger(),
-      error: (e: unknown) => this.erreur.set(message(e, 'L’opération a échoué.')),
+      error: (e: unknown) => this.erreur.set(messageErreur(e, 'L’opération a échoué.')),
     });
   }
 }
 
-/** Le message du backend s'il y en a un, sinon un repli. */
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Service momentanément indisponible. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

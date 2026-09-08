@@ -1,21 +1,21 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
+  badgeNiveauRisque,
+  badgeStatutClient,
   EvaluationRisque,
   FicheClient,
   Icone,
-  Page,
-  Pagination,
-  ReponseErreur,
-  ResumeClient,
-  STATUTS_CLIENT,
-  ServiceSession,
-  StatutClient,
-  badgeNiveauRisque,
-  badgeStatutClient,
   libelleNiveauRisque,
   libelleStatutClient,
+  messageErreur,
+  Page,
+  Pagination,
+  ResumeClient,
+  ServiceSession,
+  StatutClient,
+  STATUTS_CLIENT,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -116,7 +116,7 @@ export class Clients {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les clients n’ont pas pu être chargés.'));
+        this.erreur.set(messageErreur(e, 'Les clients n’ont pas pu être chargés.'));
       },
     });
   }
@@ -170,7 +170,7 @@ export class Clients {
       },
       error: (e: unknown) => {
         this.chargementFiche.set(false);
-        this.erreurFiche.set(message(e, 'Cette fiche n’a pas pu être ouverte.'));
+        this.erreurFiche.set(messageErreur(e, 'Cette fiche n’a pas pu être ouverte.'));
       },
     });
   }
@@ -239,7 +239,7 @@ export class Clients {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurFiche.set(message(e, 'Les coordonnées n’ont pas pu être enregistrées.'));
+          this.erreurFiche.set(messageErreur(e, 'Les coordonnées n’ont pas pu être enregistrées.'));
         },
       });
   }
@@ -267,7 +267,7 @@ export class Clients {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreurFiche.set(message(e, 'Le statut n’a pas pu être changé.'));
+        this.erreurFiche.set(messageErreur(e, 'Le statut n’a pas pu être changé.'));
       },
     });
   }
@@ -340,15 +340,3 @@ export class Clients {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

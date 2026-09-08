@@ -1,19 +1,19 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   Icone,
+  libelleMoyen,
+  messageErreur,
+  montantLisible,
   Page,
-  Paiement,
   Pagination,
-  ReponseErreur,
-  STATUTS_PAIEMENT,
+  Paiement,
   ServiceSession,
   StatutPaiement,
+  STATUTS_PAIEMENT,
   TypePaiement,
-  libelleMoyen,
-  montantLisible,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -90,7 +90,7 @@ export class Paiements {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e));
+        this.erreur.set(messageErreur(e, { repli: 'Les paiements n’ont pas pu être chargés.', sujet: 'les paiements' }));
       },
     });
   }
@@ -140,7 +140,7 @@ export class Paiements {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreur.set(message(e));
+        this.erreur.set(messageErreur(e, { repli: 'Les paiements n’ont pas pu être chargés.', sujet: 'les paiements' }));
       },
     });
   }
@@ -184,19 +184,3 @@ export class Paiements {
   }
 }
 
-function message(e: unknown): string {
-  if (!(e instanceof HttpErrorResponse)) {
-    return 'Les paiements n’ont pas pu être chargés.';
-  }
-  if (e.status === 0) {
-    return 'Le service ne répond pas. Il peut être en train de se réveiller : réessayez dans deux minutes.';
-  }
-  if (e.status === 403) {
-    return 'Votre compte n’a pas le droit de consulter les paiements.';
-  }
-  if (e.status >= 500) {
-    return 'Le service a rencontré une erreur. Réessayez dans un instant.';
-  }
-  const corps = e.error as ReponseErreur | null;
-  return corps?.message ?? 'Les paiements n’ont pas pu être chargés.';
-}

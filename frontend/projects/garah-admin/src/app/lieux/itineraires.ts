@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
@@ -6,7 +6,7 @@ import {
   Icone,
   Itineraire,
   Lieu,
-  ReponseErreur,
+  messageErreur,
   ServiceSession,
 } from 'garah-ui';
 
@@ -123,7 +123,7 @@ export class Itineraires {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les itinéraires n’ont pas pu être chargés.'));
+        this.erreur.set(messageErreur(e, 'Les itinéraires n’ont pas pu être chargés.'));
       },
     });
 
@@ -233,7 +233,7 @@ export class Itineraires {
       },
       error: (e: unknown) => {
         this.enregistrement.set(false);
-        this.erreurFormulaire.set(message(e, 'Le trajet n’a pas pu être enregistré.'));
+        this.erreurFormulaire.set(messageErreur(e, 'Le trajet n’a pas pu être enregistré.'));
       },
     });
   }
@@ -245,7 +245,7 @@ export class Itineraires {
       .subscribe({
         next: () => this.charger(),
         error: (e: unknown) =>
-          this.erreur.set(message(e, 'L’état du trajet n’a pas pu être changé.')),
+          this.erreur.set(messageErreur(e, 'L’état du trajet n’a pas pu être changé.')),
       });
   }
 
@@ -284,15 +284,3 @@ export class Itineraires {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

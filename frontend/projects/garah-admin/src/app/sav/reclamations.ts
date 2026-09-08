@@ -1,19 +1,19 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
+  badgeStatutReclamation,
   Icone,
+  libelleStatutReclamation,
+  messageErreur,
   Page,
   Pagination,
   Reclamation,
-  ReponseErreur,
   ResumeReclamation,
-  STATUTS_RECLAMATION,
   ServiceSession,
   StatutReclamation,
-  badgeStatutReclamation,
-  libelleStatutReclamation,
+  STATUTS_RECLAMATION,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -123,7 +123,7 @@ export class Reclamations {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les réclamations n’ont pas pu être chargées.'));
+        this.erreur.set(messageErreur(e, 'Les réclamations n’ont pas pu être chargées.'));
       },
     });
   }
@@ -181,7 +181,7 @@ export class Reclamations {
       },
       error: (e: unknown) => {
         this.chargementFiche.set(false);
-        this.erreurFiche.set(message(e, 'Ce dossier n’a pas pu être ouvert.'));
+        this.erreurFiche.set(messageErreur(e, 'Ce dossier n’a pas pu être ouvert.'));
       },
     });
   }
@@ -228,7 +228,7 @@ export class Reclamations {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurFiche.set(message(e, 'L’action n’a pas pu être enregistrée.'));
+          this.erreurFiche.set(messageErreur(e, 'L’action n’a pas pu être enregistrée.'));
         },
       });
   }
@@ -287,15 +287,3 @@ export class Reclamations {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

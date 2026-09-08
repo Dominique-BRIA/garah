@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -6,9 +6,9 @@ import {
   Comptoir,
   FORMAT_CODE_RETRAIT,
   Icone,
-  ReponseErreur,
-  ServiceSession,
+  messageErreur,
   normaliserCodeRetrait,
+  ServiceSession,
 } from 'garah-ui';
 
 /**
@@ -107,7 +107,7 @@ export class Retraits {
         error: (e: unknown) => {
           this.recherche.set(false);
           this.trouve.set(null);
-          this.erreur.set(message(e, 'Ce code n’a pas pu être vérifié.'));
+          this.erreur.set(messageErreur(e, 'Ce code n’a pas pu être vérifié.'));
         },
       });
   }
@@ -136,7 +136,7 @@ export class Retraits {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreur.set(message(e, 'La remise n’a pas pu être confirmée.'));
+          this.erreur.set(messageErreur(e, 'La remise n’a pas pu être confirmée.'));
         },
       });
   }
@@ -178,7 +178,7 @@ export class Retraits {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreur.set(message(e, 'Le refus n’a pas pu être enregistré.'));
+          this.erreur.set(messageErreur(e, 'Le refus n’a pas pu être enregistré.'));
         },
       });
   }
@@ -210,15 +210,3 @@ export class Retraits {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

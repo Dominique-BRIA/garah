@@ -1,20 +1,20 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
+  badgeStatutReglement,
   Ecriture,
+  explicationEcriture,
   Icone,
+  libelleStatutReglement,
+  libelleTypeEcriture,
+  messageErreur,
+  montantLisible,
   Page,
   Pagination,
   Reglement,
-  ReponseErreur,
   ServiceSession,
   SoldeMarchand,
-  badgeStatutReglement,
-  explicationEcriture,
-  libelleStatutReglement,
-  libelleTypeEcriture,
-  montantLisible,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -96,7 +96,7 @@ export class Finance {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les soldes n’ont pas pu être chargés.'));
+        this.erreur.set(messageErreur(e, 'Les soldes n’ont pas pu être chargés.'));
       },
     });
   }
@@ -130,7 +130,7 @@ export class Finance {
         },
         error: (e: unknown) => {
           this.chargementDetail.set(false);
-          this.erreurDetail.set(message(e, 'Le détail n’a pas pu être chargé.'));
+          this.erreurDetail.set(messageErreur(e, 'Le détail n’a pas pu être chargé.'));
         },
       });
   }
@@ -191,7 +191,7 @@ export class Finance {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurDetail.set(message(e, 'Le règlement n’a pas pu être préparé.'));
+          this.erreurDetail.set(messageErreur(e, 'Le règlement n’a pas pu être préparé.'));
         },
       });
   }
@@ -229,7 +229,7 @@ export class Finance {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurDetail.set(message(e, 'Le versement n’a pas pu être confirmé.'));
+          this.erreurDetail.set(messageErreur(e, 'Le versement n’a pas pu être confirmé.'));
         },
       });
   }
@@ -250,7 +250,7 @@ export class Finance {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurDetail.set(message(e, 'Le règlement n’a pas pu être annulé.'));
+          this.erreurDetail.set(messageErreur(e, 'Le règlement n’a pas pu être annulé.'));
         },
       });
   }
@@ -307,15 +307,3 @@ export class Finance {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

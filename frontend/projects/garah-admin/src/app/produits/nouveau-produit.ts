@@ -1,16 +1,16 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
+  aplatirCategories,
   Categorie,
   DetailProduit,
   Icone,
   Marchand,
+  messageErreur,
   OptionCategorie,
   Page,
-  ReponseErreur,
-  aplatirCategories,
 } from 'garah-ui';
 
 @Component({
@@ -123,7 +123,7 @@ export class NouveauProduit {
         },
         error: (e: unknown) => {
           this.enregistrement.set(false);
-          this.erreur.set(message(e, 'Le produit n’a pas pu être créé.'));
+          this.erreur.set(messageErreur(e, 'Le produit n’a pas pu être créé.'));
         },
       });
   }
@@ -133,15 +133,3 @@ export class NouveauProduit {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Service momentanément indisponible. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

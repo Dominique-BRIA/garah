@@ -1,17 +1,17 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   Icone,
+  messageErreur,
+  montantLisible,
   Page,
   Pagination,
-  ReponseErreur,
   ResumeCommande,
-  STATUTS_COMMANDE,
   ServiceSession,
   StatutCommande,
-  montantLisible,
+  STATUTS_COMMANDE,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -82,7 +82,7 @@ export class Commandes {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e));
+        this.erreur.set(messageErreur(e, { repli: 'Les commandes n’ont pas pu être chargées.', sujet: 'les commandes' }));
       },
     });
   }
@@ -147,19 +147,3 @@ export class Commandes {
   }
 }
 
-function message(e: unknown): string {
-  if (!(e instanceof HttpErrorResponse)) {
-    return 'Les commandes n’ont pas pu être chargées.';
-  }
-  if (e.status === 0) {
-    return 'Le service ne répond pas. Il peut être en train de se réveiller : réessayez dans deux minutes.';
-  }
-  if (e.status === 403) {
-    return 'Votre compte n’a pas le droit de consulter les commandes.';
-  }
-  if (e.status >= 500) {
-    return 'Le service a rencontré une erreur. Réessayez dans un instant.';
-  }
-  const corps = e.error as ReponseErreur | null;
-  return corps?.message ?? 'Les commandes n’ont pas pu être chargées.';
-}

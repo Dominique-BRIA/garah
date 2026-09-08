@@ -1,7 +1,12 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Categorie, Icone, ReponseErreur, ServiceSession } from 'garah-ui';
+import {
+  Categorie,
+  Icone,
+  messageErreur,
+  ServiceSession,
+} from 'garah-ui';
 
 /** Une categorie aplatie pour l'affichage, avec son niveau d'indentation. */
 interface Ligne {
@@ -66,7 +71,7 @@ export class Categories {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les catégories n’ont pas pu être chargées.'));
+        this.erreur.set(messageErreur(e, 'Les catégories n’ont pas pu être chargées.'));
       },
     });
   }
@@ -124,7 +129,7 @@ export class Categories {
       error: (e: unknown) => {
         this.enregistrement.set(false);
         this.erreurFormulaire.set(
-          message(
+          messageErreur(
             e,
             existant
               ? 'La catégorie n’a pas pu être renommée.'
@@ -143,7 +148,7 @@ export class Categories {
 
     requete.subscribe({
       next: () => this.charger(),
-      error: (e: unknown) => this.erreur.set(message(e, 'L’opération a échoué.')),
+      error: (e: unknown) => this.erreur.set(messageErreur(e, 'L’opération a échoué.')),
     });
   }
 
@@ -157,15 +162,3 @@ function aplatir(noeuds: readonly Categorie[], niveau: number): Ligne[] {
   return noeuds.flatMap((c) => [{ categorie: c, niveau }, ...aplatir(c.enfants, niveau + 1)]);
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Service momentanément indisponible. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

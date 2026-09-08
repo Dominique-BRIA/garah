@@ -1,23 +1,23 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   BasculeVue,
+  FiltreDisponibilite,
   FILTRES_DISPONIBILITE,
   FILTRES_STATUT,
-  FiltreDisponibilite,
   Icone,
+  messageErreur,
+  montantLisible,
   Page,
   Pagination,
-  ReponseErreur,
-  ResumeProduit,
-  ResultatSuppression,
   Refus,
+  ResultatSuppression,
+  ResumeProduit,
   ServiceSession,
   TypeVue,
-  montantLisible,
 } from 'garah-ui';
 
 /**
@@ -227,7 +227,7 @@ export class Produits {
     // dialogue maison, jamais par rien.
     // ⚠️ PAS `message` : ce nom est déjà celui de la fonction du module qui
     //    traduit une erreur HTTP. Une variable locale la masquerait, et
-    //    l'appel `message(e)` du gestionnaire d'erreur ci-dessous tenterait
+    //    l'appel `messageErreur(e, { repli: 'Le catalogue n’a pas pu être chargé.', sujet: 'le catalogue' })` du gestionnaire d'erreur ci-dessous tenterait
     //    d'appeler une chaîne de caractères.
     // ⚠️ Le mot « définitivement » a disparu, et ce n'est pas un adoucissement.
     //
@@ -262,7 +262,7 @@ export class Produits {
         },
         error: (e: unknown) => {
           this.suppressionEnCours.set(false);
-          this.erreur.set(message(e));
+          this.erreur.set(messageErreur(e, { repli: 'Le catalogue n’a pas pu être chargé.', sujet: 'le catalogue' }));
         },
       });
   }
@@ -303,7 +303,7 @@ export class Produits {
         },
         error: (e: unknown) => {
           this.chargement.set(false);
-          this.erreur.set(message(e));
+          this.erreur.set(messageErreur(e, { repli: 'Le catalogue n’a pas pu être chargé.', sujet: 'le catalogue' }));
         },
       });
   }
@@ -350,33 +350,3 @@ export class Produits {
   }
 }
 
-/**
- * Ce qui a réellement échoué, et non « ça n'a pas marché ».
- *
- * <p>🎯 Un même message pour tous les échecs cache exactement ce qu'on a besoin
- * de savoir. « Le catalogue n'a pas pu être chargé » couvrait un droit
- * manquant, un serveur endormi et une panne réelle — trois situations dont
- * <b>aucune</b> ne se traite de la même façon. Le serveur, lui, dit lequel des
- * trois c'est : on le répète plutôt que de l'écraser.</p>
- */
-function message(e: unknown): string {
-  if (!(e instanceof HttpErrorResponse)) {
-    return 'Le catalogue n’a pas pu être chargé.';
-  }
-
-  // Statut 0 : la requête n'a jamais abouti. Ni CORS, ni réseau, ni serveur —
-  // le navigateur ne le dit pas, et l'instance gratuite met environ trois
-  // minutes à se réveiller.
-  if (e.status === 0) {
-    return 'Le service ne répond pas. Il peut être en train de se réveiller : réessayez dans deux minutes.';
-  }
-  if (e.status === 403) {
-    return 'Votre compte n’a pas le droit de consulter le catalogue.';
-  }
-  if (e.status >= 500) {
-    return 'Le service a rencontré une erreur. Réessayez dans un instant.';
-  }
-
-  const corps = e.error as ReponseErreur | null;
-  return corps?.message ?? 'Le catalogue n’a pas pu être chargé.';
-}

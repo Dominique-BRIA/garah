@@ -1,14 +1,14 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   Attribut,
   Icone,
-  ReponseErreur,
+  messageErreur,
   ServiceSession,
-  TYPES_AFFICHAGE,
   TypeAffichage,
+  TYPES_AFFICHAGE,
 } from 'garah-ui';
 
 /**
@@ -69,7 +69,7 @@ export class Attributs {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Les dimensions n’ont pas pu être chargées.'));
+        this.erreur.set(messageErreur(e, 'Les dimensions n’ont pas pu être chargées.'));
       },
     });
   }
@@ -120,7 +120,7 @@ export class Attributs {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'La dimension n’a pas pu être créée.'));
+          this.erreurForm.set(messageErreur(e, 'La dimension n’a pas pu être créée.'));
         },
       });
   }
@@ -150,7 +150,7 @@ export class Attributs {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'La valeur n’a pas pu être ajoutée.'));
+          this.erreurForm.set(messageErreur(e, 'La valeur n’a pas pu être ajoutée.'));
         },
       });
   }
@@ -179,7 +179,7 @@ export class Attributs {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreur.set(message(e, 'La valeur n’a pas pu être retirée.'));
+        this.erreur.set(messageErreur(e, 'La valeur n’a pas pu être retirée.'));
       },
     });
   }
@@ -189,18 +189,3 @@ export class Attributs {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    if (e.status === 403) {
-      return 'Votre compte n’a pas le droit de gérer les dimensions.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

@@ -5,14 +5,15 @@ import { RouterLink } from '@angular/router';
 import {
   EtatStock,
   Icone,
+  libelleCompteur,
+  libelleMouvement,
+  libelleOrigine,
+  messageErreur,
   MouvementStock,
   Page,
   Pagination,
   ReponseErreur,
   ServiceSession,
-  libelleCompteur,
-  libelleMouvement,
-  libelleOrigine,
 } from 'garah-ui';
 
 const TAILLE_PAGE = 25;
@@ -98,7 +99,7 @@ export class Stock {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e));
+        this.erreur.set(messageErreur(e, { repli: 'Le stock n’a pas pu être chargé.', sujet: 'le stock' }));
       },
     });
   }
@@ -245,23 +246,6 @@ export class Stock {
   protected entrant(m: MouvementStock): boolean {
     return m.quantite > 0;
   }
-}
-
-function message(e: unknown): string {
-  if (!(e instanceof HttpErrorResponse)) {
-    return 'Le stock n’a pas pu être chargé.';
-  }
-  if (e.status === 0) {
-    return 'Le service ne répond pas. Il peut être en train de se réveiller : réessayez dans deux minutes.';
-  }
-  if (e.status === 403) {
-    return 'Votre compte n’a pas le droit de consulter le stock.';
-  }
-  if (e.status >= 500) {
-    return 'Le service a rencontré une erreur. Réessayez dans un instant.';
-  }
-  const corps = e.error as ReponseErreur | null;
-  return corps?.message ?? 'Le stock n’a pas pu être chargé.';
 }
 
 function message2(e: unknown, repli: string): string {

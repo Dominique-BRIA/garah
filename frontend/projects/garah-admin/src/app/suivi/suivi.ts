@@ -148,6 +148,18 @@ export class SuiviColis {
  * <p>C'est le cas le plus fréquent sur cette page : un chiffre mal recopié
  * depuis un SMS. Le message doit inviter à vérifier la saisie, pas laisser
  * croire que le service est en panne.</p>
+ *
+ * <h2>⚠️ Pourquoi cet écran garde sa propre version</h2>
+ *
+ * <p>Les vingt-trois autres écrans du back-office sont passés au lecteur
+ * partagé {@code messageErreur}. Celui-ci non, et ce n'est pas un oubli :
+ * c'est la <b>seule page publique</b>. Elle s'atteint sans compte, depuis un
+ * lien reçu par SMS.</p>
+ *
+ * <p>Le lecteur partagé fait remonter ce que l'API répond. Ici, on ne veut
+ * précisément <b>pas</b> cela : rien de ce que le serveur raconte n'a de sens
+ * pour un client qui suit son colis, et le lui montrer révélerait au passage
+ * des détails de fonctionnement à quiconque connaît l'adresse.</p>
  */
 function message(e: unknown): string {
   if (e instanceof HttpErrorResponse) {

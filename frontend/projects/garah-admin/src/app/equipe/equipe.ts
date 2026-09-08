@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -6,8 +6,8 @@ import {
   Avatar,
   Icone,
   Membre,
+  messageErreur,
   ProfilMetier,
-  ReponseErreur,
   ServiceSession,
   TYPES_CREABLES,
   TypeUtilisateur,
@@ -90,7 +90,7 @@ export class Equipe {
         fini();
       },
       error: (e: unknown) => {
-        this.erreur.set(message(e, 'L’équipe n’a pas pu être chargée.'));
+        this.erreur.set(messageErreur(e, 'L’équipe n’a pas pu être chargée.'));
         fini();
       },
     });
@@ -271,7 +271,7 @@ export class Equipe {
 
   private echoue(e: unknown, repli: string): void {
     this.enregistrement.set(false);
-    this.erreurFormulaire.set(message(e, repli));
+    this.erreurFormulaire.set(messageErreur(e, repli));
   }
 
   // -------------------------------------------------------------------------
@@ -293,7 +293,7 @@ export class Equipe {
 
     requete.subscribe({
       next: () => this.charger(),
-      error: (e: unknown) => this.erreur.set(message(e, 'L’opération a échoué.')),
+      error: (e: unknown) => this.erreur.set(messageErreur(e, 'L’opération a échoué.')),
     });
   }
 
@@ -341,15 +341,3 @@ export class Equipe {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

@@ -1,24 +1,24 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
+  badgeStatutExpedition,
   DetailCommande,
   Icone,
   Itineraire,
-  Lieu,
-  Paiement,
-  ReponseErreur,
-  ResumeExpedition,
-  STATUTS_COMMANDE,
-  STATUTS_PAIEMENT,
-  ServiceSession,
-  StatutCommande,
-  TRANSITIONS_COMMANDE,
-  badgeStatutExpedition,
   libelleMoyen,
   libelleStatutExpedition,
+  Lieu,
+  messageErreur,
   montantLisible,
+  Paiement,
+  ResumeExpedition,
+  ServiceSession,
+  StatutCommande,
+  STATUTS_COMMANDE,
+  STATUTS_PAIEMENT,
+  TRANSITIONS_COMMANDE,
 } from 'garah-ui';
 
 /**
@@ -137,7 +137,7 @@ export class FicheCommande {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Cette commande n’a pas pu être chargée.'));
+        this.erreur.set(messageErreur(e, 'Cette commande n’a pas pu être chargée.'));
       },
     });
   }
@@ -249,7 +249,7 @@ export class FicheCommande {
         },
         error: (err: unknown) => {
           this.action.set(null);
-          this.erreur.set(message(err, 'L’expédition n’a pas pu être créée.'));
+          this.erreur.set(messageErreur(err, 'L’expédition n’a pas pu être créée.'));
         },
       });
   }
@@ -279,7 +279,7 @@ export class FicheCommande {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreur.set(message(e, 'Le statut n’a pas pu être changé.'));
+          this.erreur.set(messageErreur(e, 'Le statut n’a pas pu être changé.'));
         },
       });
   }
@@ -305,7 +305,7 @@ export class FicheCommande {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreur.set(message(e, 'La commande n’a pas pu être annulée.'));
+          this.erreur.set(messageErreur(e, 'La commande n’a pas pu être annulée.'));
         },
       });
   }
@@ -357,15 +357,3 @@ export class FicheCommande {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Le service ne répond pas. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}

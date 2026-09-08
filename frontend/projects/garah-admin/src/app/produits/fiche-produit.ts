@@ -1,21 +1,21 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
+  aplatirCategories,
   Attribut,
   Categorie,
   DetailProduit,
   EtatStock,
   Icone,
   Manques,
+  messageErreur,
+  montantLisible,
   OptionCategorie,
   PalierPrix,
-  ReponseErreur,
   ServiceSession,
   Variante,
-  montantLisible,
-  aplatirCategories,
 } from 'garah-ui';
 
 /**
@@ -149,7 +149,7 @@ export class FicheProduit {
       },
       error: (e: unknown) => {
         this.chargement.set(false);
-        this.erreur.set(message(e, 'Cette fiche produit n’a pas pu être chargée.'));
+        this.erreur.set(messageErreur(e, 'Cette fiche produit n’a pas pu être chargée.'));
       },
     });
   }
@@ -333,7 +333,7 @@ export class FicheProduit {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'Les déclinaisons n’ont pas pu être créées.'));
+          this.erreurForm.set(messageErreur(e, 'Les déclinaisons n’ont pas pu être créées.'));
         },
       });
   }
@@ -430,7 +430,7 @@ export class FicheProduit {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreurForm.set(message(e, 'Le stock n’a pas pu être enregistré.'));
+        this.erreurForm.set(messageErreur(e, 'Le stock n’a pas pu être enregistré.'));
       },
     });
   }
@@ -485,7 +485,7 @@ export class FicheProduit {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'La fiche n’a pas pu être enregistrée.'));
+          this.erreurForm.set(messageErreur(e, 'La fiche n’a pas pu être enregistrée.'));
         },
       });
   }
@@ -515,7 +515,7 @@ export class FicheProduit {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'La déclinaison n’a pas pu être ajoutée.'));
+          this.erreurForm.set(messageErreur(e, 'La déclinaison n’a pas pu être ajoutée.'));
         },
       });
   }
@@ -540,7 +540,7 @@ export class FicheProduit {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'La déclinaison n’a pas pu être enregistrée.'));
+          this.erreurForm.set(messageErreur(e, 'La déclinaison n’a pas pu être enregistrée.'));
         },
       });
   }
@@ -565,7 +565,7 @@ export class FicheProduit {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreur.set(message(e, 'Le statut de la déclinaison n’a pas pu être changé.'));
+        this.erreur.set(messageErreur(e, 'Le statut de la déclinaison n’a pas pu être changé.'));
       },
     });
   }
@@ -597,7 +597,7 @@ export class FicheProduit {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'Le prix n’a pas pu être enregistré.'));
+          this.erreurForm.set(messageErreur(e, 'Le prix n’a pas pu être enregistré.'));
         },
       });
   }
@@ -622,7 +622,7 @@ export class FicheProduit {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreurForm.set(message(e, 'Le prix n’a pas pu être modifié.'));
+          this.erreurForm.set(messageErreur(e, 'Le prix n’a pas pu être modifié.'));
         },
       });
   }
@@ -643,7 +643,7 @@ export class FicheProduit {
         },
         error: (e: unknown) => {
           this.action.set(null);
-          this.erreur.set(message(e, 'Le prix n’a pas pu être retiré.'));
+          this.erreur.set(messageErreur(e, 'Le prix n’a pas pu être retiré.'));
         },
       });
   }
@@ -682,7 +682,7 @@ export class FicheProduit {
       error: (e: unknown) => {
         this.action.set(null);
         champ.value = '';
-        this.erreur.set(message(e, 'La photo n’a pas pu être envoyée.'));
+        this.erreur.set(messageErreur(e, 'La photo n’a pas pu être envoyée.'));
       },
     });
   }
@@ -700,7 +700,7 @@ export class FicheProduit {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreur.set(message(e, 'La photo n’a pas pu être supprimée.'));
+        this.erreur.set(messageErreur(e, 'La photo n’a pas pu être supprimée.'));
       },
     });
   }
@@ -737,7 +737,7 @@ export class FicheProduit {
       },
       error: (e: unknown) => {
         this.action.set(null);
-        this.erreur.set(message(e, 'Le statut n’a pas pu être changé.'));
+        this.erreur.set(messageErreur(e, 'Le statut n’a pas pu être changé.'));
       },
     });
   }
@@ -785,15 +785,3 @@ export class FicheProduit {
   }
 }
 
-function message(e: unknown, repli: string): string {
-  if (e instanceof HttpErrorResponse) {
-    if (e.status === 0) {
-      return 'Service momentanément indisponible. Réessayez dans un instant.';
-    }
-    const corps = e.error as ReponseErreur | null;
-    if (corps?.message) {
-      return corps.message;
-    }
-  }
-  return repli;
-}
