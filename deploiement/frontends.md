@@ -61,55 +61,62 @@ Même chose avec le dépôt `garah`. Le `vercel.json` de ce dépôt construit
 `garah-ui` **avant** `garah-admin` : sans cet ordre, la compilation échoue sur
 un module introuvable.
 
-### ⚠️ Personne ne redéploie personne
+### ⚠️ Personne ne redéploie personne — là où ça compte
 
 Chaque dépôt porte deux choses : `garah` a le backend **et** le back-office,
-`garah-client` a le web **et** le mobile. Sans précaution, un commit sur l'un
-reconstruit l'autre.
-
-C'est réglé **dans les fichiers**, pas par des branches séparées :
+`garah-client` a le web **et** le mobile.
 
 | Ce qui déclenche | Ce qui le limite | Où |
 |---|---|---|
 | Déploiement Azure du backend | `paths: backend/**` | `deploiement-azure.yml` |
 | Tests du backend | `paths: backend/**` | `ci.yml` |
 | Déploiement Azure du back-office | `paths: frontend/**` | `admin-azure.yml` |
-| Déploiement Vercel | `ignoreCommand` | `vercel.json` |
+| Déploiement Azure de la boutique | `paths: web/**` | `web-azure.yml` |
+| Déploiement Vercel | **rien** — voir ci-dessous | |
+
+⚠️ **Le filtre du backend est ce qui compte vraiment.** Ce n'est pas une
+économie de minutes : le conteneur qui part rejoue les migrations Flyway sur la
+base de **production** au démarrage. Redéployer pour rien, c'est s'exposer pour
+rien — et il n'existe pas de bouton « annuler » sur une migration.
+
+#### Pourquoi Vercel construit sur tous les commits
+
+Vercel propose un `ignoreCommand` pour sauter les constructions inutiles. Il a
+été essayé, et **retiré après deux déploiements annulés à tort**.
 
 ```
-git diff --quiet HEAD^ HEAD -- frontend/ vercel.json
+git diff --quiet HEAD^ HEAD -- web/ vercel.json
 ```
 
-⚠️ **`vercel.json` est dans la liste, et ce n'est pas un détail.** Le fichier
-qui décrit la construction doit pouvoir la **déclencher** : sans lui, corriger
-la configuration de déploiement ne déploie rien — et on ne peut plus jamais
-réparer le déploiement par un commit. C'est arrivé : le premier correctif du
-`vercel.json` a été annulé par le `vercel.json` qu'il corrigeait.
+Trois pièges s'y accumulent :
 
-⚠️ **Le sens de `ignoreCommand` est contre-intuitif.** La commande rend `0`
-quand il **n'y a pas** de différence — et Vercel **annule** la construction sur
-un `0`. S'y tromper désactive tous les déploiements sans qu'on comprenne
-pourquoi.
+1. **Le sens est inversé.** La commande rend `0` quand il n'y a **pas** de
+   différence — et Vercel **annule** sur un `0`.
+2. **Le fichier qui décrit la construction doit pouvoir la déclencher.** Sans
+   `vercel.json` dans la liste, corriger la configuration de déploiement ne
+   déploie rien : le correctif est annulé par ce qu'il corrige.
+3. **`HEAD^` n'est pas fiable dans le clone de Vercel.** La même commande
+   rendait `1` en local et `0` sur leurs machines, **sur le même commit**. Un
+   clone superficiel ne porte pas forcément le parent.
 
-> **Premier déploiement d'un projet neuf.** Tant qu'aucun commit n'a touché le
-> dossier surveillé, Vercel annule — et le projet n'a donc jamais rien servi.
-> Le débloquer se fait d'un commit sur ce dossier, ou depuis le tableau de bord
-> Vercel : *Deployments → … → Redeploy*, en décochant **Use existing Build
-> Cache**, ce qui force le passage.
+Ce que ça coûte de l'avoir retiré : une construction de deux minutes quand on
+touche au backend ou au mobile. Ce que ça coûtait de le garder : ne plus
+pouvoir déployer du tout, sans comprendre pourquoi.
 
-⚠️ Le filtre du backend n'est pas une économie de minutes, c'est une
-**protection** : le conteneur qui part rejoue les migrations Flyway sur la base
-de **production** au démarrage. Redéployer pour rien, c'est s'exposer pour rien.
+À reprendre **une fois qu'un premier déploiement existe**, avec
+`VERCEL_GIT_PREVIOUS_SHA` — que Vercel garantit, contrairement à `HEAD^` — et
+seulement si les minutes de construction deviennent un vrai sujet.
 
 > **Pourquoi pas deux branches `frontend` et `backend` ?**
 >
 > Parce que ce qui doit décider du déclenchement est **ce qui a changé**, pas
-> l'endroit où l'on a poussé — et que les filtres ci-dessus le font déjà.
+> l'endroit où l'on a poussé — et que les filtres GitHub Actions le font déjà,
+> eux, de façon fiable.
 >
 > Deux branches longues coûteraient cher : elles divergent, un changement qui
 > touche les deux côtés (une route d'API et l'écran qui l'appelle) ne peut plus
 > être atomique, et `main` cesse d'être la vérité. Le jour d'une panne, il
-> faudrait chercher dans laquelle des trois branches est le code réellement
+> faudrait chercher dans laquelle des trois branches vit le code réellement
 > déployé.
 
 ---
