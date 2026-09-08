@@ -128,23 +128,35 @@ nav a {
 
 .icone { width: 1.1rem; text-align: center; font-size: 0.95rem; }
 
-.ligne-theme {
+// La rangee des reglages. Une seule commande aujourd hui ; la langue s y
+// posera a cote le jour ou l admin en aura une, comme sur la reference.
+.reglages {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.reglage {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  width: 100%;
-  padding: 0.65rem 0.85rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
+  justify-content: center;
+  gap: 0.55rem;
+  flex: 1;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
   color: var(--texte-attenue);
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  text-align: left;
+  transition: var(--transition);
 
-  &:hover { background: var(--surface-douce); color: var(--texte); }
+  &:hover {
+    border-color: var(--primary-light);
+    color: var(--texte);
+  }
+
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 }
 

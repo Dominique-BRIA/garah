@@ -4,13 +4,22 @@
 //
 // Trois maillons, une flèche entre chacun. Ce n'est pas de la décoration :
 // c'est ce qu'il faut avoir compris pour choisir le bon type de compte.
-.hierarchie {
+// La mise en page vient de .bandeau (ecrans-communs). Ne reste ici que ce qui
+// est propre a la chaine.
+.hierarchie .chaine {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
-  padding: 0.9rem 1.35rem;
-  margin-bottom: 1.5rem;
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+  list-style: none;
+
+  // Le rail, comme pour les segments : il dit que les trois maillons sont
+  // UNE chose, lue de gauche a droite, et non trois encarts voisins.
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
 }
 
 .maillon {
@@ -19,9 +28,28 @@
   line-height: 1.3;
 }
 
-.maillon__titre { font-weight: 600; font-size: 0.9rem; }
-.maillon__role { font-size: 0.78rem; color: var(--texte-attenue); }
-.maillon__fleche { color: var(--texte-attenue); font-size: 0.7rem; }
+// L etiquette, aux valeurs de la reference : petite, grasse, espacee. Trois
+// signes qui disent « ceci nomme quelque chose » avant qu on l ait lu.
+.maillon__titre {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.maillon__role {
+  font-size: 0.78rem;
+  color: var(--texte-attenue);
+}
+
+// La fleche est un maillon comme les autres pour la mise en page, mais elle
+// ne dit rien : aria-hidden dans le gabarit, et pas de colonne ici.
+.maillon--fleche {
+  display: flex;
+  align-items: center;
+  color: var(--texte-attenue);
+  font-size: 0.7rem;
+}
 
 // --- Le tableau --------------------------------------------------------------
 .cellule-personne {

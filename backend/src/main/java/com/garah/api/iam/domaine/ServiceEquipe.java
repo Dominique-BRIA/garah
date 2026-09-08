@@ -1,5 +1,6 @@
 package com.garah.api.iam.domaine;
 
+import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.iam.infra.CategorieResponsableRepository;
@@ -45,15 +46,18 @@ public class ServiceEquipe {
     private final ResponsableRepository responsables;
     private final CategorieResponsableRepository profils;
     private final PasswordEncoder encodeur;
+    private final StockageObjet stockage;
 
     public ServiceEquipe(UtilisateurRepository utilisateurs,
                          ResponsableRepository responsables,
                          CategorieResponsableRepository profils,
-                         PasswordEncoder encodeur) {
+                         PasswordEncoder encodeur,
+                         StockageObjet stockage) {
         this.utilisateurs = utilisateurs;
         this.responsables = responsables;
         this.profils = profils;
         this.encodeur = encodeur;
+        this.stockage = stockage;
     }
 
     // -------------------------------------------------------------------------
@@ -73,13 +77,13 @@ public class ServiceEquipe {
         List<VueMembre> membres = new ArrayList<>();
 
         for (Utilisateur u : utilisateurs.findByType(TypeUtilisateur.SUPER_ADMIN)) {
-            membres.add(VueMembre.de(u));
+            membres.add(VueMembre.de(u, stockage::urlPublique));
         }
         for (Utilisateur u : utilisateurs.findByType(TypeUtilisateur.ADMIN)) {
-            membres.add(VueMembre.de(u));
+            membres.add(VueMembre.de(u, stockage::urlPublique));
         }
         for (Responsable r : responsables.chargerToutAvecCategories()) {
-            membres.add(VueMembre.de(r));
+            membres.add(VueMembre.de(r, stockage::urlPublique));
         }
 
         // Les administrateurs d'abord, puis les responsables par nom. L'ordre
@@ -94,7 +98,7 @@ public class ServiceEquipe {
     public VueMembre detail(Long id) {
         return responsables.chargerAvecCategories(id)
                 .map(VueMembre::de)
-                .orElseGet(() -> VueMembre.de(chargerUtilisateur(id)));
+                .orElseGet(() -> VueMembre.de(chargerUtilisateur(id), stockage::urlPublique));
     }
 
     // -------------------------------------------------------------------------
@@ -144,14 +148,14 @@ public class ServiceEquipe {
         utilisateurs.save(utilisateur);
 
         if (type == TypeUtilisateur.ADMIN) {
-            return VueMembre.de(utilisateur);
+            return VueMembre.de(utilisateur, stockage::urlPublique);
         }
 
         Responsable responsable = new Responsable(utilisateur, genererMatricule());
         responsable.setDateEmbauche(dateEmbauche);
         appliquerProfils(responsable, profilIds, profilPrincipalId);
 
-        return VueMembre.de(responsables.save(responsable));
+        return VueMembre.de(responsables.save(responsable), stockage::urlPublique);
     }
 
     // -------------------------------------------------------------------------
@@ -178,9 +182,9 @@ public class ServiceEquipe {
         return responsables.chargerAvecCategories(id)
                 .map(r -> {
                     r.setDateEmbauche(dateEmbauche);
-                    return VueMembre.de(r);
+                    return VueMembre.de(r, stockage::urlPublique);
                 })
-                .orElseGet(() -> VueMembre.de(utilisateur));
+                .orElseGet(() -> VueMembre.de(utilisateur, stockage::urlPublique));
     }
 
     /**
@@ -203,7 +207,7 @@ public class ServiceEquipe {
         responsables.saveAndFlush(responsable);
 
         appliquerProfils(responsable, profilIds, profilPrincipalId);
-        return VueMembre.de(responsables.save(responsable));
+        return VueMembre.de(responsables.save(responsable), stockage::urlPublique);
     }
 
     /**
@@ -236,9 +240,9 @@ public class ServiceEquipe {
         return responsables.chargerAvecCategories(id)
                 .map(r -> {
                     r.setStatut(statut);
-                    return VueMembre.de(r);
+                    return VueMembre.de(r, stockage::urlPublique);
                 })
-                .orElseGet(() -> VueMembre.de(utilisateur));
+                .orElseGet(() -> VueMembre.de(utilisateur, stockage::urlPublique));
     }
 
     /**

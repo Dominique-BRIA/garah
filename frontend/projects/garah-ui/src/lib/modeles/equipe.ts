@@ -50,6 +50,14 @@ export interface Membre {
   readonly dateEmbauche: string | null;
   /** Le nom du profil principal. Il n'existe aucun champ « titre » en base. */
   readonly titre: string | null;
+  /**
+   * L'adresse de la photo, DEJA SIGNEE, ou null.
+   *
+   * ⚠️ Sans ce champ, la liste d'equipe affichait un avatar ENGENDRE a partir
+   * du nom pendant que la barre laterale montrait la vraie photo. Deux visages
+   * differents pour la meme personne sur le meme ecran.
+   */
+  readonly urlPhoto: string | null;
   readonly profils: readonly ProfilMetierResume[];
   readonly dateCreation: string;
   readonly dateDerniereConnexion: string | null;

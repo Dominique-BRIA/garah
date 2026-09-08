@@ -3,6 +3,7 @@ package com.garah.api.iam.domaine;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 /**
  * Un membre de l'équipe, vu du back-office.
@@ -17,6 +18,10 @@ import java.util.List;
  * @param titre le nom de la catégorie principale. Il n'existe volontairement
  *              aucun champ « titre » en base : il finirait par diverger du
  *              profil réel
+ * @param urlPhoto l'adresse de la photo, <b>déjà signée</b>, ou {@code null}.
+ *                 La base ne range qu'une clé d'objet (D-21) : le frontend ne
+ *                 peut pas fabriquer cette adresse, il faudrait signer, donc
+ *                 détenir la clé secrète.
  */
 public record VueMembre(
         Long id,
@@ -30,15 +35,23 @@ public record VueMembre(
         String matricule,
         LocalDate dateEmbauche,
         String titre,
+        String urlPhoto,
         List<VueProfil> profils,
         Instant dateCreation,
         Instant dateDerniereConnexion) {
 
-    /** Un ADMIN ou un SUPER_ADMIN : aucun poste, aucun profil. */
-    public static VueMembre de(Utilisateur u) {
+    /**
+     * Un ADMIN ou un SUPER_ADMIN : aucun poste, aucun profil.
+     *
+     * @param urls ce qui transforme une clé d'objet en adresse signée.
+     *             Passé en fonction plutôt qu'en dépendance : cette vue est
+     *             un enregistrement, elle ne connaît pas le stockage.
+     */
+    public static VueMembre de(Utilisateur u, UnaryOperator<String> urls) {
         return new VueMembre(u.getId(), u.getType().name(), u.getNom(), u.getPrenom(),
                 u.getEmail(), u.getTelephone(), u.getStatut().name(), u.estEmailVerifie(),
-                null, null, null, List.of(), u.getDateCreation(), u.getDateDerniereConnexion());
+                null, null, null, urls.apply(u.getPhotoCle()),
+                List.of(), u.getDateCreation(), u.getDateDerniereConnexion());
     }
 
     /**
@@ -48,7 +61,7 @@ public record VueMembre(
      * chargées. Les collections sont {@code LAZY} : hors transaction, ou sans
      * {@code JOIN FETCH}, cette méthode lèverait — et seulement à l'exécution.</p>
      */
-    public static VueMembre de(Responsable r) {
+    public static VueMembre de(Responsable r, UnaryOperator<String> urls) {
         Utilisateur u = r.getUtilisateur();
 
         List<VueProfil> profils = r.getCategories().stream()
@@ -57,7 +70,8 @@ public record VueMembre(
 
         return new VueMembre(u.getId(), u.getType().name(), u.getNom(), u.getPrenom(),
                 u.getEmail(), u.getTelephone(), r.getStatut().name(), u.estEmailVerifie(),
-                r.getMatricule(), r.getDateEmbauche(), r.titre().orElse(null), profils,
+                r.getMatricule(), r.getDateEmbauche(), r.titre().orElse(null),
+                urls.apply(u.getPhotoCle()), profils,
                 u.getDateCreation(), u.getDateDerniereConnexion());
     }
 }

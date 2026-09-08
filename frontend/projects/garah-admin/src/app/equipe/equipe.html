@@ -20,23 +20,45 @@
 
 <!-- La chaîne, dite une fois, en haut de l'écran qui la met en œuvre.
      Ce n'est pas une règle interne : c'est ce qu'il faut comprendre pour
-     choisir le bon type de compte au moment de le créer. -->
-<div class="gu-carte hierarchie">
-  <div class="maillon">
-    <span class="maillon__titre">Administrateur</span>
-    <span class="maillon__role">décide qui fait quoi</span>
+     choisir le bon type de compte au moment de le créer.
+
+     Bandeau et non encart libre : c'est la forme que prennent tous les
+     blocs « voici de quoi il s'agit » du back-office — une pastille, un
+     sujet, et à droite ce qu'on en fait. -->
+<section class="gu-carte bandeau hierarchie">
+  <div class="bandeau__sujet">
+    <span class="pastille pastille--petite teinte--violet">
+      <gu-icone nom="sitemap" />
+    </span>
+    <div>
+      <h2 class="bandeau__titre">Comment se composent les accès</h2>
+      <p class="bandeau__texte">
+        Un compte n’a pas de droits en propre : il en reçoit par ses profils.
+      </p>
+    </div>
   </div>
-  <gu-icone nom="chevron-right" class="maillon__fleche" />
-  <div class="maillon">
-    <span class="maillon__titre">Profil</span>
-    <span class="maillon__role">un paquet de droits</span>
-  </div>
-  <gu-icone nom="chevron-right" class="maillon__fleche" />
-  <div class="maillon">
-    <span class="maillon__titre">Responsable</span>
-    <span class="maillon__role">fait le travail</span>
-  </div>
-</div>
+
+  <ol class="chaine">
+    <li class="maillon">
+      <span class="maillon__titre">Administrateur</span>
+      <span class="maillon__role">décide qui fait quoi</span>
+    </li>
+    <li class="maillon maillon--fleche" aria-hidden="true">
+      <gu-icone nom="chevron-right" />
+    </li>
+    <li class="maillon">
+      <span class="maillon__titre">Profil</span>
+      <span class="maillon__role">un paquet de droits</span>
+    </li>
+    <li class="maillon maillon--fleche" aria-hidden="true">
+      <gu-icone nom="chevron-right" />
+    </li>
+    <li class="maillon">
+      <span class="maillon__titre">Responsable</span>
+      <span class="maillon__role">fait le travail</span>
+    </li>
+  </ol>
+</section>
 
 @if (erreur(); as m) {
   <div class="gu-carte etat" role="alert">
@@ -67,7 +89,7 @@
           <tr [class.inactif]="m.statut !== 'ACTIF'">
             <td>
               <div class="cellule-personne">
-                <gu-avatar [nom]="nomComplet(m)" taille="2.1rem" />
+                <gu-avatar [nom]="nomComplet(m)" [url]="m.urlPhoto" taille="2.1rem" />
                 <div>
                   <span class="nom">{{ nomComplet(m) }}</span>
                   <span class="courriel">

@@ -38,10 +38,16 @@
     </div>
 
     <div class="barre-laterale__pied">
-      <button type="button" class="ligne-theme" (click)="theme.basculer()">
-        <gu-icone class="icone" [nom]="theme.sombreEffectif() ? 'sun' : 'moon'" />
-        @if (theme.sombreEffectif()) { Thème clair } @else { Thème sombre }
-      </button>
+      <!-- ⚠️ Un bouton ENCADRÉ, et non une ligne transparente comme les
+           entrées du menu juste au-dessus. Sans cadre, le bascule de thème se
+           lisait comme un dix-neuvième écran de gestion : on cliquait dessus
+           en cherchant une page. Un réglage n'est pas une destination. -->
+      <div class="reglages">
+        <button type="button" class="reglage" (click)="theme.basculer()">
+          <gu-icone [nom]="theme.sombreEffectif() ? 'sun' : 'moon'" />
+          @if (theme.sombreEffectif()) { Thème clair } @else { Thème sombre }
+        </button>
+      </div>
 
       <!-- Le bloc du compte MÈNE au profil. C'est là qu'on le cherche : on
            clique sur son nom, pas sur une entrée de menu perdue au milieu des
