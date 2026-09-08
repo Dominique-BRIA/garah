@@ -77,13 +77,25 @@ C'est réglé **dans les fichiers**, pas par des branches séparées :
 | Déploiement Vercel | `ignoreCommand` | `vercel.json` |
 
 ```
-git diff --quiet HEAD^ HEAD -- frontend/
+git diff --quiet HEAD^ HEAD -- frontend/ vercel.json
 ```
+
+⚠️ **`vercel.json` est dans la liste, et ce n'est pas un détail.** Le fichier
+qui décrit la construction doit pouvoir la **déclencher** : sans lui, corriger
+la configuration de déploiement ne déploie rien — et on ne peut plus jamais
+réparer le déploiement par un commit. C'est arrivé : le premier correctif du
+`vercel.json` a été annulé par le `vercel.json` qu'il corrigeait.
 
 ⚠️ **Le sens de `ignoreCommand` est contre-intuitif.** La commande rend `0`
 quand il **n'y a pas** de différence — et Vercel **annule** la construction sur
 un `0`. S'y tromper désactive tous les déploiements sans qu'on comprenne
 pourquoi.
+
+> **Premier déploiement d'un projet neuf.** Tant qu'aucun commit n'a touché le
+> dossier surveillé, Vercel annule — et le projet n'a donc jamais rien servi.
+> Le débloquer se fait d'un commit sur ce dossier, ou depuis le tableau de bord
+> Vercel : *Deployments → … → Redeploy*, en décochant **Use existing Build
+> Cache**, ce qui force le passage.
 
 ⚠️ Le filtre du backend n'est pas une économie de minutes, c'est une
 **protection** : le conteneur qui part rejoue les migrations Flyway sur la base
