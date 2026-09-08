@@ -545,11 +545,32 @@ export class FicheProduit {
    * comment une grille s'enchaîne, ce qu'aucune phrase d'aide n'explique aussi
    * bien.</p>
    */
-  protected ouvrirCreationPalier(v: Variante): void {
+  /**
+   * La première quantité encore libre sur la grille.
+   *
+   * <p>🎯 <b>Les paliers ne se chevauchent pas.</b> Si « 1 à 6 » existe, le
+   * suivant commence à 7 — sinon deux paliers répondraient à la question
+   * « combien coûtent cinq pièces ? », et la base refuse cet état
+   * ({@code tarification_sans_chevauchement}).</p>
+   *
+   * <p>Le champ est pré-rempli avec cette valeur ET borné par elle. Avant, il
+   * était pré-rempli et rien de plus : on pouvait revenir à 5, envoyer, et
+   * recevoir un refus du serveur pour une règle que l'écran connaissait
+   * déjà.</p>
+   *
+   * <p>⚠️ N'a de sens que si aucun palier n'est <b>ouvert</b>. Un palier sans
+   * borne haute couvre déjà tout ce qui suit : il n'existe alors aucune
+   * quantité libre. C'est {@link #grilleFermee} qui garantit ce cas, en
+   * masquant le bouton d'ajout — et c'est pour ça que le {@code ?? 0}
+   * ci-dessous n'est jamais atteint.</p>
+   */
+  protected plancherPalier(v: Variante): number {
     const bornes = v.paliers.map((p) => p.quantiteMax ?? 0);
-    const fin = bornes.length > 0 ? Math.max(...bornes) : 0;
+    return (bornes.length > 0 ? Math.max(...bornes) : 0) + 1;
+  }
 
-    this.quantiteMin.set(fin + 1);
+  protected ouvrirCreationPalier(v: Variante): void {
+    this.quantiteMin.set(this.plancherPalier(v));
     this.quantiteMax.set(null);
     this.prix.set(null);
     this.erreurForm.set(null);
@@ -765,10 +786,43 @@ export class FicheProduit {
   // Les prix
   // -------------------------------------------------------------------------
 
+  /**
+   * Ce qui empêche d'ajouter ce palier, dit en une phrase — ou {@code null}.
+   *
+   * <p>Ces deux règles vivent aussi en base. Les vérifier ici ne les
+   * remplace pas : ça évite un aller-retour pour apprendre ce que l'écran
+   * savait déjà, et ça permet de le dire avec les chiffres sous les yeux
+   * plutôt qu'en langage de contrainte.</p>
+   */
+  private blocagePalier(v: Variante): string | null {
+    const plancher = this.plancherPalier(v);
+
+    if (this.quantiteMin() < plancher) {
+      return v.paliers.length === 0
+        ? 'Un palier commence à 1 au minimum.'
+        : `Les quantités jusqu’à ${plancher - 1} sont déjà couvertes par un autre palier. Celui-ci doit commencer à ${plancher}.`;
+    }
+
+    const max = this.quantiteMax();
+    if (max !== null && max < this.quantiteMin()) {
+      return `« Jusqu’à » doit être au moins égal à « à partir de » — ${this.quantiteMin()} ici. Laissez vide pour « et au-delà ».`;
+    }
+
+    return null;
+  }
+
   protected definirPalier(varianteId: number): void {
     if (this.action()) {
       return;
     }
+
+    const v = this.variantes().find((x) => x.id === varianteId);
+    const empeche = v ? this.blocagePalier(v) : null;
+    if (empeche) {
+      this.erreurForm.set(empeche);
+      return;
+    }
+
     this.action.set('palier');
     this.erreurForm.set(null);
 

@@ -637,14 +637,27 @@
                   <span class="palier__rang">Nouveau palier</span>
                 </header>
 
+                <!-- ⚠️ Borné par la fin du dernier palier, pas par 1. Les
+                     paliers ne se chevauchent pas : si « 1 à 6 » existe, deux
+                     paliers répondraient sinon à « combien coûtent cinq
+                     pièces ? ». La base refuse cet état — autant que l'écran
+                     ne le propose même pas. -->
                 <label class="gu-libelle" [for]="'qmin-' + v.id">À partir de</label>
-                <input [id]="'qmin-' + v.id" name="qmin" type="number" min="1"
+                <input [id]="'qmin-' + v.id" name="qmin" type="number"
+                       [min]="plancherPalier(v)"
                        class="gu-champ palier__champ"
                        [ngModel]="quantiteMin()"
                        (ngModelChange)="quantiteMin.set(+$event)" />
+                @if (plancherPalier(v) > 1) {
+                  <p class="aide">
+                    Les quantités jusqu’à {{ plancherPalier(v) - 1 }} sont déjà
+                    couvertes.
+                  </p>
+                }
 
                 <label class="gu-libelle" [for]="'qmax-' + v.id">Jusqu’à</label>
-                <input [id]="'qmax-' + v.id" name="qmax" type="number" min="1"
+                <input [id]="'qmax-' + v.id" name="qmax" type="number"
+                       [min]="quantiteMin()"
                        class="gu-champ palier__champ" placeholder="et plus"
                        [ngModel]="quantiteMax()"
                        (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
