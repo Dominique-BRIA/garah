@@ -40,3 +40,8 @@ Desktop.ini
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+
+# Les maquettes : on versionne les SOURCES (.dc.html, canvas.json), jamais le
+# fichier assemble — 2,5 Mo d'editeur embarque, reconstruit a la demande.
+maquettes/*.html
+!maquettes/*.dc.html

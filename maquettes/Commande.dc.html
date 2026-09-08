@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    a { color: #4f46e5; text-decoration: none; }
+    a:hover { color: #6366f1; }
+    * { box-sizing: border-box; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 920px; background: #f8fafc; color: #0f172a; display: flex; flex-direction: column;">
+
+  <div style="padding: 18px 20px 16px; display: flex; align-items: center; gap: 12px;">
+    <button style="width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(226,232,240,0.8); background: rgba(255,255,255,0.7); border-radius: 8px; cursor: pointer;" aria-label="Retour">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <path d="m14 6-6 6 6 6" stroke="#0f172a" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Passer la commande</h1>
+      <!-- UN SEUL ECRAN. Il n'y a ni adresse, ni transporteur, ni creneau :
+           le seul choix reel est le lieu de retrait. -->
+      <p style="margin: 2px 0 0; font-size: 12.5px; color: #64748b;">Un seul choix : où retirer.</p>
+    </div>
+  </div>
+
+  <!-- Points de recuperation -->
+  <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 11px;">
+    <p style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b;">Point de récupération</p>
+
+    <div style="padding: 15px; border-radius: 12px; border: 2px solid #6366f1; background: rgba(99,102,241,0.06); display: flex; align-items: flex-start; gap: 12px;">
+      <div style="width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; border-radius: 9999px; border: 6px solid #6366f1; background: #fff;"></div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+          <p style="margin: 0; font-size: 14.5px; font-weight: 600;">Bangui PK5</p>
+          <p style="margin: 0; font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;">8 000 FCFA</p>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12.5px; color: #64748b; line-height: 1.5;">Avenue des Martyrs, face marché PK5</p>
+        <p style="margin: 3px 0 0; font-size: 12.5px; color: #64748b;">Lun–Sam 8h–18h</p>
+      </div>
+    </div>
+
+    <div style="padding: 15px; border-radius: 12px; border: 1px solid rgba(226,232,240,0.8); background: rgba(255,255,255,0.7); display: flex; align-items: flex-start; gap: 12px;">
+      <div style="width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; border-radius: 9999px; border: 1px solid rgba(0,0,0,0.18); background: #fff;"></div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+          <p style="margin: 0; font-size: 14.5px; font-weight: 600;">Bangui Combattant</p>
+          <p style="margin: 0; font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;">9 500 FCFA</p>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12.5px; color: #64748b; line-height: 1.5;">Quartier Combattant, rue de l’Industrie</p>
+        <p style="margin: 3px 0 0; font-size: 12.5px; color: #64748b;">Lun–Ven 8h–17h</p>
+      </div>
+    </div>
+
+    <div style="padding: 15px; border-radius: 12px; border: 1px solid rgba(226,232,240,0.8); background: rgba(255,255,255,0.7); display: flex; align-items: flex-start; gap: 12px;">
+      <div style="width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; border-radius: 9999px; border: 1px solid rgba(0,0,0,0.18); background: #fff;"></div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+          <p style="margin: 0; font-size: 14.5px; font-weight: 600;">Bertoua centre</p>
+          <p style="margin: 0; font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;">4 500 FCFA</p>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12.5px; color: #64748b; line-height: 1.5;">Agence Bertoua, carrefour Nkolbikon</p>
+        <p style="margin: 3px 0 0; font-size: 12.5px; color: #64748b;">Lun–Sam 7h30–18h</p>
+      </div>
+    </div>
+
+    <!-- Ni adresse, ni livraison : GARAH ne livre pas a domicile (D-05). Le
+         dire evite de chercher le champ. -->
+    <p style="margin: 2px 0 0; font-size: 12.5px; color: #64748b; line-height: 1.55;">
+      GARAH ne livre pas à domicile. Vous retirez vous-même, avec un code
+      qu’on vous remettra.
+    </p>
+  </div>
+
+  <!-- Recapitulatif -->
+  <div style="margin: 22px 20px 0; padding: 16px; background: rgba(255,255,255,0.7); border: 1px solid rgba(226,232,240,0.8); border-radius: 20px; box-shadow: 0 8px 32px rgba(15,23,42,0.05); display: flex; flex-direction: column; gap: 12px;">
+
+    <p style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b;">Votre commande</p>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span style="font-size: 13.5px;">Chemise Oxford · taille 42 <span style="color: #64748b;">× 8</span></span>
+      <span style="font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;">40 000</span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span style="font-size: 13.5px;">Ciment CIMENCAM 50 kg <span style="color: #64748b;">× 10</span></span>
+      <span style="font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;">58 000</span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span style="font-size: 13.5px; color: #64748b;">Acheminement · Bangui PK5</span>
+      <span style="font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;">8 000</span>
+    </div>
+
+    <div style="height: 1px; background: rgba(226,232,240,0.9);"></div>
+
+    <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+      <div>
+        <span style="font-size: 15px; font-weight: 700;">À payer</span>
+        <p style="margin: 2px 0 0; font-size: 11.5px; color: #64748b;">dont TVA 19,25 % : 17 105 FCFA</p>
+      </div>
+      <span style="font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;">106 000 <span style="font-size: 13px; font-weight: 600; color: #64748b;">FCFA</span></span>
+    </div>
+
+    <!-- Les montants sont figes ICI. Le dire avant, pas apres. -->
+    <p style="margin: 0; font-size: 11.5px; color: #64748b; line-height: 1.55;">
+      Ces montants sont figés à la validation. Ils ne bougeront plus, même si
+      les tarifs changent.
+    </p>
+  </div>
+
+  <div style="margin-top: auto; padding: 16px 20px 20px; background: rgba(255,255,255,0.85); border-top: 1px solid rgba(226,232,240,0.8); display: flex; flex-direction: column; gap: 10px;">
+    <button style="width: 100%; height: 50px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; border: 1px solid transparent; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #fff; font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
+      Valider et payer
+    </button>
+    <!-- On ne s'annule pas soi-meme apres paiement (D-12) : le dire AVANT de
+         payer, pas au moment de le decouvrir. -->
+    <p style="margin: 0; text-align: center; font-size: 11.5px; color: #64748b; line-height: 1.5;">
+      Une fois payée, une commande s’annule en nous écrivant, pas d’un clic.
+    </p>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "artboards": [
+    { "file": "Accueil.dc.html", "title": "1 · Accueil vitrine", "x": 0, "y": 0, "w": 390, "h": 1000 },
+    { "file": "Main.dc.html", "title": "2 · Fiche produit", "x": 490, "y": 0, "w": 390, "h": 1200 },
+    { "file": "Panier.dc.html", "title": "3 · Panier", "x": 980, "y": 0, "w": 390, "h": 920 },
+    { "file": "Commande.dc.html", "title": "4 · Passer commande", "x": 0, "y": 1340, "w": 390, "h": 940 },
+    { "file": "Paiement.dc.html", "title": "5 · Paiement en attente", "x": 490, "y": 1340, "w": 390, "h": 780 },
+    { "file": "MesCommandes.dc.html", "title": "6 · Mes commandes", "x": 980, "y": 1340, "w": 390, "h": 900 }
+  ],
+  "annotations": [
+    {
+      "id": "note-paliers",
+      "x": 490,
+      "y": -190,
+      "w": 390,
+      "text": "La grille de paliers est AVANT le bouton d'achat.\nSans elle, le prix change entre la fiche et le panier — et ca ressemble a une arnaque.\n\nLe palier actif se met en evidence, et l'invite au palier suivant n'apparait que si le stock suit."
+    },
+    {
+      "id": "note-moq",
+      "x": 0,
+      "y": -190,
+      "w": 390,
+      "text": "Charte GARAH reprise telle quelle : primaire #6366f1, marque #12a594, cartes en verre depoli (rayon 20), boutons rayon 8 avec degrade 135 degres, police Outfit.\n\nMobile d'abord : 390 px, cibles tactiles a 44 px minimum."
+    },
+    {
+      "id": "note-retrait",
+      "x": 980,
+      "y": 1150,
+      "w": 390,
+      "text": "Le code de retrait n'apparait qu'ICI, une fois la marchandise arrivee, et jamais dans une URL.\n\nEn chasse fixe et espace : il sera lu a voix haute, recopie a la main, parfois epele au telephone."
+    },
+    {
+      "id": "note-commande",
+      "x": 0,
+      "y": 1150,
+      "w": 390,
+      "text": "UN SEUL ECRAN pour commander, pas un tunnel.\nIl n'y a ni adresse, ni transporteur, ni creneau : le seul choix reel est le lieu de retrait, et il change le total."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

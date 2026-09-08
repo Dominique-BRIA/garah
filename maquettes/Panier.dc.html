@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    a { color: #4f46e5; text-decoration: none; }
+    a:hover { color: #6366f1; }
+    * { box-sizing: border-box; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 900px; background: #f8fafc; color: #0f172a; display: flex; flex-direction: column;">
+
+  <div style="padding: 18px 20px 14px; display: flex; align-items: center; gap: 12px;">
+    <button style="width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(226,232,240,0.8); background: rgba(255,255,255,0.7); border-radius: 8px; cursor: pointer;" aria-label="Retour">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+        <path d="m14 6-6 6 6 6" stroke="#0f172a" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Mon panier</h1>
+      <p style="margin: 2px 0 0; font-size: 12.5px; color: #64748b;">2 articles</p>
+    </div>
+  </div>
+
+  <!-- ⚠️ LA FUSION S'ANNONCE. Le panier local ne connait ni le stock ni le
+       catalogue : a la connexion il change, et le taire ferait croire a un
+       bug juste avant de payer. -->
+  <div style="margin: 0 20px 16px; padding: 13px 15px; border-radius: 12px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); display: flex; align-items: flex-start; gap: 10px;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 1px;">
+      <path d="M12 4.5 21 19H3l9-14.5Z" stroke="#f59e0b" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M12 10v4" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="12" cy="16.6" r="0.9" fill="#f59e0b"/>
+    </svg>
+    <div>
+      <p style="margin: 0; font-size: 13px; font-weight: 600;">Votre panier a été repris</p>
+      <p style="margin: 3px 0 0; font-size: 12.5px; color: #64748b; line-height: 1.5;">
+        Le bidon d’huile n’est plus proposé à la vente : il a été retiré.
+      </p>
+    </div>
+  </div>
+
+  <!-- Lignes -->
+  <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 12px;">
+
+    <div style="padding: 14px; background: rgba(255,255,255,0.7); border: 1px solid rgba(226,232,240,0.8); border-radius: 20px; box-shadow: 0 8px 32px rgba(15,23,42,0.05); display: flex; gap: 13px;">
+      <div style="width: 68px; height: 68px; flex-shrink: 0; border-radius: 12px; background: linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%); display: flex; align-items: center; justify-content: center;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+          <path d="M8 4 5 6v14h14V6l-3-2-4 2-4-2Z" stroke="#818cf8" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+          <div style="min-width: 0;">
+            <p style="margin: 0; font-size: 14px; font-weight: 600; line-height: 1.3;">Chemise Oxford homme</p>
+            <p style="margin: 3px 0 0; font-size: 12px; color: #64748b;">Taille 42 · Ets Ngono &amp; Fils</p>
+          </div>
+          <button style="width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer;" aria-label="Retirer cet article">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M6 6 18 18M18 6 6 18" stroke="#94a3b8" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="display: flex; align-items: center; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; background: rgba(255,255,255,0.8); overflow: hidden;">
+            <button style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer;" aria-label="Moins">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 12h12" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <span style="min-width: 32px; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">8</span>
+            <button style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer;" aria-label="Plus">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 6v12M6 12h12" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <p style="margin: 0; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">40 000 <span style="font-size: 11.5px; font-weight: 600; color: #64748b;">FCFA</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 14px; background: rgba(255,255,255,0.7); border: 1px solid rgba(226,232,240,0.8); border-radius: 20px; box-shadow: 0 8px 32px rgba(15,23,42,0.05); display: flex; gap: 13px;">
+      <div style="width: 68px; height: 68px; flex-shrink: 0; border-radius: 12px; background: linear-gradient(135deg, #ccfbf1 0%, #d1fae5 100%); display: flex; align-items: center; justify-content: center;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+          <path d="M4 9h16v10H4V9Z" stroke="#12a594" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M8 9V6h8v3" stroke="#12a594" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+          <div style="min-width: 0;">
+            <p style="margin: 0; font-size: 14px; font-weight: 600; line-height: 1.3;">Ciment CIMENCAM 50 kg</p>
+            <p style="margin: 3px 0 0; font-size: 12px; color: #64748b;">Dépôt Bonabéri</p>
+          </div>
+          <button style="width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer;" aria-label="Retirer cet article">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M6 6 18 18M18 6 6 18" stroke="#94a3b8" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="display: flex; align-items: center; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; background: rgba(255,255,255,0.8); overflow: hidden;">
+            <button style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer;" aria-label="Moins">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 12h12" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <span style="min-width: 32px; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">10</span>
+            <button style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer;" aria-label="Plus">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 6v12M6 12h12" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <p style="margin: 0; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">58 000 <span style="font-size: 11.5px; font-weight: 600; color: #64748b;">FCFA</span></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- L'invite au palier suivant, reprise du produit -->
+  <div style="margin: 14px 20px 0; padding: 11px 14px; border-radius: 8px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.22); display: flex; align-items: center; gap: 9px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+      <path d="m5 14 4-4 3 3 6-6" stroke="#10b981" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M14 7h4v4" stroke="#10b981" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p style="margin: 0; font-size: 12.5px; line-height: 1.45;">Encore <strong>4 chemises</strong> et vous économisez <strong>14 400 FCFA</strong>.</p>
+  </div>
+
+  <!-- Le total. LES FRAIS Y SONT : un total sans eux est un mensonge. -->
+  <div style="margin: 18px 20px 0; padding: 16px; background: rgba(255,255,255,0.7); border: 1px solid rgba(226,232,240,0.8); border-radius: 20px; box-shadow: 0 8px 32px rgba(15,23,42,0.05); display: flex; flex-direction: column; gap: 11px;">
+
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 13.5px; color: #64748b;">Articles</span>
+      <span style="font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;">98 000 FCFA</span>
+    </div>
+
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+      <div>
+        <span style="font-size: 13.5px; color: #64748b;">Acheminement</span>
+        <p style="margin: 2px 0 0; font-size: 11.5px; color: #94a3b8;">Bangui PK5 · modifiable à la commande</p>
+      </div>
+      <span style="font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;">8 000 FCFA</span>
+    </div>
+
+    <div style="height: 1px; background: rgba(226,232,240,0.9);"></div>
+
+    <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+      <div>
+        <span style="font-size: 15px; font-weight: 700;">Total</span>
+        <!-- La TVA est CONTENUE dans le prix, pas ajoutee : « dont » et non
+             une ligne d'addition. -->
+        <p style="margin: 2px 0 0; font-size: 11.5px; color: #64748b;">dont TVA 19,25 % : 17 105 FCFA</p>
+      </div>
+      <span style="font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;">106 000 <span style="font-size: 13px; font-weight: 600; color: #64748b;">FCFA</span></span>
+    </div>
+  </div>
+
+  <div style="margin-top: auto; padding: 16px 20px 20px; background: rgba(255,255,255,0.85); border-top: 1px solid rgba(226,232,240,0.8);">
+    <button style="width: 100%; height: 50px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; border: 1px solid transparent; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #fff; font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
+      Passer la commande
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+        <path d="m9 6 6 6-6 6" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
