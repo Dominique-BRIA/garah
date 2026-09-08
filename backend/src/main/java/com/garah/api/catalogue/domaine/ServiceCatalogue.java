@@ -850,6 +850,94 @@ public class ServiceCatalogue {
     }
 
     /**
+     * La fiche telle que la <b>vitrine</b> l'affiche : prix et disponibilité
+     * compris.
+     *
+     * <h2>Ce que {@link #fichePublique} ne savait pas dire</h2>
+     *
+     * <p>{@code DetailProduit} ne porte <b>aucun prix</b> : ni tarif, ni palier,
+     * ni stock par déclinaison. Une vitrine ne peut donc pas afficher la grille
+     * « 1–6 : 5 000 · 7 et + : 3 000 » — et sans elle, le prix change entre la
+     * fiche et le panier, ce qui ressemble à une arnaque.</p>
+     *
+     * <h2>Quatre requêtes, quel que soit le nombre de déclinaisons</h2>
+     *
+     * <pre>
+     * 1. le produit, ses déclinaisons et ses médias
+     * 2. toutes les grilles de prix   d'un coup
+     * 3. toutes les disponibilités    d'un coup
+     * 4. le nom du marchand
+     * </pre>
+     *
+     * <p>Une chemise en cinq tailles et trois couleurs fait quinze
+     * déclinaisons. Appeler {@code grille()} et {@code stock.etat()} par
+     * déclinaison ferait trente et une requêtes pour une seule page — c'est la
+     * règle du projet, et elle ne se voit qu'en production.</p>
+     *
+     * <p>⚠️ Les déclinaisons <b>inactives</b> sont retirées : la vitrine ne
+     * montre que ce qui se vend. Les garder afficherait des tailles qu'on ne
+     * peut pas commander, et le client conclurait à une panne.</p>
+     */
+    @Transactional(readOnly = true)
+    public FicheVitrine ficheVitrine(String slug) {
+        Produit produit = produits.findBySlug(slug)
+                .filter(Produit::estPublie)
+                .orElseThrow(() -> RessourceIntrouvable.de("Produit", slug));
+
+        // `estActive()` et non une comparaison de chaîne : le statut vaut
+        // « ACTIVE » ici et « ACTIF » ailleurs dans le projet, et l'écrire à la
+        // main donne une liste vide sans la moindre erreur.
+        List<Variante> actives = produit.getVariantes().stream()
+                .filter(Variante::estActive)
+                .toList();
+
+        List<Long> ids = actives.stream().map(Variante::getId).toList();
+
+        Map<Long, List<PalierPrix>> grilles = ids.isEmpty() ? Map.of()
+                : tarifications.paliersEnVigueurPour(ids, LocalDate.now()).stream()
+                        .collect(Collectors.groupingBy(
+                                t -> t.getVariante().getId(),
+                                Collectors.mapping(PalierPrix::de, Collectors.toList())));
+
+        Map<Long, Integer> disponibles = ids.isEmpty() ? Map.of()
+                : variantes.disponibilitesParVariante(ids).stream()
+                        .collect(Collectors.toMap(
+                                VarianteRepository.DisponibiliteVariante::getVarianteId,
+                                VarianteRepository.DisponibiliteVariante::getDisponible));
+
+        List<FicheVitrine.Declinaison> declinaisons = actives.stream()
+                .map(v -> {
+                    List<PalierPrix> paliers = grilles.getOrDefault(v.getId(), List.of());
+                    return new FicheVitrine.Declinaison(
+                            v.getId(), v.getSku(), v.getLibelle(), v.estParDefaut(),
+                            paliers,
+                            disponibles.getOrDefault(v.getId(), 0),
+                            // Le MOQ : le plus petit palier de la grille. Zéro
+                            // quand il n'y a aucun tarif — la déclinaison n'est
+                            // alors pas achetable, et l'écran le dira.
+                            paliers.isEmpty() ? 0 : paliers.getFirst().quantiteMin());
+                })
+                .toList();
+
+        return new FicheVitrine(
+                produit.getId(), produit.getNom(), produit.getSlug(), produit.getDescription(),
+                produit.getTauxTva(),
+                produit.getMarchandId(),
+                // Nul si le marchand a disparu : la fiche reste lisible sans
+                // lui, et l'écran écrit « vendeur inconnu » plutôt que rien.
+                marchands.nomsPar(List.of(produit.getMarchandId()))
+                        .get(produit.getMarchandId()),
+                new FicheVitrine.Categorie(produit.getCategorie().getId(),
+                        produit.getCategorie().getNom(), produit.getCategorie().getSlug()),
+                declinaisons,
+                produit.getMedias().stream()
+                        .map(m -> new FicheVitrine.Media(m.getId(), m.getType().name(),
+                                urlsMedias.urlPublique(m.getCleObjet()),
+                                m.estPrincipal(), m.getOrdre()))
+                        .toList());
+    }
+
+    /**
      * La fiche complète, brouillons compris — réservée au back-office.
      *
      * <p>Deux requêtes, et c'est <b>obligatoire</b> : Hibernate refuse de

@@ -52,6 +52,38 @@ public interface VarianteRepository extends JpaRepository<Variante, Long> {
     }
 
     /**
+     * La disponibilite de chaque DECLINAISON, en une requete.
+     *
+     * <p>{@link #disponibilitesPar} somme par produit — ce qui repond a « ce
+     * produit est-il vendable ? ». La fiche vitrine pose une autre question :
+     * « cette taille-la est-elle en rayon ? ». Une chemise dont le 42 est
+     * epuise et le 43 disponible ne se decrit pas par un seul nombre.</p>
+     *
+     * <p>Meme arbitrage que {@link #disponibilitesPar} : {@code stock}
+     * n apparait qu en SQL, jamais dans un {@code import}. Le stock depend du
+     * catalogue (pour nommer ce qu il compte) ; l appel inverse formerait un
+     * cycle, et {@code ArchitectureTest} refuserait le build.</p>
+     *
+     * <p>{@code LEFT JOIN} : une declinaison sans ligne de stock compte pour
+     * zero plutot que de disparaitre de la fiche.</p>
+     */
+    @Query(value = """
+            SELECT v.id                                AS varianteId,
+                   COALESCE(s.quantite_disponible, 0)  AS disponible
+              FROM variante v
+              LEFT JOIN stock s ON s.variante_id = v.id
+             WHERE v.id IN (:varianteIds)
+            """, nativeQuery = true)
+    List<DisponibiliteVariante> disponibilitesParVariante(
+            @Param("varianteIds") Collection<Long> varianteIds);
+
+    /** La projection de {@link #disponibilitesParVariante}. */
+    interface DisponibiliteVariante {
+        Long getVarianteId();
+        Integer getDisponible();
+    }
+
+    /**
      * Ce produit a-t-il déjà servi ? Commandé, mis au panier, ou négocié.
      *
      * <p>C'est la question qui décide si un produit peut être <b>supprimé</b>

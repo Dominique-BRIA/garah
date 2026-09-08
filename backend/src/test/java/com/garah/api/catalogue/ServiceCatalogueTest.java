@@ -278,4 +278,103 @@ class ServiceCatalogueTest {
         Variante variante = variantes.findByProduitId(produitId).getFirst();
         tarifications.save(new Tarification(variante, 1, null, new BigDecimal("15000.00")));
     }
+
+    // -------------------------------------------------------------------------
+    // La fiche vitrine
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("la fiche vitrine porte la grille de prix, que la fiche publique ignore")
+    void ficheVitrinePorteLesPaliers() {
+        Long id = creerChemise().id();
+        Variante variante = variantes.findByProduitId(id).getFirst();
+
+        // Deux paliers : c'est la « ladder pricing » d'Alibaba.
+        tarifications.save(new Tarification(variante, 1, 6, new BigDecimal("5000.00")));
+        tarifications.save(new Tarification(variante, 7, null, new BigDecimal("3000.00")));
+        catalogue.ajouterMedia(id, TypeMedia.PHOTO, "produits/1/photo.jpg", true);
+        catalogue.publier(id);
+        em.flush();
+
+        String slug = catalogue.ficheAdministration(id).slug();
+
+        // 🎯 CE QUE LA FICHE PUBLIQUE NE SAIT PAS DIRE. Ce test exécute
+        //    réellement les trois requêtes en lot — une @Query cassée
+        //    n'échouerait qu'au moment où on l'appelle.
+        FicheVitrine vitrine = catalogue.ficheVitrine(slug);
+
+        assertThat(vitrine.declinaisons()).singleElement().satisfies(d -> {
+            assertThat(d.paliers()).hasSize(2);
+            assertThat(d.paliers().getFirst().prixUnitaire()).isEqualByComparingTo("5000.00");
+            assertThat(d.paliers().getLast().prixUnitaire()).isEqualByComparingTo("3000.00");
+
+            // Le MOQ d'Alibaba : le plus petit palier de la grille.
+            assertThat(d.quantiteMinimale()).isEqualTo(1);
+        });
+
+        // Le vendeur : sur une place de marché, savoir qui vend fait partie de
+        // la décision d'achat.
+        assertThat(vitrine.marchandNom()).isEqualTo("Marchand catalogue");
+    }
+
+    @Test
+    @DisplayName("une déclinaison sans prix n'est pas achetable, même en stock")
+    void sansPrixDoncPasAchetable() {
+        Long id = creerChemise().id();
+        donnerUnPrix(id);
+        catalogue.ajouterMedia(id, TypeMedia.PHOTO, "produits/1/photo.jpg", true);
+        catalogue.publier(id);
+        em.flush();
+
+        String slug = catalogue.ficheAdministration(id).slug();
+        FicheVitrine.Declinaison declinaison = catalogue.ficheVitrine(slug).declinaisons().getFirst();
+
+        // Le stock naît à zéro avec la déclinaison (I-15) : prix posé, rayon
+        // vide → pas achetable.
+        assertThat(declinaison.paliers()).isNotEmpty();
+        assertThat(declinaison.disponible()).isZero();
+        assertThat(declinaison.achetable()).isFalse();
+
+        // ⚠️ Et l'inverse compte autant : une déclinaison en rayon mais SANS
+        //    tarif se laisserait mettre au panier et échouerait au paiement —
+        //    au pire moment, quand le client a déjà sorti son téléphone.
+        FicheVitrine.Declinaison sansTarif = new FicheVitrine.Declinaison(
+                1L, "SKU", "42", true, List.of(), 50, 0);
+        assertThat(sansTarif.achetable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("la vitrine ne montre pas les déclinaisons retirées")
+    void vitrineSansDeclinaisonsInactives() {
+        Long id = creerChemise().id();
+        donnerUnPrix(id);
+        catalogue.ajouterMedia(id, TypeMedia.PHOTO, "produits/1/photo.jpg", true);
+        catalogue.publier(id);
+        em.flush();
+
+        String slug = catalogue.ficheAdministration(id).slug();
+        assertThat(catalogue.ficheVitrine(slug).declinaisons()).hasSize(1);
+
+        // Une déclinaison retirée afficherait une taille qu'on ne peut pas
+        // commander, et le client conclurait à une panne.
+        jdbc.update("UPDATE variante SET statut = 'INACTIVE' WHERE produit_id = ?", id);
+        em.clear();
+
+        assertThat(catalogue.ficheVitrine(slug).declinaisons()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("un brouillon n'a pas de fiche vitrine")
+    void brouillonInvisibleEnVitrine() {
+        Long id = creerChemise().id();
+        em.flush();
+
+        String slug = catalogue.ficheAdministration(id).slug();
+
+        // La vitrine ne montre que ce qui est publié — même garde que
+        // `fichePublique`, et il ne doit pas se relâcher parce que la route
+        // est nouvelle.
+        assertThatThrownBy(() -> catalogue.ficheVitrine(slug))
+                .isInstanceOf(com.garah.api.commun.erreur.RessourceIntrouvable.class);
+    }
 }

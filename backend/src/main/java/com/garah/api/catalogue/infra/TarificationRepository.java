@@ -61,6 +61,28 @@ public interface TarificationRepository extends JpaRepository<Tarification, Long
                                         @Param("jour") LocalDate jour);
 
     /**
+     * Les grilles de PLUSIEURS declinaisons, en une requete.
+     *
+     * <p>Une fiche produit a autant de declinaisons que de tailles et de
+     * couleurs. Appeler {@link #paliersEnVigueur} par declinaison ferait une
+     * requete par ligne de la grille affichee — la regle du projet est une
+     * requete par page, jamais une par ligne, et elle ne se voit qu en
+     * production sur base distante.</p>
+     *
+     * <p>Le tri porte d abord sur la declinaison, puis sur le palier : c est ce
+     * qui permet a l appelant de regrouper sans retrier.</p>
+     */
+    @Query("""
+            SELECT t FROM Tarification t
+             WHERE t.variante.id IN :varianteIds
+               AND t.dateDebut <= :jour
+               AND (t.dateFin IS NULL OR t.dateFin > :jour)
+             ORDER BY t.variante.id, t.quantiteMin
+            """)
+    List<Tarification> paliersEnVigueurPour(@Param("varianteIds") Collection<Long> varianteIds,
+                                            @Param("jour") LocalDate jour);
+
+    /**
      * Un palier en vigueur recouvre-t-il déjà cette plage de quantités ?
      *
      * <p>Deux intervalles se chevauchent si chacun commence avant la fin de

@@ -213,6 +213,19 @@ public class ConfigurationSecurite {
                         .requestMatchers(HttpMethod.GET, "/api/produits/tendance").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/produits/{slug}").permitAll()
 
+                        // ⚠️ UNE LIGNE À PART, et c'est la règle qui l'exige.
+                        //
+                        // `/api/produits/{slug}` ne couvre PAS
+                        // `/api/produits/{slug}/vitrine` : un motif ne vaut que
+                        // pour le nombre de segments qu'il décrit. Sans cette
+                        // ligne, la fiche vitrine exigerait une connexion — et
+                        // la boutique deviendrait invisible aux visiteurs.
+                        //
+                        // C'est le bon défaut : « on liste ce qui est ouvert,
+                        // jamais ce qui est fermé ». Un oubli laisse une route
+                        // FERMÉE, jamais ouverte par mégarde.
+                        .requestMatchers(HttpMethod.GET, "/api/produits/{slug}/vitrine").permitAll()
+
                         // Le choix du point de récupération se fait AVANT
                         // l'inscription (D-05) : la vitrine doit pouvoir
                         // annoncer « disponible à Douala, Bangui » à un

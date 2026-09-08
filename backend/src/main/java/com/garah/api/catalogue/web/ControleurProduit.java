@@ -1,6 +1,7 @@
 package com.garah.api.catalogue.web;
 
 import com.garah.api.catalogue.domaine.DetailProduit;
+import com.garah.api.catalogue.domaine.FicheVitrine;
 import com.garah.api.catalogue.domaine.ResumeProduit;
 import com.garah.api.catalogue.domaine.ServiceCatalogue;
 import com.garah.api.catalogue.domaine.StatutProduit;
@@ -63,6 +64,26 @@ public class ControleurProduit {
     @GetMapping("/{slug}")
     public DetailProduit fichePublique(@PathVariable String slug) {
         return catalogue.fichePublique(slug);
+    }
+
+    /**
+     * La fiche telle que la <b>vitrine</b> l'affiche. <b>Route publique.</b>
+     *
+     * <p>🎯 Distincte de {@link #fichePublique}, et pas par confort :
+     * « deux publics, deux routes ». Celle-ci porte la <b>grille de prix</b> et
+     * la <b>disponibilité par déclinaison</b> — sans quoi le prix change entre
+     * la fiche et le panier, ce qui ressemble à une arnaque.</p>
+     *
+     * <p>Elle coûte trois requêtes de plus. Les fondre imposerait ce coût à la
+     * fiche d'administration, qui n'affiche ni l'une ni l'autre.</p>
+     *
+     * <p>⚠️ Les paliers rendus ici sont ceux <b>du jour</b>. Le tarif qui
+     * compte est figé au passage de commande (D-10) : cette route informe,
+     * elle n'engage pas.</p>
+     */
+    @GetMapping("/{slug}/vitrine")
+    public FicheVitrine ficheVitrine(@PathVariable String slug) {
+        return catalogue.ficheVitrine(slug);
     }
 
     @PostMapping
