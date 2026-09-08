@@ -106,6 +106,103 @@ public class ServicePanier {
     }
 
     /**
+     * Reprend le panier constitué <b>avant</b> la connexion.
+     *
+     * <h2>Pourquoi cette méthode existe</h2>
+     *
+     * <p>La vitrine est ouverte, le paiement non (D-07). Un visiteur remplit
+     * donc son panier <b>dans son navigateur</b>, puis se connecte au moment de
+     * commander. C'est ici que les deux paniers se rejoignent.</p>
+     *
+     * <p>Pousser les lignes une par une marcherait aussi. Sur l'axe
+     * Douala → Bangui, un aller-retour par ligne se sent — et surtout, les
+     * écarts arriveraient en ordre dispersé, ligne après ligne, au lieu d'être
+     * annoncés d'un seul coup.</p>
+     *
+     * <h2>🎯 On garde LE PLUS GRAND des deux, et c'est délibéré</h2>
+     *
+     * <p>La plupart des boutiques <b>additionnent</b>. On ne le fait pas, pour
+     * une raison qui tient au terrain : sur une connexion instable, une requête
+     * est réémise. Une fusion additive rejouée <b>double les quantités</b>, et
+     * le client ne s'en aperçoit qu'à la facture.</p>
+     *
+     * <p>Prendre le maximum rend l'opération <b>idempotente</b> : la rejouer dix
+     * fois donne le même panier. C'est aussi le comportement juste
+     * fonctionnellement — le visiteur non connecté ne voyait pas le panier du
+     * serveur, il ne peut donc pas avoir voulu « ajouter » à quelque chose
+     * qu'il ignorait.</p>
+     *
+     * <h2>Ce qu'on ne vérifie pas</h2>
+     *
+     * <p>⚠️ <b>Le stock n'est pas contrôlé ici</b>, exactement comme dans
+     * {@link #ajouter}. La fusion n'est pas plus stricte qu'un ajout ordinaire,
+     * sinon le même geste réussirait connecté et échouerait à la connexion.
+     * Les ruptures sont signalées par {@link ContenuPanier}, à l'affichage,
+     * comme pour tout autre panier.</p>
+     *
+     * <p>Une ligne refusée <b>n'interrompt pas</b> la fusion : les autres
+     * passent, et l'écart est rapporté. Tout annuler pour un article dépublié
+     * ferait perdre un panier entier.</p>
+     */
+    @Transactional
+    public ResultatFusion fusionner(Long clientId, List<LigneLocale> locales) {
+        Panier panier = panierActif(clientId);
+        List<ResultatFusion.Ecart> ecarts = new ArrayList<>();
+
+        for (LigneLocale locale : locales) {
+            if (locale.quantite() < 1 || locale.quantite() > QUANTITE_MAX_PAR_LIGNE) {
+                // Une quantité aberrante vient d'un stockage local corrompu ou
+                // bricolé : on l'ignore sans faire échouer le reste.
+                continue;
+            }
+
+            // ⚠️ Une variante DISPARUE doit être traitée comme indisponible,
+            //    pas comme une erreur : un panier local peut dormir des
+            //    semaines dans un navigateur, et le catalogue bouge. Laisser
+            //    remonter RessourceIntrouvable ferait perdre tout le panier à
+            //    cause d'une seule ligne périmée.
+            InfoVenteVariante info;
+            try {
+                info = infoVente(locale.varianteId());
+            } catch (RessourceIntrouvable disparue) {
+                ecarts.add(new ResultatFusion.Ecart(locale.varianteId(), "Article retiré",
+                        locale.quantite(), 0, ResultatFusion.Nature.INDISPONIBLE));
+                continue;
+            }
+
+            if (!info.estVendable()) {
+                ecarts.add(new ResultatFusion.Ecart(locale.varianteId(), info.designation(),
+                        locale.quantite(), 0, ResultatFusion.Nature.INDISPONIBLE));
+                continue;
+            }
+
+            LignePanier existante = panier.ligneDe(locale.varianteId()).orElse(null);
+
+            if (existante == null) {
+                panier.ajouter(locale.varianteId(), locale.quantite());
+                continue;   // repris à l'identique : rien à signaler
+            }
+
+            if (existante.getQuantite() >= locale.quantite()) {
+                ecarts.add(new ResultatFusion.Ecart(locale.varianteId(), info.designation(),
+                        locale.quantite(), existante.getQuantite(),
+                        ResultatFusion.Nature.DEJA_PLUS_GRANDE));
+            } else {
+                existante.definirQuantite(locale.quantite());
+                ecarts.add(new ResultatFusion.Ecart(locale.varianteId(), info.designation(),
+                        locale.quantite(), locale.quantite(),
+                        ResultatFusion.Nature.RELEVEE));
+            }
+        }
+
+        return new ResultatFusion(contenu(clientId), ecarts);
+    }
+
+    /** Une ligne telle que le navigateur la gardait. */
+    public record LigneLocale(Long varianteId, int quantite) {
+    }
+
+    /**
      * Le contenu, avec les prix du jour et la disponibilité réelle.
      *
      * <p>C'est ici qu'on signale les ruptures. Découvrir « il n'en reste que

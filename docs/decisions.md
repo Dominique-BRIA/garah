@@ -1540,6 +1540,6 @@ plutôt que laissées inutilisées : gardées, elles auraient rendu le raccourci
 disponible pour la carte suivante, avec un précédent dans le même fichier
 pour le justifier.
 
-> Même famille que « une requête par page, jamais une par ligne » (D-11) :
+> Même famille que « une requête par page, jamais une par ligne » (feuille de route, principes) :
 > ce n'est pas une optimisation, c'est la forme juste. Depuis Douala, six
 > listes complètes au chargement d'un écran se voient.

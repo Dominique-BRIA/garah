@@ -1,14 +1,18 @@
 package com.garah.api.commerce.web;
 
 import com.garah.api.commerce.domaine.ContenuPanier;
+import com.garah.api.commerce.domaine.ResultatFusion;
 import com.garah.api.commerce.domaine.ServicePanier;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Le panier du client connecté.
@@ -78,6 +82,32 @@ public class ControleurPanier {
     }
 
     /**
+     * Reprend le panier constitué <b>avant</b> la connexion.
+     *
+     * <p>La vitrine est ouverte, le paiement non (D-07) : un visiteur remplit
+     * son panier dans son navigateur, puis se connecte au moment de commander.
+     * Cette route fait se rejoindre les deux.</p>
+     *
+     * <p>🎯 <b>Elle rend les écarts, pas seulement le panier.</b> Le panier
+     * local ne connaît ni le stock, ni le catalogue, ni ce que le client a
+     * déjà mis de côté ailleurs — la fusion produit donc presque toujours un
+     * panier différent de celui qu'il avait sous les yeux. Le lui dire est le
+     * but de la route ; un panier qui change tout seul juste avant de payer
+     * fait perdre la confiance.</p>
+     *
+     * <p><b>Idempotente</b> : on garde la plus grande des deux quantités, jamais
+     * la somme. Une requête réémise sur une connexion instable ne double donc
+     * rien — voir {@code ServicePanier.fusionner}.</p>
+     */
+    @PostMapping("/fusion")
+    public ResultatFusion fusionner(@Valid @RequestBody DemandeFusion demande,
+                                    @AuthenticationPrincipal Jwt jeton) {
+        return panier.fusionner(client(jeton), demande.lignes().stream()
+                .map(l -> new ServicePanier.LigneLocale(l.varianteId(), l.quantite()))
+                .toList());
+    }
+
+    /**
      * ⚠️ L'identifiant vient du jeton signé, <b>jamais</b> du corps ni de l'URL.
      *
      * <p>Un {@code clientId} accepté depuis la requête permettrait de lire et
@@ -104,5 +134,20 @@ public class ControleurPanier {
             @Min(value = 0, message = "La quantité ne peut pas être négative.")
             @Max(value = 10000, message = "Quantité trop importante pour une commande en ligne.")
             int quantite) {
+    }
+
+    /**
+     * Le panier tel que le navigateur le gardait.
+     *
+     * <p>Le plafond de 100 lignes n'est pas de la méfiance envers le client :
+     * ce corps vient d'un <b>stockage local</b>, que rien n'empêche d'être
+     * corrompu ou bricolé. Sans borne, une seule requête pourrait demander des
+     * milliers de résolutions de variantes.</p>
+     */
+    public record DemandeFusion(
+            @NotNull(message = "Les lignes sont obligatoires.")
+            @Size(max = 100, message = "Trop de lignes dans le panier à reprendre.")
+            @Valid
+            List<DemandeLignePanier> lignes) {
     }
 }
