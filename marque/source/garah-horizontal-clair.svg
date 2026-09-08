@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 280" width="1000" height="280"
+     role="img" aria-label="GARAH">
+  <title>GARAH — bloc horizontal</title>
+  <g transform="translate(-8 6.5) scale(0.52)">
+  <g transform="translate(-45 23)" fill="none" stroke="#2E9CE9"
+     stroke-linecap="round" stroke-linejoin="round">
+    <rect x="186" y="40" width="150" height="206" rx="26" stroke-width="26"/>
+    <path d="M239 74 h44" stroke-width="16"/>
+    <path d="M150 186 C 150 262, 168 296, 200 304" stroke-width="24"/>
+    <path d="M200 304 H408 L382 376 H236 Z" stroke-width="24"/>
+    <path d="M414 296 L454 252" stroke-width="20"/>
+    <g stroke-width="14">
+      <path d="M254 306 v68"/><path d="M302 306 v68"/><path d="M350 306 v68"/>
+    </g>
+    <circle cx="264" cy="412" r="17" stroke-width="22"/>
+    <circle cx="348" cy="412" r="17" stroke-width="22"/>
+  </g>
+  </g>
+  <text x="300" y="152" font-family="Arial, Helvetica, sans-serif" font-weight="700"
+        font-size="112" letter-spacing="16" fill="#101C3D">GARAH</text>
+  <text x="306" y="208" font-family="Arial, Helvetica, sans-serif" font-weight="600"
+        font-size="30" letter-spacing="6" fill="#4FBF4B">AU-DELÀ DES FRONTIÈRES</text>
+</svg>

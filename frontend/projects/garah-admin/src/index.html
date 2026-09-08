@@ -21,6 +21,15 @@
   <link rel="icon" href="favicon.ico" sizes="32x32">
   <link rel="icon" href="favicon.svg" type="image/svg+xml" sizes="any">
 
+  <!-- ⚠️ iOS N'ACCEPTE PAS la transparence sur cette icône : il remplit le
+       fond en NOIR. Le fichier porte donc son fond nuit dessiné, et non
+       laissé au hasard. C'est aussi pour cela qu'il n'y en a qu'une taille :
+       iOS redimensionne très bien, mais ne compose pas de fond. -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
+
+  <!-- La couleur de la barre système quand l'application est installée. -->
+  <meta name="theme-color" content="#101C3D">
+
   <!--
     L'écran d'attente, écrit ICI et pas dans un composant.
 

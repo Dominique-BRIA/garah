@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"
+     role="img" aria-label="GARAH">
+  <title>GARAH — icône recadrable Android</title>
+  <rect width="512" height="512" fill="#101C3D"/>
+  <g transform="translate(256 256) scale(0.56) translate(-256 -256)">
+  <g transform="translate(-45 23)" fill="none" stroke="#2E9CE9"
+     stroke-linecap="round" stroke-linejoin="round">
+    <rect x="186" y="40" width="150" height="206" rx="26" stroke-width="26"/>
+    <path d="M239 74 h44" stroke-width="16"/>
+    <path d="M150 186 C 150 262, 168 296, 200 304" stroke-width="24"/>
+    <path d="M200 304 H408 L382 376 H236 Z" stroke-width="24"/>
+    <path d="M414 296 L454 252" stroke-width="20"/>
+    <g stroke-width="14">
+      <path d="M254 306 v68"/><path d="M302 306 v68"/><path d="M350 306 v68"/>
+    </g>
+    <circle cx="264" cy="412" r="17" stroke-width="22"/>
+    <circle cx="348" cy="412" r="17" stroke-width="22"/>
+  </g>
+  </g>
+</svg>
