@@ -171,7 +171,9 @@ export class Statistiques {
     }
 
     return {
-      titre: 'Bilan GARAH',
+      // Pas « Bilan GARAH » : la marque est déjà en tête du document, et le
+      // nom écrit deux fois à trois centimètres d'intervalle se remarque.
+      titre: 'Bilan des statistiques',
       periode: `Du ${this.dateLongue(b.du)} au ${this.dateLongue(b.au)}`,
       fichier: `garah-statistiques-${b.du}-au-${b.au}`,
       sections: [

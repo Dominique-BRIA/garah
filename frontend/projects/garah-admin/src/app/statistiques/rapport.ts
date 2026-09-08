@@ -107,36 +107,166 @@ function estNumerique(type: TypeColonne): boolean {
   return type === 'nombre' || type === 'montant' || type === 'taux';
 }
 
+/**
+ * Ce qu'on écrit à la place d'un tableau sans lignes.
+ *
+ * <p>La phrase de l'écran, mot pour mot. Un tableau réduit à ses en-têtes se
+ * lit comme un rendu cassé — et devant un fichier reçu en pièce jointe, on
+ * ne peut ni recharger ni demander.</p>
+ */
+const SANS_DONNEES = 'Aucune donnée sur cette période.';
+
 // -----------------------------------------------------------------------------
-// PDF
+// L'en-tête de marque
 // -----------------------------------------------------------------------------
 
 /** Le vert de la marque, en composantes — jsPDF ne lit pas les couleurs CSS. */
 const MARQUE: [number, number, number] = [18, 165, 148];
 
+/**
+ * Le côté de la marque tramée, en pixels.
+ *
+ * <p>Quatre fois sa taille d'affichage dans les documents : c'est ce qui la
+ * garde nette à l'impression et sur un écran dense.</p>
+ */
+const COTE = 256;
+
+/**
+ * La marque GARAH, dessinée pour un document.
+ *
+ * <p>Les deux mêmes tracés que {@code <gu-marque>} : l'anse, puis la panse.
+ * On les recopie plutôt que d'aller lire le composant, et c'est délibéré —
+ * la version de l'écran tient sa couleur de {@code var(--marque)}, une
+ * variable CSS qui n'existe pas dans un PDF.</p>
+ *
+ * <p>⚠️ La couleur est donc écrite ici <b>en clair</b>. Si la marque change
+ * de vert, deux fichiers changent ensemble : {@code _jetons.scss} et
+ * celui-ci. C'est l'un des rares endroits où une couleur est dupliquée, et
+ * il l'est parce qu'aucun format de document ne sait lire une feuille de
+ * style.</p>
+ *
+ * <p>⚠️ {@code width} et {@code height} sont écrits DANS le SVG, en plus du
+ * {@code viewBox}. Un SVG sans dimension propre n'a pas de taille
+ * intrinsèque : selon le navigateur, {@code drawImage} le dessine alors à
+ * une taille arbitraire, ou pas du tout. Les poser sur l'élément
+ * {@code <img>} ne suffit pas.</p>
+ */
+const MARQUE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="${COTE}" height="${COTE}">
+  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="#12a594" stroke-width="5" stroke-linecap="butt"/>
+  <path d="M10 25A15 15 0 0 0 40 25Z" fill="#12a594"/>
+</svg>`;
+
+/** La marque en PNG, une seule fois pour toute la session. */
+let marqueEnCache: Promise<string> | null = null;
+
+/**
+ * La marque, en image matricielle.
+ *
+ * <p>Ni le PDF ni le document Word ne savent lire un SVG. On le dessine donc
+ * sur une toile, à 256 px de côté — quatre fois la taille d'affichage, pour
+ * qu'elle reste nette à l'impression et sur un écran dense.</p>
+ *
+ * <p>⚠️ Une image chargée depuis une URL {@code data:} ne <b>souille</b> pas
+ * la toile : {@code toDataURL} reste autorisé. Le même dessin servi par une
+ * URL distante bloquerait la lecture, sans autre message qu'une exception de
+ * sécurité.</p>
+ */
+function marquePng(): Promise<string> {
+  marqueEnCache ??= new Promise<string>((resoudre, rejeter) => {
+    const image = new Image(COTE, COTE);
+
+    image.onload = () => {
+      const toile = document.createElement('canvas');
+      toile.width = COTE;
+      toile.height = COTE;
+
+      const pinceau = toile.getContext('2d');
+      if (!pinceau) {
+        rejeter(new Error('toile indisponible'));
+        return;
+      }
+      pinceau.drawImage(image, 0, 0, COTE, COTE);
+      resoudre(toile.toDataURL('image/png'));
+    };
+
+    image.onerror = () => rejeter(new Error('marque illisible'));
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(MARQUE_SVG)}`;
+  });
+
+  return marqueEnCache;
+}
+
+/** Le PNG en octets — ce que `docx` attend, là où le PDF veut l'URL. */
+function octets(urlDonnees: string): Uint8Array {
+  const brut = atob(urlDonnees.slice(urlDonnees.indexOf(',') + 1));
+  const tableau = new Uint8Array(brut.length);
+  for (let i = 0; i < brut.length; i++) {
+    tableau[i] = brut.charCodeAt(i);
+  }
+  return tableau;
+}
+
+// -----------------------------------------------------------------------------
+// PDF
+// -----------------------------------------------------------------------------
+
 export async function versPdf(r: Rapport): Promise<void> {
-  const [{ jsPDF }, { autoTable }] = await Promise.all([
+  const [{ jsPDF }, { autoTable }, marque] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable'),
+    marquePng(),
   ]);
 
   // Portrait : un bilan se lit et s'imprime, il ne se projette pas.
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const marge = 40;
+  const largeur = doc.internal.pageSize.getWidth();
 
+  // --- L'en-tête de marque ---------------------------------------------------
+  // La marque puis le nom, séparés du rapport par un filet. Un document qui
+  // sort de l'application se retrouve en pièce jointe, imprimé, transmis : il
+  // doit dire d'où il vient sans qu'on ait à ouvrir le corps du texte.
+  doc.addImage(marque, 'PNG', marge, 34, 26, 26);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(...MARQUE);
+  doc.text('GARAH', marge + 33, 54);
+
+  doc.setDrawColor(224);
+  doc.setLineWidth(0.7);
+  doc.line(marge, 72, largeur - marge, 72);
+
+  // --- Le rapport ------------------------------------------------------------
+  doc.setTextColor(0);
   doc.setFontSize(18);
-  doc.text(pourPdf(r.titre), marge, 52);
+  doc.text(pourPdf(r.titre), marge, 104);
 
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(110);
-  doc.text(pourPdf(r.periode), marge, 70);
+  doc.text(pourPdf(r.periode), marge, 122);
   doc.setTextColor(0);
 
-  let y = 96;
+  let y = 154;
 
   for (const section of r.sections) {
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text(pourPdf(section.titre), marge, y);
+    doc.setFont('helvetica', 'normal');
+
+    // ⚠️ Un tableau VIDE ne se dessine pas : des en-têtes seuls, sans une
+    // ligne dessous, se lisent comme un rendu cassé. Ici, l'absence de
+    // données est un fait qu'on énonce.
+    if (section.lignes.length === 0) {
+      doc.setFontSize(9.5);
+      doc.setTextColor(110);
+      doc.text(SANS_DONNEES, marge, y + 18);
+      doc.setTextColor(0);
+      y += 44;
+      continue;
+    }
 
     autoTable(doc, {
       startY: y + 10,
@@ -224,8 +354,10 @@ function cellule(valeur: Valeur, type: TypeColonne) {
 // -----------------------------------------------------------------------------
 
 export async function versWord(r: Rapport): Promise<void> {
-  const { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, HeadingLevel, WidthType, AlignmentType } =
-    await import('docx');
+  const [
+    { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, ImageRun, HeadingLevel, WidthType, AlignmentType, BorderStyle },
+    marque,
+  ] = await Promise.all([import('docx'), marquePng()]);
 
   const pleine = { size: 100, type: WidthType.PERCENTAGE } as const;
 
@@ -250,6 +382,21 @@ export async function versWord(r: Rapport): Promise<void> {
     });
 
   const contenu: (TypeParagraphe | TypeTableau)[] = [
+    // L'en-tête de marque : le dessin et le nom sur une même ligne, soulignés
+    // d'un filet. Un document qui sort de l'application se retrouve en pièce
+    // jointe ou imprimé — il doit dire d'où il vient.
+    new Paragraph({
+      spacing: { after: 120 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E2E8F0', space: 8 } },
+      children: [
+        new ImageRun({
+          type: 'png',
+          data: octets(marque),
+          transformation: { width: 26, height: 26 },
+        }),
+        new TextRun({ text: '  GARAH', bold: true, size: 30, color: '12A594' }),
+      ],
+    }),
     new Paragraph({ text: r.titre, heading: HeadingLevel.HEADING_1 }),
     new Paragraph({ children: [new TextRun({ text: r.periode, italics: true, color: '6B7280' })] }),
     new Paragraph({ text: '' }),
@@ -257,6 +404,17 @@ export async function versWord(r: Rapport): Promise<void> {
 
   for (const section of r.sections) {
     contenu.push(new Paragraph({ text: section.titre, heading: HeadingLevel.HEADING_2 }));
+
+    // ⚠️ Comme dans le PDF : un tableau réduit à ses en-têtes se lit comme un
+    // rendu cassé. L'absence de données s'écrit.
+    if (section.lignes.length === 0) {
+      contenu.push(
+        new Paragraph({ children: [new TextRun({ text: SANS_DONNEES, color: '6B7280' })] }),
+      );
+      contenu.push(new Paragraph({ text: '' }));
+      continue;
+    }
+
     contenu.push(
       new Table({
         width: pleine,
