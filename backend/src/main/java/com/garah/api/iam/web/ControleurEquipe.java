@@ -41,9 +41,33 @@ public class ControleurEquipe {
         return equipe.detail(id);
     }
 
+    /**
+     * Crée un compte interne.
+     *
+     * <h2>⚠️ Deux droits, parce que deux gestes de portée différente</h2>
+     *
+     * <p>Créer un responsable et créer un administrateur passaient par la même
+     * autorisation, {@code RESPONSABLE_CREER}. Or ce droit vit dans le module
+     * {@code ADMINISTRATION} : un <b>responsable</b> à qui un profil l'accorde
+     * pouvait donc fabriquer un compte ADMIN et s'y connecter. Une permission
+     * devenait « tout sauf le module sécurité ».</p>
+     *
+     * <p>{@code ADMIN_CREER} existait depuis le référentiel d'origine (V14),
+     * dans le module {@code SECURITE} — donc réservé au super-administrateur.
+     * Il n'était vérifié <b>nulle part</b>. Un droit déclaré et jamais
+     * appliqué ne protège rien, et se lit pourtant comme une protection.</p>
+     *
+     * <p>C'est le raisonnement que le service tient déjà pour refuser la
+     * création d'un SUPER_ADMIN — « donner à un Admin le moyen de se hisser
+     * au-dessus de son propre niveau ». Il manquait un cran plus bas.</p>
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('RESPONSABLE_CREER')")
+    @PreAuthorize("""
+            hasAuthority('RESPONSABLE_CREER') and (
+                #demande.type() != T(com.garah.api.iam.domaine.TypeUtilisateur).ADMIN
+                or hasAuthority('ADMIN_CREER'))
+            """)
     public VueMembre creer(@Valid @RequestBody DemandeMembre demande) {
         return equipe.creer(demande.type(), demande.nom(), demande.prenom(),
                 demande.email(), demande.telephone(), demande.motDePasse(),

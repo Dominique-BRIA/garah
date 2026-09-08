@@ -190,7 +190,7 @@
       @if (!enEdition()) {
         <span class="gu-libelle">Niveau</span>
         <div class="choix-type">
-          @for (t of typesCreables; track t.code) {
+          @for (t of typesCreables(); track t.code) {
             <label class="carte-choix" [class.carte-choix--actif]="type() === t.code">
               <input type="radio" name="type" [value]="t.code"
                      [ngModel]="type()" (ngModelChange)="type.set($event)" />

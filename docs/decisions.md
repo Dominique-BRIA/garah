@@ -1543,3 +1543,58 @@ pour le justifier.
 > Même famille que « une requête par page, jamais une par ligne » (feuille de route, principes) :
 > ce n'est pas une optimisation, c'est la forme juste. Depuis Douala, six
 > listes complètes au chargement d'un écran se voient.
+
+---
+
+## D-31 — Créer un administrateur exige `ADMIN_CREER`
+
+**Le 08/09/2026.**
+
+`POST /api/equipe` n'exigeait que `RESPONSABLE_CREER`, un droit du module
+`ADMINISTRATION`. Il servait à créer **les deux** formes de compte : un
+responsable comme un administrateur.
+
+**L'escalade.** Un responsable à qui un profil accordait `RESPONSABLE_CREER`
+pouvait donc se fabriquer un compte ADMIN et s'y connecter. Une permission
+devenait « tout sauf le module sécurité » — sans qu'aucune trace ne distingue
+ce geste d'une création de compte ordinaire.
+
+**Ce qui rend le défaut durable.** `ADMIN_CREER` existait depuis le référentiel
+d'origine (V14), rangé dans le module `SECURITE`, donc réservé au
+super-administrateur. Il n'était vérifié **nulle part**. Un droit déclaré et
+jamais appliqué ne protège rien, et se lit pourtant comme une protection : on
+relit le référentiel, on voit la ligne, on conclut que c'est couvert.
+
+C'est le raisonnement que `ServiceEquipe` tenait déjà pour refuser la création
+d'un `SUPER_ADMIN` — « donner à un Admin le moyen de se hisser au-dessus de son
+propre niveau ». Il manquait un cran plus bas.
+
+**Ce qui est fait.** La route exige les deux droits ensemble :
+
+```
+hasAuthority('RESPONSABLE_CREER') and (
+    #demande.type() != ADMIN or hasAuthority('ADMIN_CREER'))
+```
+
+Côté écran, le niveau « Administrateur » disparaît du formulaire sans
+`ADMIN_CREER` — confort, jamais sécurité : c'est la garde qui refuse.
+
+**Ce qu'on perd.** Un administrateur ne peut plus créer d'administrateur. Il
+faut le compte d'amorçage. C'est le prix de la séparation des rôles, et c'est
+la réponse retenue plutôt que de déplacer `ADMIN_*` hors du module sécurité.
+
+> ⚠️ **Reste ouvert.** `ADMIN_MODIFIER`, `ADMIN_ACTIVER`, `ADMIN_DESACTIVER` et
+> `ADMIN_CONSULTER` ne sont toujours vérifiés nulle part. Modifier ou désactiver
+> un administrateur ne demande aujourd'hui que les droits `RESPONSABLE_*`. La
+> même annotation ne suffit pas : ces routes reçoivent un identifiant, pas un
+> type — il faut lire la cible en base avant de trancher.
+
+**Une leçon de test, découverte en écrivant celui-ci.** La première version de
+`CreationAdministrateurTest` envoyait un corps volontairement invalide pour ne
+rien créer en base. Les quatre cas répondaient **400**, y compris ceux qui
+devaient répondre 403 — et la suite paraissait verte.
+
+`@Valid` s'applique à la **résolution des arguments**, avant que l'intercepteur
+de sécurité n'entoure la méthode. Un corps invalide n'atteint donc jamais
+`@PreAuthorize`. **Un test d'autorisation nourri de données invalides ne teste
+pas l'autorisation.**

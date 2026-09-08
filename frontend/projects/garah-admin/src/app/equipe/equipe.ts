@@ -45,7 +45,20 @@ export class Equipe {
   protected readonly chargement = signal(true);
   protected readonly erreur = signal<string | null>(null);
 
-  protected readonly typesCreables = TYPES_CREABLES;
+  /**
+   * Les niveaux qu'on a le droit de créer.
+   *
+   * <p>Créer un administrateur demande {@code ADMIN_CREER}, un droit du module
+   * sécurité que seul un super-administrateur possède. Sans lui, l'option
+   * disparaît : l'offrir ferait remplir un formulaire entier pour récolter un
+   * « accès refusé » à l'envoi.</p>
+   *
+   * <p>⚠️ <b>Confort, jamais sécurité.</b> C'est la garde du contrôleur qui
+   * refuse ; masquer l'option empêche le clic, pas l'appel.</p>
+   */
+  protected readonly typesCreables = computed(() =>
+    TYPES_CREABLES.filter((t) => t.code !== 'ADMIN' || this.session.peut('ADMIN_CREER')),
+  );
 
   /** Seuls les profils actifs se proposent : on n'affecte pas à un profil retiré. */
   protected readonly profilsActifs = computed(() =>
