@@ -192,9 +192,9 @@
 
         <label class="gu-libelle" for="nouveau">Nouveau mot de passe</label>
         <input id="nouveau" name="nouveau" type="password" class="gu-champ"
-               autocomplete="new-password" required minlength="10"
+               autocomplete="new-password" required minlength="6"
                [ngModel]="nouveau()" (ngModelChange)="nouveau.set($event)" />
-        <p class="aide">Au moins 10 caractères.</p>
+        <p class="aide">Au moins 6 caractères.</p>
 
         <label class="gu-libelle" for="confirmation">Confirmez le nouveau</label>
         <input id="confirmation" name="confirmation" type="password" class="gu-champ"

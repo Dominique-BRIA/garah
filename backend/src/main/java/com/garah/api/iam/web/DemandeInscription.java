@@ -1,5 +1,6 @@
 package com.garah.api.iam.web;
 
+import com.garah.api.iam.domaine.ServiceInscription;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -21,7 +22,13 @@ public record DemandeInscription(
         String email,
 
         /*
-         * ⚠️ 10 caractères au minimum, et AUCUNE règle de composition.
+         * ⚠️ La longueur vient de ServiceInscription, et AUCUNE règle de
+         *    composition ne s'y ajoute.
+         *
+         * Le message emploie {min} et {max} : ces marqueurs sont remplacés par
+         * les valeurs de l'annotation elle-même. Écrire le nombre dans la
+         * phrase, c'est promettre qu'on pensera à le changer aux deux endroits
+         * le jour venu — et on n'y pense jamais.
          *
          * Exiger « une majuscule, un chiffre, un caractère spécial » produit
          * invariablement Password1! — court, devinable, et présent dans toutes
@@ -33,8 +40,8 @@ public record DemandeInscription(
          * un déni de service — chaque tentative coûterait 250 ms de CPU.
          */
         @NotBlank(message = "Le mot de passe est obligatoire.")
-        @Size(min = 10, max = 200,
-              message = "Le mot de passe doit contenir entre 10 et 200 caractères.")
+        @Size(min = ServiceInscription.LONGUEUR_MOT_DE_PASSE_MIN, max = 200,
+              message = "Le mot de passe doit contenir entre {min} et {max} caractères.")
         String motDePasse,
 
         @NotBlank(message = "Le nom est obligatoire.")

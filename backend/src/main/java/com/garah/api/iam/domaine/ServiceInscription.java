@@ -41,15 +41,27 @@ public class ServiceInscription {
      * cher à un attaquant.</p>
      */
     /**
-     * ⚠️ Volontairement visible dans le paquetage, et non {@code private}.
+     * ⚠️ Volontairement {@code public}, et non {@code private} ni visible du
+     *    seul paquetage.
      *
-     * <p>{@link ServiceProfil} applique la <b>même</b> exigence au changement
-     * de mot de passe. Recopier le nombre là-bas produirait deux règles de
-     * sécurité qui divergeraient au premier durcissement : on remonterait
-     * l'une à douze, et l'inscription continuerait d'accepter dix sans que
-     * rien ne le signale.</p>
+     * <p>Trois endroits appliquent la <b>même</b> exigence : l'inscription,
+     * le changement de mot de passe ({@link ServiceProfil}), et la validation
+     * de {@code DemandeInscription}. Recopier le nombre produirait des règles
+     * de sécurité qui divergent au premier ajustement — c'est exactement ce
+     * qui s'est produit : le back-office annonçait six caractères là où le
+     * serveur en exigeait dix, et l'écran d'inscription de la boutique en
+     * annonçait huit. Deux formulaires refusés sans que rien ne dise
+     * pourquoi.</p>
+     *
+     * <p>⚠️ SIX est un choix de PRODUIT, pas de sécurité. Six caractères se
+     * cassent hors ligne en quelques minutes, et ce compte porte l'historique
+     * des commandes et l'accès aux codes de retrait. Le calcul assumé est
+     * qu'une inscription abandonnée coûte plus cher qu'un compte forcé —
+     * BCrypt à 12 tours et la limitation de débit sur la connexion en sont la
+     * contrepartie. Le jour où l'on remonte cette valeur, c'est ici, et
+     * <b>seulement</b> ici.</p>
      */
-    static final int LONGUEUR_MOT_DE_PASSE_MIN = 10;
+    public static final int LONGUEUR_MOT_DE_PASSE_MIN = 6;
 
     /** Les langues du référentiel (D-08 / D-09). */
     private static final Set<String> LANGUES = Set.of("fr", "en", "sg");
