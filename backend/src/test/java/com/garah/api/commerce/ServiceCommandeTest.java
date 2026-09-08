@@ -25,6 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -149,6 +150,93 @@ class ServiceCommandeTest {
     }
 
     // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("la fusion du panier local est idempotente")
+    void fusionIdempotente() {
+        List<ServicePanier.LigneLocale> local =
+                List.of(new ServicePanier.LigneLocale(varianteId, 3));
+
+        ResultatFusion premiere = panier.fusionner(clientId, local);
+        assertThat(premiere.panier().nombreArticles()).isEqualTo(3);
+        // Rien à signaler : la ligne n'existait pas, elle est reprise telle quelle.
+        assertThat(premiere.ecarts()).isEmpty();
+
+        // 🎯 LE TEST QUI JUSTIFIE TOUTE LA CONCEPTION.
+        //    Sur une connexion instable, une requête est réémise. Une fusion
+        //    ADDITIVE rejouée doublerait la quantité, et le client ne s'en
+        //    apercevrait qu'à la facture. On garde le plus grand des deux.
+        ResultatFusion seconde = panier.fusionner(clientId, local);
+        assertThat(seconde.panier().nombreArticles()).isEqualTo(3);
+
+        // La seconde fois, la ligne existe déjà avec la même quantité : on le
+        // dit, pour que l'écran puisse rester muet en connaissance de cause.
+        assertThat(seconde.ecarts()).singleElement()
+                .extracting(ResultatFusion.Ecart::nature)
+                .isEqualTo(ResultatFusion.Nature.DEJA_PLUS_GRANDE);
+    }
+
+    @Test
+    @DisplayName("la fusion garde la plus grande quantité, jamais la somme")
+    void fusionGardeLePlusGrand() {
+        // Le client avait rempli son panier sur un autre appareil.
+        panier.ajouter(clientId, varianteId, 5);
+
+        ResultatFusion resultat = panier.fusionner(clientId,
+                List.of(new ServicePanier.LigneLocale(varianteId, 2)));
+
+        // Descendre à 2 effacerait un choix qu'il n'a pas repris ; additionner
+        // donnerait 7, que personne n'a demandé.
+        assertThat(resultat.panier().nombreArticles()).isEqualTo(5);
+        assertThat(resultat.ecarts()).singleElement().satisfies(e -> {
+            assertThat(e.quantiteDemandee()).isEqualTo(2);
+            assertThat(e.quantiteRetenue()).isEqualTo(5);
+            assertThat(e.nature()).isEqualTo(ResultatFusion.Nature.DEJA_PLUS_GRANDE);
+        });
+
+        // Dans l'autre sens, la quantité locale l'emporte.
+        ResultatFusion relevee = panier.fusionner(clientId,
+                List.of(new ServicePanier.LigneLocale(varianteId, 9)));
+        assertThat(relevee.panier().nombreArticles()).isEqualTo(9);
+        assertThat(relevee.ecarts()).singleElement()
+                .extracting(ResultatFusion.Ecart::nature)
+                .isEqualTo(ResultatFusion.Nature.RELEVEE);
+    }
+
+    @Test
+    @DisplayName("une ligne périmée ne fait pas perdre tout le panier")
+    void fusionToleranteAuxLignesPerimees() {
+        // Un panier local dort des semaines dans un navigateur, et le
+        // catalogue bouge : la variante 999999 n'existe plus.
+        ResultatFusion resultat = panier.fusionner(clientId, List.of(
+                new ServicePanier.LigneLocale(999_999L, 2),
+                new ServicePanier.LigneLocale(varianteId, 4)));
+
+        // La bonne ligne passe. Tout annuler pour un article disparu ferait
+        // perdre un panier entier.
+        assertThat(resultat.panier().nombreArticles()).isEqualTo(4);
+
+        assertThat(resultat.ecarts()).singleElement().satisfies(e -> {
+            assertThat(e.varianteId()).isEqualTo(999_999L);
+            assertThat(e.nature()).isEqualTo(ResultatFusion.Nature.INDISPONIBLE);
+            assertThat(e.quantiteRetenue()).isZero();
+        });
+    }
+
+    @Test
+    @DisplayName("la fusion n'est pas plus stricte qu'un ajout : le stock n'y est pas contrôlé")
+    void fusionNeControlePasLeStock() {
+        // 20 en stock, on en demande 50. `ajouter` ne refuse pas non plus :
+        // le même geste doit réussir connecté et à la connexion.
+        ResultatFusion resultat = panier.fusionner(clientId,
+                List.of(new ServicePanier.LigneLocale(varianteId, 50)));
+
+        assertThat(resultat.panier().nombreArticles()).isEqualTo(50);
+
+        // La rupture se dit à l'AFFICHAGE, comme pour tout autre panier.
+        assertThat(resultat.panier().indisponibles()).isNotEmpty();
+        assertThat(resultat.panier().lignes().getFirst().vendable()).isFalse();
+    }
 
     @Test
     @DisplayName("le panier ne réserve aucun stock")
