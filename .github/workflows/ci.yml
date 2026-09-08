@@ -16,8 +16,17 @@ name: CI
 on:
   push:
     branches: [main]
+    # Les tests de ce depot sont ceux du BACKEND : les rejouer pour un commit
+    # de frontend, c est deux minutes de machine pour reprouver ce qui n a pas
+    # bouge.
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
   tests:

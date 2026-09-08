@@ -61,11 +61,44 @@ Même chose avec le dépôt `garah`. Le `vercel.json` de ce dépôt construit
 `garah-ui` **avant** `garah-admin` : sans cet ordre, la compilation échoue sur
 un module introuvable.
 
-⚠️ Ce dépôt contient aussi le backend. Vercel ne le construira pas — la
-commande ne parle que de `frontend/` — mais **chaque commit sur le backend
-déclenchera un déploiement inutile**. C'est du temps de machine, pas une
-erreur. Pour l'éviter : *Settings → Git → Ignored Build Step* →
-`git diff --quiet HEAD^ HEAD -- frontend/`
+### ⚠️ Personne ne redéploie personne
+
+Chaque dépôt porte deux choses : `garah` a le backend **et** le back-office,
+`garah-client` a le web **et** le mobile. Sans précaution, un commit sur l'un
+reconstruit l'autre.
+
+C'est réglé **dans les fichiers**, pas par des branches séparées :
+
+| Ce qui déclenche | Ce qui le limite | Où |
+|---|---|---|
+| Déploiement Azure du backend | `paths: backend/**` | `deploiement-azure.yml` |
+| Tests du backend | `paths: backend/**` | `ci.yml` |
+| Déploiement Azure du back-office | `paths: frontend/**` | `admin-azure.yml` |
+| Déploiement Vercel | `ignoreCommand` | `vercel.json` |
+
+```
+git diff --quiet HEAD^ HEAD -- frontend/
+```
+
+⚠️ **Le sens de `ignoreCommand` est contre-intuitif.** La commande rend `0`
+quand il **n'y a pas** de différence — et Vercel **annule** la construction sur
+un `0`. S'y tromper désactive tous les déploiements sans qu'on comprenne
+pourquoi.
+
+⚠️ Le filtre du backend n'est pas une économie de minutes, c'est une
+**protection** : le conteneur qui part rejoue les migrations Flyway sur la base
+de **production** au démarrage. Redéployer pour rien, c'est s'exposer pour rien.
+
+> **Pourquoi pas deux branches `frontend` et `backend` ?**
+>
+> Parce que ce qui doit décider du déclenchement est **ce qui a changé**, pas
+> l'endroit où l'on a poussé — et que les filtres ci-dessus le font déjà.
+>
+> Deux branches longues coûteraient cher : elles divergent, un changement qui
+> touche les deux côtés (une route d'API et l'écran qui l'appelle) ne peut plus
+> être atomique, et `main` cesse d'être la vérité. Le jour d'une panne, il
+> faudrait chercher dans laquelle des trois branches est le code réellement
+> déployé.
 
 ---
 

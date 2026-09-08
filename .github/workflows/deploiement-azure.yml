@@ -26,6 +26,19 @@ name: Deploiement Azure
 on:
   push:
     branches: [main]
+    # -------------------------------------------------------------------------
+    # /!\ CE FILTRE EST UNE PROTECTION, PAS UNE ECONOMIE.
+    # -------------------------------------------------------------------------
+    #     Sans lui, un commit qui ne touche QUE le frontend redeployait le
+    #     backend — et le conteneur qui part rejoue les migrations Flyway sur
+    #     la base de PRODUCTION au demarrage. Redeployer pour rien, c est
+    #     s exposer pour rien.
+    #
+    #     Il rend aussi inutile de separer le depot en deux branches : ce qui
+    #     decide du declenchement, c est ce qui a CHANGE, pas ou on a pousse.
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploiement-azure.yml'
   # Permet de redeployer sans commit — utile apres avoir change une variable
   # d environnement dans le portail.
   workflow_dispatch:
