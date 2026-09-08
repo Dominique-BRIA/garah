@@ -1500,3 +1500,46 @@ processus ne tourne, donc aucun doublon de tâche planifiée.
 |---|---|---|
 | À chaud | 6 s | **1,24 s** |
 | Au réveil | ~120 s | **aucun réveil** (Always On) |
+
+---
+
+## D-30 — Une carte du tableau de bord lit un nombre, pas une liste
+
+**Le 08/09/2026.**
+
+Les six cartes du tableau de bord appelaient les routes de liste et n'en
+gardaient que la taille : `/api/stock/alertes`, `/api/conversations/file-attente`,
+`/api/categories`… Six réponses complètes — marchand, prix, statut, dates —
+sérialisées, transmises, désérialisées, puis jetées pour lire un `.length`.
+
+**Pourquoi c'est plus qu'un gaspillage.** La carte des catégories était
+**fausse**. `/api/categories` rend un *arbre* : sa longueur compte les
+racines. Trois familles et quarante sous-catégories affichaient « 3 ». Le
+chiffre était faux depuis le début, et personne ne pouvait le voir — il
+fallait connaître la forme de la réponse pour savoir que `.length` ne
+répondait pas à la question posée.
+
+C'est la marque de ce raccourci : il ne tombe pas en panne, il ment.
+
+**La règle.** Toute carte qui affiche un chiffre a sa route de comptage
+côté API — un `count(*)`, rien d'autre. Le navigateur ne recompte jamais ce
+que la base sait compter.
+
+| Carte | Route |
+|---|---|
+| Produits | `GET /api/produits/administration/nombre` |
+| Marchands | `GET /api/marchands/nombre` |
+| Catégories | `GET /api/categories/nombre` |
+| Stock en alerte | `GET /api/stock/alertes/nombre` |
+| Conversations | `GET /api/conversations/file-attente/nombre` |
+| Réclamations | `GET /api/sav/reclamations/a-traiter/nombre` |
+
+**Ce qu'on perd.** Six routes de plus à écrire et à garder en face des
+écrans. `compterPage` et `compterListe` ont été **supprimées** du composant
+plutôt que laissées inutilisées : gardées, elles auraient rendu le raccourci
+disponible pour la carte suivante, avec un précédent dans le même fichier
+pour le justifier.
+
+> Même famille que « une requête par page, jamais une par ligne » (D-11) :
+> ce n'est pas une optimisation, c'est la forme juste. Depuis Douala, six
+> listes complètes au chargement d'un écran se voient.
