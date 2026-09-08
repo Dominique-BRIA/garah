@@ -35,15 +35,18 @@ public class ServiceConversation {
 
     /** Pour NOMMER le client dans les listes, jamais pour le modifier. */
     private final ServiceClient clients;
+    private final org.springframework.context.ApplicationEventPublisher evenements;
 
     public ServiceConversation(ConversationRepository conversations,
                                AffectationConversationRepository affectations,
                                EvaluationConversationRepository evaluations,
-                               ServiceClient clients) {
+                               ServiceClient clients,
+                               org.springframework.context.ApplicationEventPublisher evenements) {
         this.conversations = conversations;
         this.affectations = affectations;
         this.evaluations = evaluations;
         this.clients = clients;
+        this.evenements = evenements;
     }
 
     @Transactional
@@ -52,6 +55,13 @@ public class ServiceConversation {
         if (premierMessage != null && !premierMessage.isBlank()) {
             conversation.ajouterMessage(clientId, premierMessage);
         }
+
+        // 🎯 Un signal d'ÉQUIPE : la conversation n'a encore aucun
+        //    propriétaire, et c'est justement ce qu'il faut annoncer. La
+        //    prévenir à personne en particulier la laisserait attendre.
+        evenements.publishEvent(new EvenementsConversation.ConversationOuverte(
+                conversation.getId(), clientId, sujet));
+
         return conversation;
     }
 
@@ -154,7 +164,35 @@ public class ServiceConversation {
                     "Cette conversation est fermée. Ouvrez-en une nouvelle.");
         }
 
-        return conversation.ajouterMessage(expediteurId, contenu);
+        Message message = conversation.ajouterMessage(expediteurId, contenu);
+
+        // ⚠️ Le SENS se décide ici, où l'on sait qui est le client. Le deviner
+        //    plus tard, dans l'écouteur, demanderait de recharger la
+        //    conversation — et de se tromper le jour où un responsable est
+        //    aussi client.
+        boolean versLeClient = !expediteurId.equals(conversation.getClientId());
+
+        evenements.publishEvent(new EvenementsConversation.MessageDansConversation(
+                conversationId,
+                conversation.getClientId(),
+                conversation.getResponsableId(),
+                expediteurId,
+                extrait(contenu),
+                versLeClient));
+
+        return message;
+    }
+
+    /**
+     * Les premiers mots du message, pour la bannière de notification.
+     *
+     * <p>⚠️ Un extrait, jamais le message entier : une notification affiche
+     * deux lignes, et le reste est coupé par le système de toute façon. Y
+     * mettre cinq mille caractères ne fait que gonfler l'envoi.</p>
+     */
+    private static String extrait(String contenu) {
+        String propre = contenu.strip().replaceAll("\s+", " ");
+        return propre.length() <= 120 ? propre : propre.substring(0, 117) + "…";
     }
 
     @Transactional

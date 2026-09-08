@@ -4,6 +4,7 @@ import com.garah.api.notification.domaine.AppareilNotification;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 public interface AppareilNotificationRepository
@@ -17,6 +18,16 @@ public interface AppareilNotificationRepository
      * ne pas la prevenir une fois sur deux.</p>
      */
     List<AppareilNotification> findByUtilisateurId(Long utilisateurId);
+
+    /**
+     * Les appareils de PLUSIEURS personnes, en UNE requete.
+     *
+     * <p>C est le cas du signal d equipe : « une reclamation attend depuis
+     * trop longtemps » s adresse a quiconque peut s en saisir. Boucler sur
+     * findByUtilisateurId donnerait une requete par destinataire — vingt pour
+     * une equipe de vingt, et pour un seul evenement.</p>
+     */
+    List<AppareilNotification> findByUtilisateurIdIn(Collection<Long> utilisateurIds);
 
     /**
      * Le menage.
