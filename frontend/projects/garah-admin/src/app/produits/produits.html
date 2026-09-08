@@ -8,7 +8,21 @@
       } @else { {{ total() }} produit(s) au catalogue }
     </p>
   </div>
+
+  <!-- Premiere bande : ce qui concerne l'ECRAN. « Actualiser » recharge la
+       page entiere, pas la liste filtree — sa place est ici, pas en bas. -->
   <div class="actions">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<!-- Seconde bande : ce qui agit sur la LISTE. Filtres a gauche, actions a
+     droite — le decoupage de la reference. -->
+<div class="barre-outils">
+  <div class="barre-outils__groupe">
     <div class="champ-recherche">
       <gu-icone nom="magnifying-glass" class="loupe" />
       <input type="search" class="gu-champ" placeholder="Nom ou référence"
@@ -37,10 +51,9 @@
       }
     </select>
 
-    <button type="button" class="gu-btn gu-btn--secondaire"
-            (click)="charger()" [disabled]="chargement()">
-      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
-    </button>
+  </div>
+
+  <div class="barre-outils__groupe">
     <gu-bascule-vue [(vue)]="vue" cle="produits" />
 
     @if (session.peut('PRODUIT_SUPPRIMER')) {
@@ -56,7 +69,7 @@
       <a routerLink="/produits/nouveau" class="gu-btn gu-btn--primaire">Nouveau produit</a>
     }
   </div>
-</header>
+</div>
 
 <!-- La barre de sélection. Elle n'apparaît que si quelque chose est coché :
      une barre d'actions toujours visible mais presque toujours désactivée

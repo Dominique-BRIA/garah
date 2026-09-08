@@ -10,8 +10,12 @@
       } @else { {{ total() }} mouvement(s) }
     </p>
   </div>
+</header>
 
-  <div class="actions">
+<!-- Seconde bande : ce qui agit sur la LISTE. Le filet de l entete separe
+     ce qui decrit l ecran de ce qui le manipule. -->
+<div class="barre-outils">
+  <div class="barre-outils__groupe">
     <div class="champ-recherche">
       <gu-icone nom="magnifying-glass" class="loupe" />
       <input type="search" class="gu-champ" placeholder="Référence de transaction"
@@ -19,13 +23,15 @@
              (keyup.enter)="chercher()" name="recherche"
              aria-label="Rechercher un paiement" />
     </div>
+  </div>
 
+  <div class="barre-outils__groupe">
     <button type="button" class="gu-btn gu-btn--secondaire"
             (click)="charger()" [disabled]="chargement()">
       <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
     </button>
   </div>
-</header>
+</div>
 
 <nav class="filtres" aria-label="Filtrer par statut">
   <button type="button" class="filtre" [class.filtre--actif]="statut() === ''"

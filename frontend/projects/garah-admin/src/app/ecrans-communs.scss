@@ -10,24 +10,74 @@
 // applications partagent reellement.
 // =============================================================================
 
+// =============================================================================
+// L'en-tête d'écran, en DEUX BANDES séparées par un filet
+// =============================================================================
+// 🎯 CE QUI RANGE UN ÉCRAN N'EST PAS L'ALIGNEMENT, C'EST LE DÉCOUPAGE.
+//
+// La version précédente entassait tout sur une seule ligne : titre, recherche,
+// deux menus déroulants, actualiser, bascule d'affichage, corbeille, bouton
+// principal. Huit éléments de natures différentes, alignés au pixel — et
+// pourtant illisibles, parce que rien ne disait lequel commandait quoi.
+//
+//     BANDE 1   qui suis-je          titre, sous-titre, action de contexte
+//     ─────────────────────────────  le filet
+//     BANDE 2   ce que je manipule   recherche et filtres | actions
+//
+// Le filet n'est pas décoratif : c'est lui qui fait qu'on lit deux groupes au
+// lieu d'une file. Sans lui, les deux bandes se lisent comme une seule.
+// =============================================================================
 .entete {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
   flex-wrap: wrap;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--verre-bordure);
 
-  h1 { font-size: 1.5rem; }
+  // 2 rem : la valeur de la référence, mesurée dans son `index.css`. À 1,5 le
+  // titre pesait moins que les boutons posés à côté de lui.
+  h1 { font-size: 2rem; }
 }
 
 .sous-titre {
   color: var(--texte-attenue);
-  font-size: 0.85rem;
-  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
 }
 
 .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/**
+ * La seconde bande : ce qui agit sur la LISTE, jamais sur la page.
+ *
+ * <p>Filtres à gauche, actions à droite. `space-between` les sépare sans
+ * qu'aucun des deux groupes n'ait besoin d'une marge — et l'écart grandit avec
+ * la fenêtre au lieu de laisser les boutons flotter au milieu.</p>
+ *
+ * <p>⚠️ Ne PAS y mettre « Actualiser » : recharger concerne l'écran entier,
+ * pas la liste filtrée. Sa place est dans la première bande, à droite du
+ * titre — c'est là que la référence la met, et c'est ce qui évite un troisième
+ * groupe indistinct.</p>
+ */
+.barre-outils {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/** Un groupe de la barre. Deux au plus : ce qui filtre, ce qui agit. */
+.barre-outils__groupe {
   display: flex;
   align-items: center;
   gap: 0.75rem;
