@@ -709,16 +709,33 @@ public class ServiceCatalogue {
      * exactement ceux sur lesquels il reste du travail.</p>
      */
     @Transactional(readOnly = true)
-    public Page<ResumeProduit> administration(String recherche, String disponibilite,
-                                              Pageable pagination) {
+    public Page<ResumeProduit> administration(String recherche, String statut,
+                                              String disponibilite, Pageable pagination) {
         String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
+
+        // Un statut inconnu vaut « tous » plutôt qu'une erreur : un paramètre
+        // d'URL bricolé à la main ne doit pas donner l'impression d'un écran
+        // cassé. Même règle que la disponibilité.
+        StatutProduit filtreStatut = statutValide(statut);
 
         // Une valeur inconnue ne fait pas échouer la requête : elle retombe sur
         // « tous ». Un back-office qui répond 400 parce qu'un paramètre d'URL a
         // été bricolé à la main donne l'impression d'être cassé.
         String mode = Disponibilite.valide(disponibilite);
 
-        return enrichir(produits.administration(filtre, mode, pagination));
+        return enrichir(produits.administration(filtre, filtreStatut, mode, pagination));
+    }
+
+    /** {@code null} = tous les statuts, y compris pour une valeur inconnue. */
+    private static StatutProduit statutValide(String demande) {
+        if (demande == null || demande.isBlank() || "TOUS".equalsIgnoreCase(demande.strip())) {
+            return null;
+        }
+        try {
+            return StatutProduit.valueOf(demande.strip().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException inconnu) {
+            return null;
+        }
     }
 
     /** Les filtres de disponibilité proposés par la liste d'administration. */

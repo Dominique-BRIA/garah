@@ -67,6 +67,9 @@ export const routes: Routes = [
       // question posee ici est « qui doit-on payer ? », pas « qui sont nos
       // marchands ? » — et ce ne sont pas les memes gens qui la posent.
       { path: 'finance', loadComponent: () => import('./finance/finance').then((m) => m.Finance) },
+      // Les clients. « /clients » et non « /utilisateurs » : les comptes
+      // internes se gerent sous /equipe, et les deux ne se melangent pas.
+      { path: 'clients', loadComponent: () => import('./clients/clients').then((m) => m.Clients) },
       { path: 'lieux', loadComponent: () => import('./lieux/lieux').then((m) => m.Lieux) },
       // Les itineraires vivent dans le meme dossier que les lieux : un trajet
       // n'est rien d'autre qu'une suite de lieux, et on ne peut en definir un

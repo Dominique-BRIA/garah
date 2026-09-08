@@ -61,6 +61,7 @@ export class Coque {
     // « Marchands a payer » et non « Finance » : le libelle dit le geste, pas
     // le service. C'est ce qu'on cherche dans un menu en debut de mois.
     { libelle: 'Marchands a payer', chemin: '/finance', icone: 'money-bill-wave', permission: 'DETTE_MARCHAND_CONSULTER' },
+    { libelle: 'Clients', chemin: '/clients', icone: 'users', permission: 'CLIENT_CONSULTER' },
     { libelle: 'Equipe', chemin: '/equipe', icone: 'users', permission: 'RESPONSABLE_CONSULTER' },
   ];
 

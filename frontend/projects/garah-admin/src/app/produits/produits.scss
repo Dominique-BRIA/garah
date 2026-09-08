@@ -147,6 +147,14 @@
   flex-shrink: 0;
 }
 
+// Meme largeur fixe, meme raison : « Brouillons » et « Tous les statuts » ne
+// font pas la meme longueur, et une largeur automatique ferait sauter toute la
+// barre d actions a chaque choix.
+.filtre-statut {
+  width: 11rem;
+  flex-shrink: 0;
+}
+
 // =============================================================================
 // La selection multiple
 // =============================================================================
@@ -158,15 +166,10 @@
   padding-right: 0;
 }
 
-.case {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  // `accent-color` colore la case cochee avec la teinte de l application,
-  // sans avoir a redessiner un controle natif — qui perdrait au passage le
-  // clavier, le focus et les lecteurs d ecran.
-  accent-color: var(--primary);
-}
+// La case vient du theme : `.gu-case`. La classe `.case` qui vivait ici
+// habillait un <input type="checkbox"> natif avec `accent-color` — ce qui
+// colore la coche mais laisse le carre BLANC sur fond sombre, et le rend
+// impossible a arrondir ou a border. Voir garah-ui/theme/_base.scss.
 
 // La ligne cochee se distingue au FOND, pas seulement par sa case : sur une
 // liste de vingt-quatre lignes, une case cochee a l extreme gauche se perd.

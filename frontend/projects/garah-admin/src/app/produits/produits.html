@@ -19,6 +19,15 @@
     <!-- Le filtre de disponibilité. Il s'applique EN BASE, pas sur la page
          reçue : filtrer après coup donnerait « 3 sur 24 » ici et « 7 sur 24 »
          à la page suivante, avec un total qui ne voudrait rien dire. -->
+    <select class="gu-champ filtre-statut"
+            aria-label="Filtrer par statut"
+            [ngModel]="statut()"
+            (ngModelChange)="changerStatut($event)">
+      @for (f of filtresStatut; track f.code) {
+        <option [value]="f.code">{{ f.libelle }}</option>
+      }
+    </select>
+
     <select class="gu-champ filtre-stock"
             aria-label="Filtrer par disponibilité"
             [ngModel]="disponibilite()"
@@ -35,7 +44,10 @@
     <gu-bascule-vue [(vue)]="vue" cle="produits" />
 
     @if (session.peut('PRODUIT_SUPPRIMER')) {
-      <a routerLink="/produits/corbeille" class="gu-btn gu-btn--secondaire">
+      <!-- En rouge de contour : la corbeille MÈNE au destructif sans
+           l'exécuter. Un aplat plein se disputerait l'attention avec
+           « Nouveau produit » et ferait croire que le clic efface. -->
+      <a routerLink="/produits/corbeille" class="gu-btn gu-btn--danger-contour">
         <gu-icone nom="trash" /> Corbeille
       </a>
     }
@@ -128,12 +140,17 @@
         <tr>
           @if (session.peut('PRODUIT_SUPPRIMER')) {
             <th class="colonne-case">
-              <!-- Désactivée quand la page ne contient aucun brouillon : une
-                   case qui ne coche rien laisse croire à une panne. -->
-              <input type="checkbox" class="case" [checked]="toutSelectionne()"
-                     [disabled]="!aDesCochables()"
-                     (change)="basculerTout()"
-                     aria-label="Sélectionner tous les brouillons de cette page" />
+              <!-- Effacée quand la page ne contient aucun brouillon : une case
+                   qui ne coche rien fait chercher pourquoi elle ne répond pas. -->
+              <button type="button" class="gu-case"
+                      [class.gu-case--cochee]="toutSelectionne()"
+                      [attr.aria-pressed]="toutSelectionne()"
+                      [disabled]="!aDesCochables()"
+                      (click)="basculerTout()"
+                      title="Sélectionner tous les brouillons de cette page"
+                      aria-label="Sélectionner tous les brouillons de cette page">
+                <gu-icone nom="check" />
+              </button>
             </th>
           }
           <th>Produit</th>
@@ -155,19 +172,22 @@
                    produit au lieu de le sélectionner, et la sélection multiple
                    serait rigoureusement inutilisable. -->
               <td class="colonne-case" (click)="$event.stopPropagation()">
-                <!-- ⚠️ Seul un BROUILLON est cochable. Un produit publié a pu
-                     être vu, mis au panier, négocié : son chemin est
-                     l'archivage, pas la corbeille. Le `title` dit pourquoi la
-                     case est grise — sans lui, on la croit cassée. -->
+                <!-- ⚠️ La case n'existe QUE devant un brouillon.
+                     Un produit publié a pu être vu, mis au panier, négocié :
+                     son chemin est l'archivage, pas la corbeille.
+
+                     Rien du tout plutôt qu'une case grisée : une case morte
+                     sur chaque ligne publiée ferait une colonne de contrôles
+                     inertes, et on chercherait pourquoi ils ne répondent
+                     pas. -->
                 @if (estSupprimable(produit)) {
-                  <input type="checkbox" class="case"
-                         [checked]="estSelectionne(produit.id)"
-                         (change)="basculerSelection(produit.id)"
-                         [attr.aria-label]="'Sélectionner ' + produit.nom" />
-                } @else {
-                  <input type="checkbox" class="case" disabled
-                         title="Seul un brouillon peut être supprimé. Ce produit a été publié : archivez-le."
-                         [attr.aria-label]="produit.nom + ' : publié, donc non supprimable'" />
+                  <button type="button" class="gu-case"
+                          [class.gu-case--cochee]="estSelectionne(produit.id)"
+                          [attr.aria-pressed]="estSelectionne(produit.id)"
+                          (click)="basculerSelection(produit.id)"
+                          [attr.aria-label]="'Sélectionner ' + produit.nom">
+                    <gu-icone nom="check" />
+                  </button>
                 }
               </td>
             }

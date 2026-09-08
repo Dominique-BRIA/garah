@@ -225,7 +225,7 @@ class ServiceCatalogueTest {
         // Le back-office, lui, doit voir exactement ce sur quoi il reste du
         // travail. Une liste de gestion qui cache les brouillons rend
         // introuvable le produit créé le matin même.
-        assertThat(catalogue.administration(null, "TOUS", PageRequest.of(0, 10)).getContent())
+        assertThat(catalogue.administration(null, null, "TOUS", PageRequest.of(0, 10)).getContent())
                 .extracting(ResumeProduit::id)
                 .contains(brouillon.id());
     }
@@ -237,7 +237,7 @@ class ServiceCatalogueTest {
         donnerUnPrix(id);
         em.flush();
 
-        ResumeProduit resume = catalogue.administration("Chemise", "TOUS", PageRequest.of(0, 10))
+        ResumeProduit resume = catalogue.administration("Chemise", null, "TOUS", PageRequest.of(0, 10))
                 .getContent().getFirst();
 
         // Les trois colonnes qu'on lit pour décider sur quelle ligne cliquer.
@@ -254,7 +254,7 @@ class ServiceCatalogueTest {
         creerChemise();
         em.flush();
 
-        ResumeProduit resume = catalogue.administration("Chemise", "TOUS", PageRequest.of(0, 10))
+        ResumeProduit resume = catalogue.administration("Chemise", null, "TOUS", PageRequest.of(0, 10))
                 .getContent().getFirst();
 
         // `null`, et surtout pas zéro : un produit à 0 FCFA serait annoncé
@@ -269,9 +269,9 @@ class ServiceCatalogueTest {
         creerChemise();
         em.flush();
 
-        assertThat(catalogue.administration("oxford", "TOUS", PageRequest.of(0, 10))).hasSize(1);
-        assertThat(catalogue.administration("REF-CAT", "TOUS", PageRequest.of(0, 10))).hasSize(1);
-        assertThat(catalogue.administration("introuvable", "TOUS", PageRequest.of(0, 10))).isEmpty();
+        assertThat(catalogue.administration("oxford", null, "TOUS", PageRequest.of(0, 10))).hasSize(1);
+        assertThat(catalogue.administration("REF-CAT", null, "TOUS", PageRequest.of(0, 10))).hasSize(1);
+        assertThat(catalogue.administration("introuvable", null, "TOUS", PageRequest.of(0, 10))).isEmpty();
     }
 
     private void donnerUnPrix(Long produitId) {

@@ -175,3 +175,24 @@ export interface VueCorbeille {
   /** Sert a dire « il y a trois jours », qui vaut mieux qu'une date brute. */
   readonly dateSuppression: string;
 }
+
+/**
+ * Le filtre de statut de la liste d administration.
+ *
+ * ⚠️ Il s applique EN BASE, comme celui de disponibilite. Un filtre qui ne
+ * participe pas a la pagination n est pas un filtre : il donnerait « 3 sur 24 »
+ * sur une page et « 7 sur 24 » sur la suivante.
+ *
+ * MASQUE et ARCHIVE y figurent bien qu on les cherche rarement : les omettre
+ * rendrait leurs produits introuvables autrement qu en parcourant « tous ».
+ */
+export const FILTRES_STATUT: readonly {
+  readonly code: string;
+  readonly libelle: string;
+}[] = [
+  { code: 'TOUS', libelle: 'Tous les statuts' },
+  { code: 'BROUILLON', libelle: 'Brouillons' },
+  { code: 'PUBLIE', libelle: 'Publiés' },
+  { code: 'MASQUE', libelle: 'Masqués' },
+  { code: 'ARCHIVE', libelle: 'Archivés' },
+];

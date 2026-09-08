@@ -130,6 +130,81 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/**
+ * Rouge, mais en contour.
+ *
+ * Pour une action qui MÈNE à du destructif sans l'exécuter — ouvrir la
+ * corbeille, par exemple. `--danger` est un aplat plein : posé à côté du
+ * bouton principal, il se dispute l'attention avec lui et fait croire que le
+ * clic efface quelque chose. Ici la couleur avertit, la forme dit qu'on ne
+ * fait que passer.
+ */
+.gu-btn--danger-contour {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  color: var(--danger);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    border-color: var(--danger);
+  }
+
+  &:focus-visible {
+    outline-color: var(--danger);
+  }
+}
+
+// =============================================================================
+// La case à cocher, redessinée
+// =============================================================================
+// La case native est un carré blanc que rien ne peut habiller : ni son fond,
+// ni sa bordure, ni son rayon ne suivent le theme. Sur un fond sombre, elle
+// perce l'ecran comme une tache.
+//
+// ⚠️ C'est un <button>, pas un <input type="checkbox"> masque. Un input rendu
+//    invisible reste dans l'ordre de tabulation et s'annonce « case a cocher »
+//    sans que rien ne se voie au clavier. Le bouton porte `aria-pressed`, que
+//    les lecteurs d'ecran annoncent correctement comme un etat.
+// =============================================================================
+.gu-case {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1.5px solid var(--champ-bordure);
+  background: transparent;
+  color: transparent;
+  font-size: 0.62rem;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+
+  &:hover:not(:disabled) {
+    border-color: var(--primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  // Rien a cocher : la case s'efface au lieu de rester grise et cliquable.
+  // Une case desactivee mais visible fait chercher pourquoi elle ne repond pas.
+  &:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+}
+
+/** Cochee : remplie, et la coche apparait. */
+.gu-case--cochee {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 // =============================================================================
 // Le bouton-icône : une action de ligne, sans libellé
 // =============================================================================

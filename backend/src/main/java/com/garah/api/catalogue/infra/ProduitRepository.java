@@ -78,7 +78,8 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
     @Query(value = """
             SELECT p FROM Produit p
               JOIN FETCH p.categorie
-             WHERE (:recherche IS NULL
+             WHERE (:statut IS NULL OR p.statut = :statut)
+               AND (:recherche IS NULL
                     OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
                     OR LOWER(p.reference) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
                AND (:disponibilite = 'TOUS'
@@ -98,7 +99,8 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
             """,
             countQuery = """
             SELECT count(p) FROM Produit p
-             WHERE (:recherche IS NULL
+             WHERE (:statut IS NULL OR p.statut = :statut)
+               AND (:recherche IS NULL
                     OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
                     OR LOWER(p.reference) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
                AND (:disponibilite = 'TOUS'
@@ -117,6 +119,7 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
                                                                    AND s.quantiteDisponible <= s.seuilAlerte)))
             """)
     Page<Produit> administration(@Param("recherche") String recherche,
+                                 @Param("statut") StatutProduit statut,
                                  @Param("disponibilite") String disponibilite,
                                  Pageable pagination);
 

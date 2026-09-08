@@ -276,10 +276,18 @@ public class ControleurProduit {
              * l'impression que l'écran est cassé.
              */
             @RequestParam(required = false) String disponibilite,
+            /*
+             * BROUILLON, PUBLIE, MASQUE, ARCHIVE — ou rien pour tous.
+             *
+             * Filtre en BASE, jamais sur la page reçue : trier après coup
+             * donnerait « 3 sur 24 » ici et « 7 sur 24 » à la page suivante,
+             * avec un total qui ne voudrait rien dire.
+             */
+            @RequestParam(required = false) String statut,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int taille) {
 
-        return catalogue.administration(recherche, disponibilite, PageRequest.of(
+        return catalogue.administration(recherche, statut, disponibilite, PageRequest.of(
                 Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX),
                 Sort.by(Sort.Direction.DESC, "dateCreation")));
     }

@@ -1,0 +1,304 @@
+<header class="entete">
+  <div>
+    <h1>Clients</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (filtreApplique(); as q) { {{ total() }} résultat(s) pour « {{ q }} » }
+      @else if (libelleStatut(); as s) { {{ total() }} client(s) — {{ s }} }
+      @else { {{ total() }} client(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <div class="champ-recherche">
+      <gu-icone nom="magnifying-glass" class="loupe" />
+      <!-- Les trois champs à la fois : un agent au téléphone a l'un des
+           trois, jamais les trois. -->
+      <input type="search" class="gu-champ" placeholder="Code, nom ou e-mail"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)"
+             (keyup.enter)="chercher()" name="recherche"
+             aria-label="Rechercher un client" />
+    </div>
+
+    @if (filtreApplique()) {
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="effacerRecherche()">
+        Effacer
+      </button>
+    }
+
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+<nav class="filtres" aria-label="Filtrer par statut">
+  <button type="button" class="filtre" [class.filtre--actif]="statut() === ''"
+          (click)="filtrer('')">Tous</button>
+
+  @for (s of statuts; track s.code) {
+    <button type="button" class="filtre" [class.filtre--actif]="statut() === s.code"
+            (click)="filtrer(s.code)" [title]="s.explication">
+      {{ s.libelle }}
+    </button>
+  }
+</nav>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (liste().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="users" class="etat__icone" />
+    @if (filtreApplique()) {
+      <p class="etat__titre">Rien ne correspond à « {{ filtreApplique() }} »</p>
+      <p class="etat__aide">La recherche porte sur le code, le nom et l’adresse e-mail.</p>
+    } @else {
+      <p class="etat__titre">Aucun client</p>
+      <!-- D'où viennent les clients. Sans cette phrase, on cherche un bouton
+           « Nouveau client » qui n'existe pas — et pour cause : un client
+           s'inscrit lui-même. -->
+      <p class="etat__aide">
+        Un client s’inscrit lui-même. Il ne se crée pas depuis cet écran.
+      </p>
+    }
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Code</th>
+          <th>Contact</th>
+          <th>Statut</th>
+          <th>Inscrit le</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of liste(); track c.id) {
+          <tr class="cliquable" (click)="ouvrir(c)">
+            <td class="nom">{{ c.nom }}</td>
+            <td><code class="attenue">{{ c.code }}</code></td>
+            <td class="contact">
+              <span>{{ c.email }}</span>
+              @if (!c.emailVerifie) {
+                <!-- ⚠️ Pas décoratif : un compte non vérifié ne reçoit AUCUN
+                     courriel. C'est la réponse à « je n'ai rien reçu ». -->
+                <span class="non-verifie">
+                  <gu-icone nom="triangle-exclamation" /> adresse non confirmée
+                </span>
+              }
+              @if (c.telephone) { <span class="attenue">{{ c.telephone }}</span> }
+            </td>
+            <td>
+              <span class="gu-badge" [class]="badge(c.statut)">{{ libelle(c.statut) }}</span>
+            </td>
+            <td class="attenue">{{ date(c.dateInscription) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="allerA($event)" />
+}
+
+<!-- ==================================================================== -->
+<!-- La fiche                                                              -->
+<!-- ==================================================================== -->
+@if (fiche() || chargementFiche() || erreurFiche()) {
+  <div class="voile" (click)="fermer()" aria-hidden="true"></div>
+
+  <aside class="panneau panneau--large" role="dialog" aria-modal="true" aria-label="Fiche client">
+    @if (chargementFiche()) {
+      <div class="etat">
+        <gu-icone nom="circle-notch" tourne class="etat__icone" />
+        <p class="etat__titre">Chargement…</p>
+      </div>
+    } @else if (fiche(); as f) {
+      <header class="fiche__entete">
+        <div>
+          <h2>{{ f.nom }}</h2>
+          <p class="aide"><code>{{ f.code }}</code></p>
+        </div>
+        <span class="gu-badge" [class]="badge(f.statut)">{{ libelle(f.statut) }}</span>
+      </header>
+
+      <dl class="infos">
+        <div>
+          <dt>Adresse e-mail</dt>
+          <dd>
+            {{ f.email }}
+            @if (!f.emailVerifie) {
+              <span class="non-verifie">non confirmée</span>
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Téléphone</dt>
+          <dd>{{ f.telephone ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Langue</dt>
+          <dd>{{ f.langue }}</dd>
+        </div>
+        <div>
+          <dt>Double authentification</dt>
+          <dd>{{ f.deuxFacteursActif ? 'Activée' : 'Désactivée' }}</dd>
+        </div>
+        <div>
+          <dt>Inscrit le</dt>
+          <dd>{{ dateHeure(f.dateInscription) }}</dd>
+        </div>
+        <div>
+          <dt>Dernière connexion</dt>
+          <!-- Nulle = ne s'est JAMAIS connecté. Une information, pas un trou :
+               elle explique la moitié des « je n'ai rien reçu ». -->
+          <dd>
+            @if (f.dateDerniereConnexion) {
+              {{ dateHeure(f.dateDerniereConnexion) }}
+            } @else {
+              <span class="attenue">Ne s’est jamais connecté</span>
+            }
+          </dd>
+        </div>
+      </dl>
+
+      @if (erreurFiche(); as m) {
+        <p class="alerte" role="alert">{{ m }}</p>
+      }
+
+      <!-- ================================================================ -->
+      <!-- Le risque                                                         -->
+      <!-- ================================================================ -->
+      @if (session.peut('SURVEILLANCE_CONSULTER_RISQUE')) {
+        <p class="gu-libelle">Évaluation du risque</p>
+
+        @if (risque(); as r) {
+          <div class="risque">
+            <div class="risque__tete">
+              <span class="gu-badge" [class]="badgeRisque(r.niveau)">
+                {{ libelleRisque(r.niveau) }}
+              </span>
+              <span class="risque__score">{{ r.score }}</span>
+            </div>
+
+            <!-- 🎯 C'EST CETTE LISTE QUI REND LE SCORE UTILISABLE.
+                 « Élevé » tout seul ne permet aucune décision : on ne sait ni
+                 pourquoi, ni quoi vérifier. -->
+            @if (r.signaux.length === 0) {
+              <p class="attenue">
+                Aucun signal. Rien dans le comportement de ce client n’attire
+                l’attention.
+              </p>
+            } @else {
+              <ul class="signaux">
+                @for (s of r.signaux; track s.code) {
+                  <li class="signal">
+                    <span class="signal__libelle">{{ s.libelle }}</span>
+                    <span class="signal__poids">{{ poids(s.poids) }}</span>
+                  </li>
+                }
+              </ul>
+            }
+
+            <!-- ⚠️ La surveillance observe, elle ne décide pas. -->
+            <p class="aide">
+              Ce score n’a aucun effet automatique. Suspendre un compte reste
+              une décision humaine.
+            </p>
+          </div>
+        } @else {
+          <p class="attenue">L’évaluation n’a pas pu être chargée.</p>
+        }
+      }
+
+      <!-- ================================================================ -->
+      <!-- Les gestes                                                        -->
+      <!-- ================================================================ -->
+      @if (formEdition()) {
+        <form class="edition" (ngSubmit)="enregistrer()" novalidate>
+          <label class="gu-libelle" for="tel">Téléphone</label>
+          <input id="tel" name="telephone" class="gu-champ" maxlength="30"
+                 [ngModel]="telephone()" (ngModelChange)="telephone.set($event)" />
+
+          <label class="gu-libelle" for="langue">Langue</label>
+          <select id="langue" name="langue" class="gu-champ"
+                  [ngModel]="langue()" (ngModelChange)="langue.set($event)">
+            <option value="fr">Français</option>
+            <option value="en">Anglais</option>
+          </select>
+
+          <!-- L'e-mail n'est PAS modifiable ici, et il faut le dire : sinon on
+               cherche le champ. Il identifie le compte et sert à s'y connecter. -->
+          <p class="aide">
+            L’adresse e-mail ne se change pas ici : elle identifie le compte et
+            sert à s’y connecter. Le client la modifie lui-même, avec une
+            nouvelle confirmation.
+          </p>
+
+          <div class="boutons">
+            <button type="submit" class="gu-btn gu-btn--primaire" [disabled]="action() !== null">
+              @if (action() === 'edition') { <gu-icone nom="circle-notch" tourne /> }
+              Enregistrer
+            </button>
+            <button type="button" class="gu-btn gu-btn--secondaire"
+                    (click)="formEdition.set(false)">Annuler</button>
+          </div>
+        </form>
+      } @else {
+        <div class="boutons">
+          @if (session.peut('CLIENT_MODIFIER')) {
+            <button type="button" class="gu-btn gu-btn--secondaire" (click)="ouvrirEdition()">
+              Corriger les coordonnées
+            </button>
+          }
+
+          @if (bloque()) {
+            <!-- Un blocage de sécurité ne se lève pas depuis la fiche : il
+                 vient d'une alerte, et c'est là qu'il se tranche. -->
+            <p class="aide">
+              Ce compte est bloqué pour raison de sécurité. La levée se décide
+              depuis l’alerte qui l’a motivé.
+            </p>
+          } @else if (suspendable()) {
+            <button type="button" class="gu-btn gu-btn--danger"
+                    (click)="basculerActivation()" [disabled]="action() !== null">
+              @if (action() === 'activation') { <gu-icone nom="circle-notch" tourne /> }
+              Suspendre le compte
+            </button>
+          } @else if (reactivable()) {
+            <button type="button" class="gu-btn gu-btn--primaire"
+                    (click)="basculerActivation()" [disabled]="action() !== null">
+              @if (action() === 'activation') { <gu-icone nom="circle-notch" tourne /> }
+              Réactiver le compte
+            </button>
+          }
+        </div>
+      }
+
+      <div class="boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Fermer</button>
+      </div>
+    } @else if (erreurFiche(); as m) {
+      <div class="etat" role="alert">
+        <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+        <p class="etat__titre">{{ m }}</p>
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Fermer</button>
+      </div>
+    }
+  </aside>
+}

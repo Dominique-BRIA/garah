@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import {
   BasculeVue,
   FILTRES_DISPONIBILITE,
+  FILTRES_STATUT,
   FiltreDisponibilite,
   Icone,
   Page,
@@ -57,6 +58,17 @@ export class Produits {
   // --- Le filtre de disponibilité ---------------------------------------------
   protected readonly filtresDisponibilite = FILTRES_DISPONIBILITE;
   protected readonly disponibilite = signal<FiltreDisponibilite>('TOUS');
+
+  // --- Le filtre de statut ----------------------------------------------------
+  protected readonly filtresStatut = FILTRES_STATUT;
+  protected readonly statut = signal('TOUS');
+
+  /** Change le filtre de statut et recharge, depuis la premiere page. */
+  protected changerStatut(valeur: string): void {
+    this.statut.set(valeur);
+    this.page.set(0);
+    this.charger();
+  }
 
   /**
    * Change le filtre et recharge.
@@ -272,6 +284,9 @@ export class Produits {
     // dans les journaux.
     if (this.disponibilite() !== 'TOUS') {
       parametres.set('disponibilite', this.disponibilite());
+    }
+    if (this.statut() !== 'TOUS') {
+      parametres.set('statut', this.statut());
     }
 
     // ⚠️ La route d'ADMINISTRATION, pas le catalogue public. Ce dernier ne

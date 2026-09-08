@@ -1,0 +1,153 @@
+// Les clients. Motifs communs dans ecrans-communs.scss.
+
+// --- Les filtres de statut ---------------------------------------------------
+.filtres {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.filtre {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte-attenue);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.filtre--actif {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+// --- La liste ----------------------------------------------------------------
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.86rem;
+}
+
+// Une adresse non confirmee n'est PAS decorative : ce compte ne recoit aucun
+// courriel. C'est la reponse a « je n'ai rien recu ».
+.non-verifie {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.attenue { color: var(--texte-attenue); }
+.nom { font-weight: 600; }
+
+// --- La fiche ----------------------------------------------------------------
+.panneau--large { width: min(32rem, 100vw); }
+
+.fiche__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h2 { margin-bottom: 0.2rem; }
+}
+
+.infos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.9rem 1.25rem;
+  margin: 0 0 1.5rem;
+
+  dt {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--texte-attenue);
+    margin-bottom: 0.2rem;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;   // une adresse longue ne deborde pas
+  }
+}
+
+// --- Le risque ---------------------------------------------------------------
+// Encadre : c'est une LECTURE, pas un etat du compte. Le melanger aux infos
+// laisserait croire que le score fait partie de l'identite du client.
+.risque {
+  margin: 0.5rem 0 1.5rem;
+  padding: 1.1rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
+}
+
+.risque__tete {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.risque__score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+// Les signaux : c'est CETTE liste qui rend le score utilisable. Elle doit se
+// lire avant le chiffre, pas apres — d'ou la place et la taille.
+.signaux {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.signal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.86rem;
+}
+
+.signal__libelle { line-height: 1.4; }
+
+// Un poids brut (« 0.35 ») ne dit rien ; « 35 % » se compare d'un coup d'oeil.
+.signal__poids {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--texte-attenue);
+  white-space: nowrap;
+}
+
+.edition {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--champ-bordure);
+}
+
+.panneau .boutons { margin-top: 1rem; }

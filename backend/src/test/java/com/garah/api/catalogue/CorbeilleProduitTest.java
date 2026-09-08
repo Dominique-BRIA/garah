@@ -76,7 +76,7 @@ class CorbeilleProduitTest {
         Long id = brouillon("REF-CORB-001", "Chemise à jeter").id();
         em.flush();
 
-        assertThat(catalogue.administration(null, "TOUS", PageRequest.of(0, 50)).getContent())
+        assertThat(catalogue.administration(null, null, "TOUS", PageRequest.of(0, 50)).getContent())
                 .extracting(r -> r.id())
                 .contains(id);
 
@@ -84,7 +84,7 @@ class CorbeilleProduitTest {
         em.flush();
         em.clear();
 
-        assertThat(catalogue.administration(null, "TOUS", PageRequest.of(0, 50)).getContent())
+        assertThat(catalogue.administration(null, null, "TOUS", PageRequest.of(0, 50)).getContent())
                 .extracting(r -> r.id())
                 .doesNotContain(id);
     }
