@@ -452,158 +452,148 @@
             </div>
           </header>
 
-          <section class="tarifs">
-            <header class="tarifs__entete">
-              <h3 class="tarifs__titre">Prix par quantité</h3>
-              @if (session.peut('PRIX_CREER') && formulaire() === null && !grilleFermee(v)) {
-                <button type="button" class="lien-action" (click)="ouvrirCreationPalier(v)">
-                  <gu-icone nom="plus" /> Ajouter un prix
-                </button>
-              }
-            </header>
+          <!-- ============================================================
+               DES CARTES, ET NON UNE LISTE DE LIGNES
+               ============================================================
+               Une grille dégressive se lit HORIZONTALEMENT : « à partir de
+               combien ça baisse, et de combien ». Empilée en lignes, on
+               comparait deux prix séparés de trois centimètres verticaux, ce
+               que l'œil fait mal.
 
-            @if (v.paliers.length === 0 && !ouvert('palier-creation', v.id)) {
-              <p class="vide petit-texte">
-                Aucun prix. Le tarif dépend de la quantité commandée : un prix
-                pour 1 à 6, un autre au-delà.
-              </p>
-            } @else {
-              <table class="tarifs__table">
-                <thead>
-                  <tr>
-                    <th scope="col">À partir de</th>
-                    <th scope="col">Jusqu’à</th>
-                    <th scope="col" class="droite">Prix unitaire</th>
-                    <th scope="col"><span class="gu-visuellement-cache">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (palier of v.paliers; track palier.id) {
-                    <!-- ⚠️ La ligne se modifie SUR PLACE. Elle ouvrait
-                         auparavant un formulaire en dessous : on perdait de
-                         vue la plage qu'on était en train de retarifer. -->
-                    @if (ouvert('palier-prix', v.id, palier.id)) {
-                      <tr class="tarifs__ligne tarifs__ligne--edition">
-                        <td>{{ palier.quantiteMin }}</td>
-                        <td>
-                          @if (palier.quantiteMax) { {{ palier.quantiteMax }} }
-                          @else { <span class="attenue">et plus</span> }
-                        </td>
-                        <td class="droite">
-                          <input [id]="'p-' + palier.id" name="prix" type="number" min="1"
-                                 class="gu-champ tarifs__champ"
-                                 [attr.aria-label]="'Prix unitaire en FCFA, TTC'"
-                                 [ngModel]="prix()"
-                                 (ngModelChange)="prix.set($event === '' ? null : +$event)" />
-                        </td>
-                        <td class="droite">
-                          <span class="tarifs__gestes">
-                            <button type="button" class="gu-btn gu-btn--secondaire petit"
-                                    (click)="fermer()">Annuler</button>
-                            <button type="button" class="gu-btn gu-btn--primaire petit"
-                                    [disabled]="action() !== null || !prix()"
-                                    (click)="enregistrerPrix(v.id, palier.id)">Enregistrer</button>
-                          </span>
-                        </td>
-                      </tr>
-                      @if (erreurForm(); as m) {
-                        <tr>
-                          <td colspan="4"><p class="alerte" role="alert">{{ m }}</p></td>
-                        </tr>
-                      }
-                    } @else {
-                      <tr class="tarifs__ligne">
-                        <td>{{ palier.quantiteMin }}</td>
-                        <td>
-                          @if (palier.quantiteMax) { {{ palier.quantiteMax }} }
-                          @else { <span class="attenue">et plus</span> }
-                        </td>
-                        <td class="droite montant">
-                          {{ montant(palier.prixUnitaire, palier.devise) }}
-                        </td>
-                        <td class="droite">
-                          @if (formulaire() === null) {
-                            <span class="tarifs__gestes">
-                              @if (session.peut('PRIX_MODIFIER')) {
-                                <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
-                                        (click)="ouvrirPrix(v, palier)"
-                                        aria-label="Modifier ce prix" title="Modifier le prix">
-                                  <gu-icone nom="pen" />
-                                </button>
-                              }
-                              @if (session.peut('PRIX_SUPPRIMER')) {
-                                <button type="button" class="gu-btn-icone gu-btn-icone--supprimer"
-                                        (click)="supprimerPalier(v.id, palier.id)"
-                                        [disabled]="action() !== null"
-                                        aria-label="Retirer ce prix" title="Retirer">
-                                  <gu-icone nom="trash" />
-                                </button>
-                              }
-                            </span>
-                          }
-                        </td>
-                      </tr>
-                    }
+               Côte à côte, la baisse se voit sans être calculée — et la
+               remise affichée l'est vraiment : calculée depuis les paliers,
+               jamais saisie. Une étiquette « −20 % » tapée à la main survit à
+               un changement de prix qui n'en fait plus que 12.
+               -->
+          @if (v.paliers.length === 0 && !ouvert('palier-creation', v.id)) {
+            <p class="vide">
+              Aucun prix. Le tarif dépend de la quantité commandée : un prix
+              pour 1 à 6, un autre au-delà.
+            </p>
+          }
+
+          <div class="paliers-cartes">
+            @for (palier of v.paliers; track palier.id) {
+              <article class="palier">
+                <header class="palier__entete">
+                  <span class="palier__rang">Palier {{ $index + 1 }}</span>
+                  @if (remise(v, palier); as pct) {
+                    <span class="gu-badge gu-badge--succes petit-badge">−{{ pct }} %</span>
+                  } @else {
+                    <span class="gu-badge gu-badge--neutre petit-badge">base</span>
                   }
+                </header>
 
-                  <!-- La ligne qu'on ajoute : mêmes colonnes, même ordre.
-                       C'est tout l'intérêt du tableau — on remplit sous les
-                       en-têtes qu'on vient de lire. -->
-                  @if (ouvert('palier-creation', v.id)) {
-                    <tr class="tarifs__ligne tarifs__ligne--edition">
-                      <td>
-                        <input [id]="'qmin-' + v.id" name="qmin" type="number" min="1"
-                               class="gu-champ tarifs__champ"
-                               aria-label="Quantité à partir de laquelle ce prix s’applique"
-                               [ngModel]="quantiteMin()"
-                               (ngModelChange)="quantiteMin.set(+$event)" />
-                      </td>
-                      <td>
-                        <input [id]="'qmax-' + v.id" name="qmax" type="number" min="1"
-                               class="gu-champ tarifs__champ" placeholder="et plus"
-                               aria-label="Quantité jusqu’à laquelle ce prix s’applique. Vide pour « et au-delà »"
-                               [ngModel]="quantiteMax()"
-                               (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
-                      </td>
-                      <td class="droite">
-                        <input [id]="'prix-' + v.id" name="prix" type="number" min="1"
-                               class="gu-champ tarifs__champ"
-                               aria-label="Prix unitaire en FCFA, TTC"
-                               [ngModel]="prix()"
-                               (ngModelChange)="prix.set($event === '' ? null : +$event)" />
-                      </td>
-                      <td class="droite">
-                        <span class="tarifs__gestes">
-                          <button type="button" class="gu-btn gu-btn--secondaire petit"
-                                  (click)="fermer()">Annuler</button>
-                          <button type="button" class="gu-btn gu-btn--primaire petit"
-                                  [disabled]="action() !== null || !prix()"
-                                  (click)="definirPalier(v.id)">Ajouter</button>
-                        </span>
-                      </td>
-                    </tr>
-                    @if (erreurForm(); as m) {
-                      <tr>
-                        <td colspan="4"><p class="alerte" role="alert">{{ m }}</p></td>
-                      </tr>
-                    }
+                <p class="palier__plage">
+                  @if (palier.quantiteMax) {
+                    {{ palier.quantiteMin }} à {{ palier.quantiteMax }} unités
+                  } @else {
+                    {{ palier.quantiteMin }} unités et plus
                   }
-                </tbody>
-              </table>
-
-              <p class="aide tarifs__aide">
-                « Jusqu’à » vide signifie « et au-delà » : c’est le dernier
-                palier de la grille.
-              </p>
-
-              @if (grilleFermee(v) && session.peut('PRIX_CREER')) {
-                <p class="aide">
-                  Le dernier palier n’a pas de limite haute. Retirez-le pour
-                  prolonger la grille.
                 </p>
-              }
+
+                <!-- ⚠️ Le prix est le SUJET de la carte : tout le reste le
+                     légende. C'est le contraste de taille, pas la couleur,
+                     qui fait lire une rangée de prix d'un seul coup. -->
+                @if (ouvert('palier-prix', v.id, palier.id)) {
+                  <input [id]="'p-' + palier.id" name="prix" type="number" min="1"
+                         class="gu-champ palier__champ"
+                         aria-label="Prix unitaire en FCFA, TTC"
+                         [ngModel]="prix()"
+                         (ngModelChange)="prix.set($event === '' ? null : +$event)" />
+
+                  @if (erreurForm(); as m) {
+                    <p class="alerte" role="alert">{{ m }}</p>
+                  }
+
+                  <div class="palier__gestes">
+                    <button type="button" class="gu-btn gu-btn--secondaire petit"
+                            (click)="fermer()">Annuler</button>
+                    <button type="button" class="gu-btn gu-btn--primaire petit"
+                            [disabled]="action() !== null || !prix()"
+                            (click)="enregistrerPrix(v.id, palier.id)">Enregistrer</button>
+                  </div>
+                } @else {
+                  <p class="palier__prix">{{ montant(palier.prixUnitaire, palier.devise) }}</p>
+
+                  @if (formulaire() === null) {
+                    <div class="palier__gestes">
+                      @if (session.peut('PRIX_MODIFIER')) {
+                        <button type="button" class="gu-btn-icone gu-btn-icone--modifier"
+                                (click)="ouvrirPrix(v, palier)"
+                                aria-label="Modifier ce prix" title="Modifier le prix">
+                          <gu-icone nom="pen" />
+                        </button>
+                      }
+                      @if (session.peut('PRIX_SUPPRIMER')) {
+                        <button type="button" class="gu-btn-icone gu-btn-icone--supprimer"
+                                (click)="supprimerPalier(v.id, palier.id)"
+                                [disabled]="action() !== null"
+                                aria-label="Retirer ce prix" title="Retirer">
+                          <gu-icone nom="trash" />
+                        </button>
+                      }
+                    </div>
+                  }
+                }
+              </article>
             }
-          </section>
+
+            <!-- La carte qui en ajoute une. Au bout de la rangée et non
+                 au-dessus : c'est là que la grille se prolonge. -->
+            @if (ouvert('palier-creation', v.id)) {
+              <article class="palier palier--saisie">
+                <header class="palier__entete">
+                  <span class="palier__rang">Nouveau palier</span>
+                </header>
+
+                <label class="gu-libelle" [for]="'qmin-' + v.id">À partir de</label>
+                <input [id]="'qmin-' + v.id" name="qmin" type="number" min="1"
+                       class="gu-champ palier__champ"
+                       [ngModel]="quantiteMin()"
+                       (ngModelChange)="quantiteMin.set(+$event)" />
+
+                <label class="gu-libelle" [for]="'qmax-' + v.id">Jusqu’à</label>
+                <input [id]="'qmax-' + v.id" name="qmax" type="number" min="1"
+                       class="gu-champ palier__champ" placeholder="et plus"
+                       [ngModel]="quantiteMax()"
+                       (ngModelChange)="quantiteMax.set($event === '' ? null : +$event)" />
+                <p class="aide">Vide signifie « et au-delà » : c’est le dernier palier.</p>
+
+                <label class="gu-libelle" [for]="'prix-' + v.id">Prix unitaire (FCFA, TTC)</label>
+                <input [id]="'prix-' + v.id" name="prix" type="number" min="1"
+                       class="gu-champ palier__champ"
+                       [ngModel]="prix()"
+                       (ngModelChange)="prix.set($event === '' ? null : +$event)" />
+
+                @if (erreurForm(); as m) {
+                  <p class="alerte" role="alert">{{ m }}</p>
+                }
+
+                <div class="palier__gestes">
+                  <button type="button" class="gu-btn gu-btn--secondaire petit"
+                          (click)="fermer()">Annuler</button>
+                  <button type="button" class="gu-btn gu-btn--primaire petit"
+                          [disabled]="action() !== null || !prix()"
+                          (click)="definirPalier(v.id)">Ajouter</button>
+                </div>
+              </article>
+            } @else if (session.peut('PRIX_CREER') && formulaire() === null && !grilleFermee(v)) {
+              <button type="button" class="palier palier--ajout"
+                      (click)="ouvrirCreationPalier(v)">
+                <gu-icone nom="plus" />
+                <span class="palier__rang">Ajouter un palier</span>
+                <span class="aide">Un tarif pour les grandes quantités</span>
+              </button>
+            }
+          </div>
+
+          @if (grilleFermee(v) && session.peut('PRIX_CREER')) {
+            <p class="aide">
+              Le dernier palier n’a pas de limite haute : il couvre déjà toutes
+              les quantités au-delà. Retirez-le pour prolonger la grille.
+            </p>
+          }
         </section>
       }
     </div>
@@ -824,6 +814,47 @@
                 </p>
               </div>
             }
+          }
+
+          <!-- ==========================================================
+               DERNIÈRE ACTIVITÉ
+               ==========================================================
+               🎯 C'est ce qui répond à « POURQUOI N'EN RESTE-T-IL QUE
+               TROIS ? ». La quantité affichée au-dessus est une photo de
+               l'instant ; ces lignes sont les faits datés qui l'expliquent,
+               et elles ne s'effacent jamais.
+
+               Sans elles, un écart entre ce qu'on croit avoir et ce que le
+               système annonce n'a aucune explication consultable : on refait
+               un inventaire, on corrige, et la cause reste inconnue jusqu'à
+               la fois suivante.
+               -->
+          @if (mouvements().length > 0) {
+            <div class="journal">
+              <h3 class="journal__titre">Dernière activité</h3>
+              <ul class="journal__liste">
+                @for (m of mouvements().slice(0, 6); track m.id) {
+                  <li class="journal__ligne">
+                    <!-- Le signe porte l'information : « +20 » se distingue de
+                         « -3 » avant même qu'on ait lu de quel geste il
+                         s'agit. -->
+                    <span class="journal__quantite"
+                          [class.journal__quantite--sortie]="m.quantite < 0">
+                      @if (m.quantite > 0) { + }{{ m.quantite }}
+                    </span>
+                    <span class="journal__quoi">
+                      {{ libelleMouvement(m.type) }}
+                      @if (m.commentaire) {
+                        <span class="journal__note">{{ m.commentaire }}</span>
+                      }
+                    </span>
+                    <time class="journal__quand" [attr.datetime]="m.dateOperation">
+                      {{ quand(m.dateOperation) }}
+                    </time>
+                  </li>
+                }
+              </ul>
+            </div>
           }
         </section>
       }

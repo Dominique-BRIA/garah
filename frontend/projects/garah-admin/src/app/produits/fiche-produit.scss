@@ -257,107 +257,14 @@
 //    baisse dans le thème — une fois, pour tout le monde — et surtout pas une
 //    quatrième classe locale.
 
-// --- La grille tarifaire d'une déclinaison -----------------------------------
-//
-// 🎯 CE QUI RENDAIT LA FICHE ILLISIBLE N'ÉTAIT PAS LA DENSITÉ, C'ÉTAIT
-//    L'ABSENCE DE FRONTIÈRES.
-//
-// Prix et stock se suivaient, séparés par un simple filet à gauche et quatre
-// dixièmes de rem. Deux sujets différents, collés, se lisent comme un seul
-// bloc confus — et on ne sait plus ce qui commande quoi.
-//
-// Chaque sujet a maintenant son encart, son fond et son titre. L'écart entre
-// eux est plus grand que l'écart interne : c'est CE RAPPORT, pas la marge
-// absolue, qui fait voir deux choses au lieu d'une.
-.tarifs {
-  padding: 0.9rem 1rem;
-  margin-bottom: 0.9rem;
-  border: 1px solid var(--verre-bordure);
-  border-radius: var(--radius-md);
-  background: var(--surface-douce);
-}
-
-.tarifs__entete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.6rem;
-}
-
 // Petit, gras, espacé : trois signes qui disent « ceci nomme un bloc », sans
 // peser autant que le nom de la déclinaison juste au-dessus.
-.tarifs__titre {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--texte-attenue);
-}
-
-.tarifs__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.84rem;
-
-  th {
-    padding: 0 0.5rem 0.35rem;
-    text-align: left;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--texte-attenue);
-    border-bottom: 1px solid var(--verre-bordure);
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 0.4rem 0.5rem;
-    vertical-align: middle;
-    color: var(--texte-attenue);
-  }
-
-  // Les prix s'alignent verticalement : sans chiffres à largeur fixe, la
-  // colonne des montants ondule d'une ligne à l'autre.
-  .montant {
-    color: var(--texte);
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  // La colonne des gestes ne prend que sa place. Sans cela, elle s'étale et
-  // écarte le prix de sa plage.
-  th:last-child,
-  td:last-child { width: 1%; white-space: nowrap; }
-}
-
-.tarifs__ligne + .tarifs__ligne { border-top: 1px solid var(--verre-bordure); }
 
 // La ligne qu'on remplit se détache de celles qu'on lit : sans cela, on ne
 // voit pas laquelle est en cours de saisie dans une grille de cinq paliers.
-.tarifs__ligne--edition {
-  background: var(--champ-fond-actif);
-  box-shadow: inset 2px 0 0 var(--primary);
-}
 
 // Un champ dans une cellule : ni marge, ni largeur imposée. Les colonnes du
 // tableau décident, pas le champ.
-.tarifs__champ {
-  width: 100%;
-  min-width: 5rem;
-  padding: 0.35rem 0.55rem;
-  font-size: 0.84rem;
-}
-
-.tarifs__gestes {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.tarifs__aide { margin-top: 0.5rem; }
 
 .lien-action {
   display: inline-flex;
@@ -374,6 +281,172 @@
 
   &:hover { text-decoration: underline; }
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// --- Les paliers, en cartes --------------------------------------------------
+//
+// 🎯 UNE GRILLE DÉGRESSIVE SE LIT HORIZONTALEMENT : « à partir de combien ça
+//    baisse, et de combien ». Empilée en lignes, on comparait deux prix
+//    séparés de trois centimètres verticaux — ce que l'œil fait mal.
+//
+// auto-fit et non un nombre fixe de colonnes : trois paliers tiennent côte à
+// côte sur un écran de bureau, deux sur une tablette, un sur un téléphone. Un
+// palier écrasé à 8 rem ne se lit plus.
+.paliers-cartes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.palier {
+  display: flex;
+  flex-direction: column;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
+}
+
+.palier__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.palier__rang {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.palier__plage {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--texte-attenue);
+}
+
+// 🎯 LE PRIX EST LE SUJET DE LA CARTE, tout le reste le légende. C'est le
+//    CONTRASTE de taille — 1,45 rem contre 0,8 — et non la couleur, qui fait
+//    lire une rangée de prix d'un seul coup d'œil.
+.palier__prix {
+  margin: 0.35rem 0 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--texte);
+}
+
+.palier__champ {
+  margin-top: 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.palier__gestes {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.7rem;
+}
+
+// La carte en cours de saisie se détache : dans une rangée de quatre, on doit
+// voir laquelle attend quelque chose.
+.palier--saisie {
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  background: var(--champ-fond-actif);
+
+  .gu-libelle:not(:first-of-type) { margin-top: 0.6rem; }
+}
+
+// Un bouton dessiné comme une carte : il prolonge la rangée au lieu de flotter
+// à côté. Le trait discontinu dit « place à remplir » sans un mot.
+.palier--ajout {
+  align-items: flex-start;
+  gap: 0.3rem;
+  border-style: dashed;
+  background: none;
+  color: var(--texte-attenue);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover {
+    border-color: var(--primary);
+    color: var(--texte);
+  }
+
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// --- Le journal des mouvements -----------------------------------------------
+//
+// Ce qui répond à « pourquoi n'en reste-t-il que trois ? ». Les compteurs sont
+// une photo de l'instant ; ces lignes sont les faits datés qui l'expliquent.
+.journal {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--verre-bordure);
+}
+
+.journal__titre {
+  margin: 0 0 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+}
+
+.journal__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.journal__ligne {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  font-size: 0.8rem;
+
+  & + & { border-top: 1px solid var(--verre-bordure); }
+}
+
+// Le signe porte l'information : « +20 » se distingue de « -3 » avant même
+// qu'on ait lu de quel geste il s'agit.
+.journal__quantite {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--success);
+  white-space: nowrap;
+}
+
+.journal__quantite--sortie { color: var(--danger); }
+
+.journal__quoi {
+  color: var(--texte);
+  min-width: 0;
+}
+
+// Le commentaire de l'opération : « Livré aujourd'hui ». Il explique le geste,
+// il ne le nomme pas — donc plus petit et atténué.
+.journal__note {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--texte-attenue);
+}
+
+.journal__quand {
+  font-size: 0.72rem;
+  color: var(--texte-attenue);
+  white-space: nowrap;
 }
 
 // --- Les formulaires en ligne ------------------------------------------------
@@ -473,12 +546,12 @@
 
 // --- Le stock d'une déclinaison ----------------------------------------------
 //
-// Sous la grille tarifaire, dans le même bloc que la déclinaison : « combien
-// en reste-t-il ? » et « à quel prix ? » sont deux questions qu'on se pose
-// devant le même article.
-// Le MÊME encart que les tarifs : même cadre, même fond, même rayon. Deux
-// sujets voisins qui ne se ressemblent pas se lisent comme deux choses de
-// nature différente, et on se demande laquelle commande l'autre.
+// Dans la colonne latérale, en face du tableau : « combien en reste-t-il ? »
+// et « à quel prix ? » sont deux questions qu'on se pose devant le même
+// article, et il ne faut pas quitter la page pour répondre à la première.
+// Le MÊME encart que les cartes de paliers : même cadre, même fond, même
+// rayon. Deux sujets voisins qui ne se ressemblent pas se lisent comme deux
+// choses de nature différente, et on se demande laquelle commande l'autre.
 .stock {
   padding: 0.9rem 1rem;
   border: 1px solid var(--verre-bordure);

@@ -9,8 +9,10 @@ import {
   DetailProduit,
   EtatStock,
   Icone,
+  libelleMouvement,
   Manques,
   messageErreur,
+  MouvementStock,
   montantLisible,
   OptionCategorie,
   PalierPrix,
@@ -159,6 +161,9 @@ export class FicheProduit {
       next: (v) => {
         this.variantes.set(v);
         this.chargement.set(false);
+        // ⚠️ ICI et pas dans chargerStock() : l historique porte sur la
+        // SELECTION, qui n existe pas tant que la liste est vide.
+        this.chargerMouvements();
       },
       error: () => {
         // La fiche reste lisible sans ses déclinaisons : on n'efface pas ce
@@ -189,6 +194,59 @@ export class FicheProduit {
       next: (etats) => this.stocks.set(etats),
       error: () => this.stocks.set([]),
     });
+
+    // Apres une reception ou un inventaire, le journal a une ligne de plus.
+    // Au tout premier chargement la selection n existe pas encore : c est
+    // chargerVariantes() qui s en charge alors.
+    if (this.selection()) {
+      this.chargerMouvements();
+    }
+  }
+
+  /**
+   * L'historique de la déclinaison choisie.
+   *
+   * <p>🎯 C'est ce qui répond à « <b>pourquoi n'en reste-t-il que trois ?</b> ».
+   * La quantité courante est une photo de l'instant ; les mouvements sont les
+   * faits datés qui l'expliquent — et eux ne s'effacent jamais.</p>
+   *
+   * <p>Sans eux, un écart entre ce qu'on croit avoir et ce que le système
+   * annonce n'a aucune explication consultable : on refait un inventaire, on
+   * corrige, et la cause reste inconnue jusqu'à la fois suivante.</p>
+   */
+  protected readonly mouvements = signal<readonly MouvementStock[]>([]);
+
+  protected chargerMouvements(): void {
+    const v = this.selection();
+    if (!v || !this.session.peut('STOCK_CONSULTER')) {
+      this.mouvements.set([]);
+      return;
+    }
+
+    this.http.get<MouvementStock[]>(`/api/stock/${v.id}/mouvements`).subscribe({
+      // ⚠️ Silencieux en cas d'échec. L'historique est un complément : le
+      // faire échouer bruyamment ferait croire que le stock lui-même est
+      // cassé, alors que les compteurs sont là, justes et utilisables.
+      next: (liste) => this.mouvements.set(liste),
+      error: () => this.mouvements.set([]),
+    });
+  }
+
+  /** Le libellé d'un mouvement, en langage d'entrepôt. */
+  protected libelleMouvement = libelleMouvement;
+
+  /** Une date d'opération, écrite comme on la lit dans un journal. */
+  protected quand(iso: string): string {
+    const date = new Date(iso);
+    const aujourdhui = new Date();
+    const memeJour = date.toDateString() === aujourdhui.toDateString();
+    const heure = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    // « Aujourd'hui 10:45 » plutôt que la date complète : sur un journal
+    // qu'on consulte en travaillant, c'est l'écart au présent qui compte.
+    return memeJour
+      ? `Aujourd’hui ${heure}`
+      : `${date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} ${heure}`;
   }
 
   /** Le stock d'une déclinaison, ou `null` s'il n'a pas pu être lu. */
@@ -233,6 +291,7 @@ export class FicheProduit {
 
   protected choisir(varianteId: number): void {
     this.choisie.set(varianteId);
+    this.chargerMouvements();
   }
 
   // --- Ce que le bandeau annonce, avant d'entrer dans le détail ------------
