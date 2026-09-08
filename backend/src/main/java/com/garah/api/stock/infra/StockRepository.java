@@ -67,6 +67,10 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
     @Query("SELECT s FROM Stock s WHERE s.quantiteDisponible <= s.seuilAlerte")
     List<Stock> sousLeSeuil();
 
+    /** Le NOMBRE d alertes, sans charger les lignes : pour le tableau de bord. */
+    @Query("SELECT count(s) FROM Stock s WHERE s.quantiteDisponible <= s.seuilAlerte")
+    long compterSousLeSeuil();
+
     /**
      * Les stocks de plusieurs declinaisons, en <b>une</b> requete.
      *

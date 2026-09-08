@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Icone, Page, ServiceSession } from 'garah-ui';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Icone, ServiceSession } from 'garah-ui';
+import { Observable, catchError, of } from 'rxjs';
 
 /** Un indicateur affiché en carte. */
 interface Indicateur {
@@ -79,7 +79,7 @@ export class TableauBord {
       teinte: 'bleu',
       permission: 'MARCHAND_CONSULTER',
       lien: '/marchands',
-      source: () => this.compterPage('/api/marchands?taille=1'),
+      source: () => this.compterDirect('/api/marchands/nombre'),
     },
     {
       cle: 'categories',
@@ -88,7 +88,12 @@ export class TableauBord {
       teinte: 'violet',
       permission: 'CATEGORIE_PRODUIT_GERER',
       lien: '/categories',
-      source: () => this.compterListe('/api/categories'),
+      // ⚠️ /nombre, et non la longueur de /api/categories.
+      //
+      // Cette route rend un ARBRE : sa longueur, c'est le nombre de
+      // racines. Trois familles et quarante sous-categories affichaient
+      // « 3 » — un chiffre faux, pas seulement cher.
+      source: () => this.compterDirect('/api/categories/nombre'),
     },
     {
       cle: 'stock',
@@ -96,7 +101,7 @@ export class TableauBord {
       icone: 'triangle-exclamation',
       teinte: 'orange',
       permission: 'STOCK_CONSULTER',
-      source: () => this.compterListe('/api/stock/alertes'),
+      source: () => this.compterDirect('/api/stock/alertes/nombre'),
     },
     {
       cle: 'conversations',
@@ -110,7 +115,7 @@ export class TableauBord {
       // dossiers libres au milieu de ceux de toute l'équipe.
       lien: '/conversations',
       parametres: { statut: 'WAITING' },
-      source: () => this.compterListe('/api/conversations/file-attente'),
+      source: () => this.compterDirect('/api/conversations/file-attente/nombre'),
     },
     {
       cle: 'reclamations',
@@ -124,7 +129,7 @@ export class TableauBord {
       // le chiffre annonçait.
       lien: '/reclamations',
       parametres: { statut: 'OUVERTE' },
-      source: () => this.compterListe('/api/sav/reclamations/a-traiter'),
+      source: () => this.compterDirect('/api/sav/reclamations/a-traiter/nombre'),
     },
   ];
 
@@ -181,29 +186,18 @@ export class TableauBord {
   }
 
   /**
-   * Une route qui rend un nombre, et rien d'autre.
+   * La SEULE forme de lecture du tableau de bord : une requête, un nombre.
    *
-   * <p>La forme la moins chère : une requête HTTP, un {@code count(*)}. À
-   * préférer partout où une carte n'affiche qu'un chiffre — voir
-   * {@link #compterPage}, qui télécharge une page entière pour en lire le
-   * total.</p>
+   * <p>Les cartes ont longtemps lu des listes ou des pages pour n'en garder
+   * que la taille — six cartes, six réponses complètes traversant la
+   * Méditerranée pour six chiffres. Invisible en local, très visible depuis
+   * Douala.</p>
+   *
+   * <p>⚠️ Toute carte ajoutée ici a besoin d'une route de comptage côté API.
+   * Recompter une liste dans le navigateur est le raccourci qui a produit le
+   * « 3 catégories » d'un catalogue qui en comptait quarante.</p>
    */
   private compterDirect(url: string): Observable<number | null> {
     return this.http.get<number>(url).pipe(catchError(() => of(null)));
-  }
-
-  /** Le nombre total d'une page Spring, sans en télécharger le contenu. */
-  private compterPage(url: string): Observable<number | null> {
-    return this.http.get<Page<unknown>>(url).pipe(
-      map((page) => page.page.totalElements),
-      catchError(() => of(null)),
-    );
-  }
-
-  private compterListe(url: string): Observable<number | null> {
-    return this.http.get<unknown[]>(url).pipe(
-      map((liste) => liste.length),
-      catchError(() => of(null)),
-    );
   }
 }

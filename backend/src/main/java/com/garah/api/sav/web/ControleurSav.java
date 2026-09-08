@@ -85,6 +85,19 @@ public class ControleurSav {
     }
 
     /**
+     * Le nombre de reclamations qui attendent, et rien d autre.
+     *
+     * <p>Pour le tableau de bord, qui n affiche qu un chiffre.
+     * {@code /reclamations/a-traiter} rend la LISTE COMPLETE, dont le frontend ne lisait que
+     * la taille — toutes les lignes traversaient le reseau pour rien.</p>
+     */
+    @GetMapping("/reclamations/a-traiter/nombre")
+    @PreAuthorize("hasAuthority('RECLAMATION_CONSULTER')")
+    public long nombreATraiter() {
+        return reclamations.nombreATraiter();
+    }
+
+    /**
      * La liste du back-office.
      *
      * <p>Les plus <b>anciennes</b> d'abord — l'inverse des listes de

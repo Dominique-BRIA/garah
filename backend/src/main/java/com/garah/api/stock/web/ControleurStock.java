@@ -129,6 +129,19 @@ public class ControleurStock {
         return stock.alertes();
     }
 
+    /**
+     * Le nombre de declinaisons sous leur seuil, et rien d autre.
+     *
+     * <p>{@code /alertes} charge les lignes PUIS les enrichit du nom de chaque
+     * declinaison. Pour un chiffre sur une carte, c est deux requetes et une
+     * liste entiere qui traverse le reseau pour qu on en lise la taille.</p>
+     */
+    @GetMapping("/alertes/nombre")
+    @PreAuthorize("hasAuthority('STOCK_CONSULTER')")
+    public long nombreAlertes() {
+        return stock.nombreAlertes();
+    }
+
     /** Une entrée de marchandise : réception d'un réapprovisionnement. */
     @PostMapping("/{varianteId}/entrees")
     @PreAuthorize("hasAuthority('STOCK_ENTREE_ENREGISTRER')")

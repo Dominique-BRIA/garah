@@ -103,6 +103,12 @@ public class ServiceReclamation {
         return reclamations.findByStatutOrderByDateCreationAsc(StatutReclamation.OUVERTE);
     }
 
+    /** Combien de reclamations attendent, sans charger la liste. */
+    @Transactional(readOnly = true)
+    public long nombreATraiter() {
+        return reclamations.countByStatut(StatutReclamation.OUVERTE);
+    }
+
     /**
      * La liste du back-office, clients et commandes <b>nommés</b>.
      *

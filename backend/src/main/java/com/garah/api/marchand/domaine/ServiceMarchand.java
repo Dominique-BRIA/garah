@@ -89,6 +89,12 @@ public class ServiceMarchand {
         return page.map(VueMarchand::de);
     }
 
+    /** Combien de marchands, sans construire ni serialiser de page. */
+    @Transactional(readOnly = true)
+    public long nombre() {
+        return marchands.count();
+    }
+
     /**
      * Ceux qu'on peut associer à un nouveau produit.
      *

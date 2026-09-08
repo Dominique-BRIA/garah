@@ -202,6 +202,12 @@ public class ServiceConversation {
         return conversations.findByStatutOrderByDateCreationAsc(StatutConversation.WAITING);
     }
 
+    /** Combien de conversations attendent qu on les prenne, sans les charger. */
+    @Transactional(readOnly = true)
+    public long nombreEnFileDAttente() {
+        return conversations.countByStatut(StatutConversation.WAITING);
+    }
+
     /**
      * La liste du back-office, clients <b>nommés</b> et messages comptés.
      *

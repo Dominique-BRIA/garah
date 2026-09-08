@@ -41,6 +41,19 @@ public class ControleurMarchand {
     }
 
     /**
+     * Le nombre de marchands, et rien d autre.
+     *
+     * <p>Le tableau de bord lisait ce chiffre par {@code ?taille=1} en ne
+     * gardant que {@code totalElements} : une page construite, serialisee et
+     * transmise pour un entier.</p>
+     */
+    @GetMapping("/nombre")
+    @PreAuthorize("hasAuthority('MARCHAND_CONSULTER')")
+    public long nombre() {
+        return marchands.nombre();
+    }
+
+    /**
      * Ceux qu'on peut associer a un nouveau produit : les ACTIFS seulement.
      *
      * <p>Route distincte de la liste complete, et c'est volontaire. Melanger

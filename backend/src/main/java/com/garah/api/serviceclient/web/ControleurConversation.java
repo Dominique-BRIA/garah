@@ -129,6 +129,19 @@ public class ControleurConversation {
     }
 
     /**
+     * Le nombre de conversations en attente, et rien d autre.
+     *
+     * <p>Pour le tableau de bord, qui n affiche qu un chiffre.
+     * {@code /file-attente} rend la LISTE COMPLETE, dont le frontend ne lisait que
+     * la taille — toutes les lignes traversaient le reseau pour rien.</p>
+     */
+    @GetMapping("/file-attente/nombre")
+    @PreAuthorize("hasAuthority('CONVERSATION_CONSULTER')")
+    public long nombreEnFileDAttente() {
+        return conversations.nombreEnFileDAttente();
+    }
+
+    /**
      * La liste du back-office.
      *
      * <p>{@code miennes=true} ne renvoie que les dossiers de l'appelant. Le

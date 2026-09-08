@@ -264,6 +264,18 @@ public class ServiceStock {
     }
 
     /**
+     * Combien de declinaisons sous leur seuil — <b>rien d autre</b>.
+     *
+     * <p>{@link #alertes()} charge les lignes PUIS les enrichit du nom de la
+     * declinaison. Pour un chiffre affiche sur une carte, c est deux requetes
+     * et un aller-retour de donnees dont on ne garde que la taille.</p>
+     */
+    @Transactional(readOnly = true)
+    public long nombreAlertes() {
+        return stocks.compterSousLeSeuil();
+    }
+
+    /**
      * Le stock de toutes les déclinaisons d'un produit.
      *
      * <p>C'est ce que la fiche produit affiche. Sans cette route, la quantité

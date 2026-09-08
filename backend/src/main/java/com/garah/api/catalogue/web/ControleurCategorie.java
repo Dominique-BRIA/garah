@@ -37,6 +37,13 @@ public class ControleurCategorie {
         return categories.arbre();
     }
 
+    /** Le nombre de categories, pour une carte du tableau de bord. */
+    @GetMapping("/nombre")
+    @PreAuthorize("hasAuthority('CATEGORIE_PRODUIT_GERER')")
+    public long nombre() {
+        return categories.nombre();
+    }
+
     /** La liste a plat, pour une liste deroulante du back-office. */
     @GetMapping("/plates")
     @PreAuthorize("hasAuthority('CATEGORIE_PRODUIT_GERER')")

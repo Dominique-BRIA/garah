@@ -19,6 +19,9 @@ public interface ReclamationRepository extends JpaRepository<Reclamation, Long> 
 
     List<Reclamation> findByStatutOrderByDateCreationAsc(StatutReclamation statut);
 
+    /** Le NOMBRE, sans charger les lignes : pour le tableau de bord. */
+    long countByStatut(StatutReclamation statut);
+
     @Query(value = "SELECT nextval('reclamation_numero_seq')", nativeQuery = true)
     long prochainNumero();
 

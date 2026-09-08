@@ -62,6 +62,18 @@ public class ServiceCategorie {
                 .toList();
     }
 
+    /**
+     * Combien de catégories, toutes profondeurs confondues.
+     *
+     * <p>⚠️ Ce n'est PAS la longueur de {@link #arbre()}. Cette dernière ne
+     * compte que les racines : un catalogue de trois racines et quarante
+     * sous-catégories y annoncerait « 3 ».</p>
+     */
+    @Transactional(readOnly = true)
+    public long nombre() {
+        return categories.count();
+    }
+
     /** La liste à plat, pour une liste déroulante. */
     @Transactional(readOnly = true)
     public List<VueCategorie> listePlate() {

@@ -17,6 +17,9 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     List<Conversation> findByStatutOrderByDateCreationAsc(StatutConversation statut);
 
+    /** Le NOMBRE, sans charger les lignes : pour le tableau de bord. */
+    long countByStatut(StatutConversation statut);
+
     Page<Conversation> findByClientIdOrderByDateCreationDesc(Long clientId, Pageable pagination);
 
     Page<Conversation> findByResponsableIdAndStatut(Long responsableId,
