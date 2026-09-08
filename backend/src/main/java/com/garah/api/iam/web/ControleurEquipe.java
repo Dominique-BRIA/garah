@@ -129,13 +129,25 @@ public class ControleurEquipe {
             String telephone,
 
             /*
-             * Douze caracteres au minimum, comme a l'inscription. Un compte
-             * interne ouvre plus de portes qu'un compte client : il serait
-             * absurde de lui demander moins.
+             * ⚠️ Six caracteres, et c'est PEU. Choix explicite du 08/09/2026.
+             *
+             * Ce mot de passe est PROVISOIRE : il se dicte au telephone ou se
+             * recopie sur un papier, et douze caracteres rendaient ce geste
+             * penible au point qu'on creait des comptes en tapant n'importe
+             * quoi. Le seuil suit l'usage reel.
+             *
+             * Ce qui limite le risque : la personne qui le change ensuite,
+             * depuis son profil, passe par ServiceInscription et doit alors
+             * fournir DIX caracteres. Le seuil bas ne vaut donc que pour la
+             * fenetre entre la creation et la premiere connexion.
+             *
+             * ⚠️ Rien ne FORCE encore ce changement. Tant que ce n'est pas le
+             * cas, un compte peut vivre avec six caracteres — et un compte
+             * interne ouvre plus de portes qu'un compte client.
              */
             @NotBlank(message = "Le mot de passe est obligatoire.")
-            @Size(min = 12, max = 100,
-                  message = "Le mot de passe doit compter au moins 12 caracteres.")
+            @Size(min = 6, max = 100,
+                  message = "Le mot de passe doit compter au moins 6 caracteres.")
             String motDePasse,
 
             LocalDate dateEmbauche,
@@ -168,10 +180,11 @@ public class ControleurEquipe {
             Long profilPrincipalId) {
     }
 
+    /** La reinitialisation par un administrateur : meme geste, meme seuil. */
     public record DemandeMotDePasse(
             @NotBlank(message = "Le mot de passe est obligatoire.")
-            @Size(min = 12, max = 100,
-                  message = "Le mot de passe doit compter au moins 12 caracteres.")
+            @Size(min = 6, max = 100,
+                  message = "Le mot de passe doit compter au moins 6 caracteres.")
             String motDePasse) {
     }
 }

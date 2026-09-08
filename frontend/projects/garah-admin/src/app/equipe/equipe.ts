@@ -64,6 +64,8 @@ export class Equipe {
   protected readonly email = signal('');
   protected readonly telephone = signal('');
   protected readonly motDePasse = signal('');
+  /** Le mot de passe se transmet : on doit pouvoir le relire pour le dicter. */
+  protected readonly mdpVisible = signal(false);
   protected readonly dateEmbauche = signal('');
   protected readonly profilsChoisis = signal<readonly number[]>([]);
   protected readonly profilPrincipal = signal<number | null>(null);
@@ -119,6 +121,7 @@ export class Equipe {
     this.email.set('');
     this.telephone.set('');
     this.motDePasse.set('');
+    this.mdpVisible.set(false);
     this.dateEmbauche.set('');
     this.profilsChoisis.set([]);
     this.profilPrincipal.set(null);
@@ -134,6 +137,7 @@ export class Equipe {
     this.email.set(membre.email);
     this.telephone.set(membre.telephone ?? '');
     this.motDePasse.set('');
+    this.mdpVisible.set(false);
     this.dateEmbauche.set(membre.dateEmbauche ?? '');
     this.profilsChoisis.set(membre.profils.map((p) => p.id));
     this.profilPrincipal.set(membre.profils.find((p) => p.principale)?.id ?? null);
@@ -163,6 +167,36 @@ export class Equipe {
   }
 
   /**
+   * Ce qui empêche d'enregistrer, dit en une phrase — ou {@code null}.
+   *
+   * <p>🎯 <b>Un refus muet est pire qu'un refus.</b> Ces conditions
+   * désactivaient le bouton, sans un mot : un mot de passe de huit
+   * caractères le rendait inerte, on cliquait, rien ne se passait, et on
+   * concluait que la création de comptes était cassée.</p>
+   *
+   * <p>L'ordre compte : on annonce ce qui manque en premier dans le
+   * formulaire, sinon on renvoie quelqu'un vers le bas de l'écran alors
+   * qu'un champ du haut est vide.</p>
+   */
+  private blocage(): string | null {
+    if (!this.nom().trim()) {
+      return 'Le nom est obligatoire.';
+    }
+    if (!this.enEdition()) {
+      if (!this.email().trim()) {
+        return 'L’adresse e-mail est obligatoire : elle sert à se connecter.';
+      }
+      if (this.motDePasse().length < 6) {
+        return `Le mot de passe provisoire doit compter six caractères au moins — ${this.motDePasse().length} saisi(s).`;
+      }
+    }
+    if (this.type() === 'RESPONSABLE' && this.profilsChoisis().length === 0) {
+      return 'Un responsable a besoin d’au moins un profil : sans profil, il n’a aucun droit.';
+    }
+    return null;
+  }
+
+  /**
    * Enregistre — en une ou deux requêtes selon le cas.
    *
    * <p>À la modification d'un responsable, l'identité et les profils sont
@@ -174,6 +208,13 @@ export class Equipe {
     if (this.enregistrement()) {
       return;
     }
+
+    const empeche = this.blocage();
+    if (empeche) {
+      this.erreurFormulaire.set(empeche);
+      return;
+    }
+
     this.enregistrement.set(true);
     this.erreurFormulaire.set(null);
 

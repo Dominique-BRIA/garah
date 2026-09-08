@@ -31,6 +31,52 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
      */
     Page<Produit> findByStatut(StatutProduit statut, Pageable pagination);
 
+    /**
+     * La recherche de la VITRINE.
+     *
+     * <h2>Pourquoi elle ne cherche pas dans la reference</h2>
+     *
+     * <p>Contrairement a {@link #administration}, celle-ci porte sur le nom, le
+     * VENDEUR et la CATEGORIE. Un client cherche « chemise », « Ngono » ou
+     * « textile » ; il n a jamais vu la reference interne
+     * {@code 202020-CHA-ADIDAS}, et l y inclure ferait remonter des produits
+     * sur un code qui ne veut rien dire pour lui.</p>
+     *
+     * <p>⚠️ Marchand et CategorieProduit apparaissent en JOINTURE, pas en
+     * sous-requete : un produit a toujours exactement une categorie et un
+     * marchand, et une jointure interne suffit. Le premier est nomme en HQL
+     * seul — le catalogue ne connait pas l entite Marchand.</p>
+     *
+     * <p>Le tri vient du {@code Pageable} : l ecrire ici le figerait, alors que
+     * l appelant veut trier par nom ou par prix selon l ecran.</p>
+     */
+    @Query(value = """
+            SELECT p FROM Produit p
+              JOIN CategorieProduit c ON c.id = p.categorie.id
+              JOIN Marchand m ON m.id = p.marchandId
+             WHERE p.statut = :statut
+               AND (:categorieId IS NULL OR p.categorie.id = :categorieId)
+               AND (:recherche IS NULL
+                    OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
+                    OR LOWER(m.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
+                    OR LOWER(c.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+            """,
+            countQuery = """
+            SELECT count(p) FROM Produit p
+              JOIN CategorieProduit c ON c.id = p.categorie.id
+              JOIN Marchand m ON m.id = p.marchandId
+             WHERE p.statut = :statut
+               AND (:categorieId IS NULL OR p.categorie.id = :categorieId)
+               AND (:recherche IS NULL
+                    OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
+                    OR LOWER(m.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
+                    OR LOWER(c.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
+            """)
+    Page<Produit> vitrine(@Param("statut") StatutProduit statut,
+                          @Param("categorieId") Long categorieId,
+                          @Param("recherche") String recherche,
+                          Pageable pagination);
+
     Page<Produit> findByCategorieIdAndStatut(Long categorieId, StatutProduit statut, Pageable pagination);
 
     /**

@@ -51,6 +51,41 @@
   font-size: 0.7rem;
 }
 
+// --- Le mot de passe provisoire ----------------------------------------------
+// L oeil se pose DANS le champ, a droite. A cote, il passerait pour une action
+// sur le formulaire ; dedans, on lit qu il agit sur ce champ-la.
+.champ-mdp {
+  position: relative;
+
+  // La place de l oeil, sans quoi un mot de passe long passe dessous.
+  input { padding-right: 2.8rem; }
+}
+
+.champ-mdp__oeil {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--texte-attenue);
+  font-size: 0.9rem;
+  cursor: pointer;
+
+  &:hover { color: var(--texte); background: var(--surface-douce); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// Tant que le compte n y est pas, l aide devient un avertissement. Elle porte
+// deja le nombre saisi : le defaut se lit sans avoir a compter.
+.aide--manque { color: var(--warning); }
+
 // --- Le tableau --------------------------------------------------------------
 .cellule-personne {
   display: flex;

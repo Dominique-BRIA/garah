@@ -7,7 +7,10 @@
   </div>
 
   <div class="actions">
-    <a routerLink="/profils" class="gu-btn gu-btn--secondaire">
+    <!-- En vert et non en gris : c'est ici que se règle ce qu'un compte a le
+         droit de faire, et on l'oublie parce qu'on vient sur cet écran pour
+         les PERSONNES. Créer un responsable sans profil ne donne rien. -->
+    <a routerLink="/profils" class="gu-btn gu-btn--vert">
       <gu-icone nom="sitemap" /> Profils
     </a>
     @if (session.peut('RESPONSABLE_CREER')) {
@@ -213,10 +216,24 @@
         <p class="aide">Sert à se connecter. Elle devra être confirmée.</p>
 
         <label class="gu-libelle" for="mdp">Mot de passe provisoire</label>
-        <input id="mdp" name="motDePasse" type="password" class="gu-champ" required
-               minlength="12" autocomplete="new-password"
-               [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)" />
-        <p class="aide">Douze caractères au moins. À communiquer à la personne.</p>
+        <!-- ⚠️ Ce mot de passe se TRANSMET : il faut le lire pour le dicter ou
+             le recopier. Le masquer sans recours fait taper à l'aveugle un
+             texte qu'on devra de toute façon communiquer. -->
+        <div class="champ-mdp">
+          <input id="mdp" name="motDePasse" class="gu-champ" required
+                 [type]="mdpVisible() ? 'text' : 'password'"
+                 minlength="6" autocomplete="new-password"
+                 [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)" />
+          <button type="button" class="champ-mdp__oeil"
+                  [attr.aria-label]="mdpVisible() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                  [attr.aria-pressed]="mdpVisible()"
+                  (click)="mdpVisible.set(!mdpVisible())">
+            <gu-icone [nom]="mdpVisible() ? 'eye-slash' : 'eye'" />
+          </button>
+        </div>
+        <p class="aide" [class.aide--manque]="motDePasse().length > 0 && motDePasse().length < 6">
+          Six caractères au moins — {{ motDePasse().length }} saisi(s). Provisoire : à communiquer à la personne, qui le changera depuis son profil.
+        </p>
       }
 
       <label class="gu-libelle" for="tel">Téléphone</label>
@@ -275,10 +292,13 @@
 
       <div class="boutons">
         <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
+        <!-- ⚠️ Le bouton n'est PLUS désactivé sur les champs manquants.
+             Il l'était, et un mot de passe trop court le rendait inerte SANS
+             RIEN DIRE : on cliquait, il ne se passait rien, et on concluait
+             que la création ne marchait pas. Un refus muet est pire qu'un
+             refus. On clique, et on obtient une phrase. -->
         <button type="submit" class="gu-btn gu-btn--primaire"
-                [disabled]="enregistrement() || !nom()
-                            || (!enEdition() && (!email() || motDePasse().length < 12))
-                            || (type() === 'RESPONSABLE' && profilsChoisis().length === 0)">
+                [disabled]="enregistrement()">
           @if (enregistrement()) {
             <gu-icone nom="circle-notch" tourne /> Enregistrement…
           } @else if (enEdition()) {

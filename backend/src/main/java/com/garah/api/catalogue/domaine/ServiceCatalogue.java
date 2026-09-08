@@ -691,14 +691,24 @@ public class ServiceCatalogue {
     // dans une réponse JSON.
     // -------------------------------------------------------------------------
 
-    /** Le catalogue public : uniquement les produits publiés. */
+    /**
+     * Le catalogue public : uniquement les produits publiés.
+     *
+     * <p>La recherche porte sur le nom, le <b>vendeur</b> et la
+     * <b>catégorie</b> — ce qu'un client a en tête. Elle ignore la référence
+     * interne, qu'il n'a jamais vue.</p>
+     *
+     * <p>🎯 <b>Elle est faite par la base, pas par le navigateur.</b> Filtrer
+     * côté client ne porterait que sur la page reçue : un article de la page
+     * suivante ne remonterait jamais, et le visiteur conclurait qu'il n'existe
+     * pas. C'est le genre de rustine qui tient tant que le catalogue est
+     * petit, et qui ment dès qu'il grandit.</p>
+     */
     @Transactional(readOnly = true)
-    public Page<ResumeProduit> catalogue(Long categorieId, Pageable pagination) {
-        Page<Produit> resultats = (categorieId == null)
-                ? produits.findByStatut(StatutProduit.PUBLIE, pagination)
-                : produits.findByCategorieIdAndStatut(categorieId, StatutProduit.PUBLIE, pagination);
+    public Page<ResumeProduit> catalogue(Long categorieId, String recherche, Pageable pagination) {
+        String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
 
-        return enrichir(resultats);
+        return enrichir(produits.vitrine(StatutProduit.PUBLIE, categorieId, filtre, pagination));
     }
 
     /**

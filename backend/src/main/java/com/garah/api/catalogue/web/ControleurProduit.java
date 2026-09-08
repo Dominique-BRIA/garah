@@ -48,14 +48,25 @@ public class ControleurProduit {
         this.catalogue = catalogue;
     }
 
-    /** Le catalogue public. Aucune authentification : la vitrine est ouverte. */
+    /**
+     * Le catalogue public. Aucune authentification : la vitrine est ouverte.
+     *
+     * <p>La recherche porte sur le nom, le <b>vendeur</b> et la
+     * <b>catégorie</b> — ce qu'un client a en tête. Pas sur la référence
+     * interne, qu'il n'a jamais vue.</p>
+     *
+     * <p>🎯 Elle est faite par la <b>base</b>. Laisser la vitrine filtrer la
+     * page reçue donnerait une recherche qui ne trouve pas ce qui est en page
+     * deux — et le visiteur en conclurait que l'article n'existe pas.</p>
+     */
     @GetMapping
     public Page<ResumeProduit> catalogue(
             @RequestParam(required = false) Long categorieId,
+            @RequestParam(required = false) String recherche,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int taille) {
 
-        return catalogue.catalogue(categorieId, PageRequest.of(
+        return catalogue.catalogue(categorieId, recherche, PageRequest.of(
                 Math.max(page, 0),
                 Math.clamp(taille, 1, TAILLE_MAX),
                 Sort.by("nom")));

@@ -212,13 +212,53 @@ class ServiceCatalogueTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("la vitrine cherche par nom, par vendeur et par catégorie")
+    void rechercheVitrine() {
+        Long id = creerChemise().id();
+        donnerUnPrix(id);
+        catalogue.ajouterMedia(id, TypeMedia.PHOTO, "produits/1/photo.jpg", true);
+        catalogue.publier(id);
+        em.flush();
+
+        // 🎯 Ce test exécute réellement les deux jointures de la requête —
+        //    Marchand y est nommé en HQL seul, sans import. Une @Query cassée
+        //    n'échouerait qu'au moment de l'appel.
+        assertThat(trouves("chemise")).contains(id);
+
+        // Le VENDEUR : « qui vend ça ? » est une recherche courante sur une
+        // place de marché.
+        assertThat(trouves("Marchand catalogue")).contains(id);
+
+        // La CATÉGORIE.
+        assertThat(trouves("Vêtements de test")).contains(id);
+
+        // ⚠️ Mais PAS la référence interne : le client ne l'a jamais vue, et
+        //    l'inclure ferait remonter des produits sur un code qui ne veut
+        //    rien dire pour lui.
+        assertThat(trouves("REF-CAT-001")).doesNotContain(id);
+
+        assertThat(trouves("INTROUVABLE-XYZ")).isEmpty();
+
+        // Une recherche vide ne filtre rien — et surtout ne rend pas zéro
+        // résultat, ce qui viderait le catalogue au chargement.
+        assertThat(trouves("   ")).contains(id);
+        assertThat(trouves(null)).contains(id);
+    }
+
+    private java.util.List<Long> trouves(String recherche) {
+        return catalogue.catalogue(null, recherche, PageRequest.of(0, 25)).getContent().stream()
+                .map(ResumeProduit::id)
+                .toList();
+    }
+
+    @Test
     @DisplayName("la liste d'administration montre les brouillons, la vitrine non")
     void administrationMontreLesBrouillons() {
         DetailProduit brouillon = creerChemise();
         em.flush();
 
         // La vitrine ne montre que le publié : un brouillon n'y a rien à faire.
-        assertThat(catalogue.catalogue(null, PageRequest.of(0, 10)).getContent())
+        assertThat(catalogue.catalogue(null, null, PageRequest.of(0, 10)).getContent())
                 .extracting(ResumeProduit::id)
                 .doesNotContain(brouillon.id());
 

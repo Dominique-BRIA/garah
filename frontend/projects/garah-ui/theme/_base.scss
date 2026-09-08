@@ -336,6 +336,25 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/**
+ * Le second geste d'un écran, celui qu'on ne veut pas laisser passer.
+ *
+ * <p>⚠️ Ce n'est PAS une confirmation ni un « c'est réussi ». Il se pose à
+ * côté du bouton principal, sur l'action qu'on oublierait sinon — et il ne
+ * doit rester qu'un par écran. Deux couleurs vives côte à côte ne mettent
+ * plus rien en avant : elles se neutralisent.</p>
+ */
+.gu-btn--vert {
+  background: var(--success);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--success) 30%, transparent);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--success) 45%, transparent);
+  }
+}
+
 // --- Tableaux ----------------------------------------------------------------
 //
 // Les lignes « flottent » : `border-collapse: separate` avec un espacement
