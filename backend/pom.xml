@@ -39,6 +39,26 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Le temps réel des messages.
+
+             🎯 SANS LUI, UN MESSAGE REÇU N'APPARAÎT QU'AU RECHARGEMENT.
+                C'était le cas jusqu'ici : les conversations client comme les
+                échanges internes passaient par de simples POST, et l'écran
+                d'en face ne savait rien tant qu'on ne le rafraîchissait pas.
+
+             ⚠️ WebSocket et NON un sondage périodique. Un back-office ouvert
+                huit heures par jour qui redemande toutes les cinq secondes,
+                c'est près de six mille requêtes par poste et par jour — pour
+                apprendre presque toujours qu'il ne s'est rien passé.
+
+             STOMP par-dessus, plutôt que des trames brutes : il apporte les
+             destinations nommées et l'adressage par utilisateur, qu'il aurait
+             fallu réécrire à la main. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Envoi d'e-mails, par SMTP.
 
              ⚠️ SMTP et NON l'API d'un fournisseur, et c'est un choix (D-23).
