@@ -1,0 +1,40 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/firebase-messaging-sw.js",
+      "/favicon.ico",
+      "/favicon.svg",
+      "/*.js",
+      "/*.css",
+      "/*.json",
+      "/*.txt",
+      "/*.woff2",
+      "/*.{png,jpg,jpeg,webp,gif,svg,ico}"
+    ]
+  },
+  "routes": [
+    {
+      "route": "/firebase-messaging-sw.js",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
+      "route": "/index.html",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      }
+    }
+  ],
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Robots-Tag": "noindex, nofollow"
+  },
+  "mimeTypes": {
+    ".json": "application/json",
+    ".webmanifest": "application/manifest+json"
+  }
+}

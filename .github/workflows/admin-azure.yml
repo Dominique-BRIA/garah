@@ -1,0 +1,98 @@
+# =============================================================================
+# Le back-office sur Azure Static Web Apps — l'offre GRATUITE
+# =============================================================================
+# 🎯 CE WORKFLOW EXISTE POUR COMPARER, PAS POUR REMPLACER.
+#
+#    Le back-office part aussi sur Vercel (voir vercel.json). Les deux tournent
+#    en parallèle le temps de mesurer lequel répond le mieux depuis Douala et
+#    Bangui — ce qui ne se devine pas depuis une carte de points de présence :
+#    ce qui compte est le chemin réel, pas le nombre de villes annoncées.
+#
+#    Une fois le choix fait, on SUPPRIME l'autre. Deux déploiements d'une même
+#    application qui vivent côte à côte finissent par diverger, et un jour
+#    quelqu'un teste sur celui qui n'est plus servi.
+#
+# -----------------------------------------------------------------------------
+# ⚠️ IL FAUT CONSTRUIRE garah-ui EN PREMIER
+# -----------------------------------------------------------------------------
+# `garah-admin` importe la bibliothèque depuis `dist/garah-ui`, pas depuis ses
+# sources. Sans cette étape, la compilation échoue sur un module introuvable —
+# et en local, pire : elle réussit sur une version PÉRIMÉE de la bibliothèque,
+# donc le déploiement ne contient pas ce qu'on vient d'écrire.
+#
+# -----------------------------------------------------------------------------
+# ⚠️ CE QU'IL FAUT POSER AVANT QUE ÇA MARCHE
+# -----------------------------------------------------------------------------
+# 1. Créer la ressource : portail Azure > Static Web Apps > Créer, offre
+#    **Gratuit**, source « Autre » — surtout pas « GitHub », qui écrirait son
+#    propre workflow à côté de celui-ci.
+#
+# 2. Copier le jeton de déploiement dans les secrets du dépôt, sous
+#    AZURE_STATIC_WEB_APPS_API_TOKEN_ADMIN.
+#
+# 3. Ajouter le domaine obtenu à GARAH_CORS_ORIGINS, dans les réglages de
+#    l'App Service `garah-api`. ⚠️ Sans cela, le back-office s'affiche
+#    parfaitement et TOUS les appels échouent — le symptôme est une erreur
+#    réseau, qui fait chercher du côté du navigateur alors que le serveur
+#    répond très bien.
+# =============================================================================
+
+name: Back-office — Azure
+
+on:
+  push:
+    branches: [main]
+    # Le backend ne déclenche rien ici : il a son propre workflow, et un
+    # déploiement de frontend pour un changement de SQL est du temps de
+    # machine dépensé pour rien.
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/admin-azure.yml'
+  workflow_dispatch:
+
+jobs:
+  deployer:
+    name: Construire et déployer
+    runs-on: ubuntu-latest
+    # Sans jeton, l'action échoue avec un message peu clair. On saute plutôt,
+    # ce qui laisse le dépôt vert tant que la ressource n'existe pas.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.AZURE_SWA_ADMIN_ACTIVE == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # ⚠️ `npm ci` et non `npm install` : il installe EXACTEMENT ce que
+      #    package-lock.json fige. `install` peut résoudre une version plus
+      #    récente et déployer autre chose que ce qui a été testé.
+      - name: Dépendances
+        run: npm ci
+        working-directory: frontend
+
+      # ⚠️ D'ABORD la bibliothèque. Voir l'en-tête : sans elle, l'application
+      #    ne compile pas — ou compile contre une version périmée.
+      - name: Construire garah-ui
+        run: npx ng build garah-ui
+        working-directory: frontend
+
+      - name: Construire le back-office
+        run: npx ng build garah-admin
+        working-directory: frontend
+
+      - name: Déployer
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ADMIN }}
+          action: upload
+          # ⚠️ `skip_app_build` est indispensable : sans lui, l'action relance
+          #    sa propre détection Oryx, qui ne connaît ni le `frontend/` de ce
+          #    dépôt ni l'ordre de construction des deux projets.
+          skip_app_build: true
+          app_location: 'frontend/dist/garah-admin/browser'
+          api_location: ''
+          output_location: ''
