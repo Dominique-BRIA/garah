@@ -22,25 +22,46 @@
   line-height: 1.55;
 }
 
+// --- Le bandeau de periode ----------------------------------------------------
+// Moins haut que celui du dessus : il ne porte pas de titre, seulement le
+// selecteur et les dates qu'il produit.
+.bandeau--filtres { padding: 0.9rem 1.1rem; }
+
 // --- Les exports -------------------------------------------------------------
 // Une couleur par format, comme dans la reference : rouge pour le PDF, bleu
 // pour Word, vert pour le tableur. Ce sont les couleurs que ces trois
 // applications portent elles-memes depuis vingt ans — on ne les invente pas,
 // on s'appuie sur ce que l'oeil sait deja.
 .export {
+  gap: 0.6rem;
+  padding: 0.55rem 1.1rem;
   color: #fff;
   background: var(--couleur-format);
   border: 1px solid var(--couleur-format);
+  box-shadow: 0 4px 14px -4px var(--couleur-format);
 
   &:hover:not(:disabled) {
     // Assombri plutot que teinte : le format doit rester reconnaissable au
     // survol, sinon le bouton change d'identite sous le curseur.
     background: color-mix(in srgb, var(--couleur-format) 85%, #000);
+    transform: translateY(-1px);
   }
 
   // Sans cela les trois boutons gardent leur couleur pleine pendant l'ecriture
   // et rien ne distingue celui qui travaille de ceux qu'on ne peut plus cliquer.
-  &:disabled { opacity: 0.5; }
+  &:disabled { opacity: 0.5; box-shadow: none; }
+
+  // L'icone dans son propre carre clair, comme sur la reference. Elle se
+  // detache du fond plein, qui sinon l'avale.
+  //
+  // content-box : le composant se donne 1em de cote, et sans cela le fond
+  // rognerait le trace au lieu de l'entourer.
+  gu-icone {
+    box-sizing: content-box;
+    padding: 0.3rem;
+    border-radius: 7px;
+    background: rgb(255 255 255 / 22%);
+  }
 }
 
 .export--pdf     { --couleur-format: #dc2626; }
@@ -55,12 +76,29 @@
   margin-bottom: 1.5rem;
 }
 
-// Le filet de couleur en haut de la carte, repris de la reference. Il ne
-// remplace pas la pastille, il la PROLONGE : la teinte se lit alors sur toute
-// la largeur, et une colonne de cartes se distingue au premier coup d'oeil.
+// La barre de couleur en haut de la carte, comme sur la reference. Elle ne
+// remplace pas la pastille, elle la PROLONGE : la teinte se lit alors sur
+// toute la largeur, et une rangee de cartes se distingue au premier coup
+// d'oeil, avant meme d'avoir lu une etiquette.
+//
+// En ::before plutot qu'en border-top : une bordure reste plate et carree,
+// la barre suit le rayon de la carte et porte un degrade.
 .chiffre {
-  padding: 1.25rem;
-  border-top: 2px solid var(--teinte);
+  position: relative;
+  padding: 1.4rem 1.25rem 1.25rem;
+  overflow: hidden;   // sans quoi la barre depasse des angles arrondis
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: linear-gradient(
+      90deg,
+      var(--teinte),
+      color-mix(in srgb, var(--teinte) 40%, transparent)
+    );
+  }
 }
 
 // L'etiquette et l'icone sur une meme ligne, l'icone poussee a droite. Le

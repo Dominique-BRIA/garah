@@ -206,6 +206,102 @@
   font-size: 0.95rem;
 }
 
+// =============================================================================
+// Le bandeau : ce qu'on fait, et de quoi
+// =============================================================================
+// Une carte qui pose un SUJET à gauche — icône, titre, phrase — et ses actions
+// à droite.
+//
+// 🎯 Ce que la phrase apporte : trois boutons « PDF / Word / Excel » alignés
+// dans une barre ne disent pas le PDF de QUOI. Ici le bandeau le dit, et il
+// peut le dire parce qu'il ne sert qu'à ça.
+// =============================================================================
+.bandeau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 1.35rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.bandeau__sujet {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  // Sans cela une phrase longue pousse les boutons hors de la carte au lieu
+  // de passer a la ligne.
+  min-width: 0;
+}
+
+.bandeau__titre {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.bandeau__texte {
+  margin: 0.2rem 0 0;
+  font-size: 0.86rem;
+  color: var(--texte-attenue);
+  line-height: 1.5;
+}
+
+/** La meme phrase, mais seule dans son bandeau : plus de titre au-dessus. */
+.bandeau__texte--seul { margin: 0; }
+
+.bandeau__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+// =============================================================================
+// Le bloc segmenté
+// =============================================================================
+// Des choix EXCLUSIFS, posés sur un rail commun : sept jours OU trente, jamais
+// les deux.
+//
+// ⚠️ À ne pas confondre avec `.filtre`, qui a l'air proche et ne dit pas la
+// même chose. Une pastille répond « oui ou non » et plusieurs peuvent être
+// vraies en même temps — « Ouverte » ET « En cours ». Le rail, lui, annonce
+// qu'il n'y a qu'une réponse, et il l'annonce AVANT qu'on ait lu les
+// libellés. Choisir l'un pour l'autre fait mentir la forme.
+// =============================================================================
+.segments {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
+  border: 1px solid var(--verre-bordure);
+}
+
+.segment {
+  padding: 0.5rem 1.15rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--texte-attenue);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+
+  &:hover:not(.segment--actif) { color: var(--texte); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.segment--actif {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: var(--ombre-large);
+}
+
 // --- Etats : erreur, chargement, vide ----------------------------------------
 .etat {
   text-align: center;

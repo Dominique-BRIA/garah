@@ -1,15 +1,15 @@
 <header class="entete">
   <div>
     <h1>Statistiques</h1>
-    <p class="sous-titre">
-      @if (chargement()) { Chargement… } @else { {{ periodeLisible() }} }
-    </p>
+    <!-- Ce que l'écran EST. Les dates exactes, elles, sont écrites en face du
+         sélecteur qui les produit : les répéter ici obligerait à comparer
+         deux endroits pour savoir ce qu'on regarde. -->
+    <p class="sous-titre">Ce que le catalogue a produit sur la période</p>
   </div>
 
-  <!-- ⚠️ Ces deux actions sont dans la PREMIÈRE bande, pas dans la barre
-       d'outils : elles portent sur l'écran entier, pas sur la période
-       choisie. Posées en face des filtres, elles se liraient comme un
-       filtre de plus. -->
+  <!-- Actualiser est ici, et l'export dans son propre bandeau : recharger
+       porte sur l'écran entier, exporter sur la période choisie. Les mettre
+       côte à côte les ferait passer pour des actions du même ordre. -->
   <div class="actions">
     <button type="button" class="gu-btn gu-btn--secondaire"
             (click)="charger()" [disabled]="chargement()">
@@ -18,26 +18,32 @@
   </div>
 </header>
 
-<div class="barre-outils">
-  <div class="barre-outils__groupe">
-    <nav class="filtres" aria-label="Période">
-      @for (p of periodes; track p.jours) {
-        <button type="button" class="filtre" [class.filtre--actif]="jours() === p.jours"
-                (click)="changerPeriode(p.jours)">
-          {{ p.libelle }}
-        </button>
-      }
-    </nav>
+<!-- ================================================================== -->
+<!-- Le bandeau d'export                                                 -->
+<!-- ================================================================== -->
+<!-- Un bandeau à lui seul, et non trois boutons posés dans une barre : le
+     titre et la phrase disent CE QU'ON EMPORTE. Sans eux, « PDF » ne
+     répond pas à la question « le PDF de quoi ? » — et le bilan compte
+     trois tableaux, dont deux ne sont pas à l'écran en entier.
+
+     Trois boutons visibles plutôt qu'un menu : le format voulu est déjà
+     connu quand on vient chercher son fichier ; un menu ferait cliquer
+     deux fois pour la même chose. -->
+<section class="gu-carte bandeau">
+  <div class="bandeau__sujet">
+    <span class="pastille pastille--petite teinte--violet">
+      <gu-icone nom="chart-pie" />
+    </span>
+    <div>
+      <h2 class="bandeau__titre">Emporter le bilan</h2>
+      <p class="bandeau__texte">
+        Les totaux, le détail jour par jour et le classement des produits,
+        sur la période choisie ci-dessous.
+      </p>
+    </div>
   </div>
 
-  <!-- Les exports sont à DROITE de la barre d'outils, en face des filtres :
-       ils écrivent exactement la période sélectionnée à gauche. Placés en
-       haut avec « Actualiser », rien ne dirait qu'ils dépendent d'elle.
-
-       Trois boutons visibles plutôt qu'un menu déroulant : le format voulu
-       est déjà connu au moment où l'on vient chercher son fichier, et un
-       menu ferait cliquer deux fois pour la même chose. -->
-  <div class="barre-outils__groupe exports">
+  <div class="bandeau__actions">
     <button type="button" class="gu-btn export export--pdf"
             (click)="exporter('pdf')" [disabled]="chargement() || !bilan() || action() !== null">
       @if (action() === 'pdf') {
@@ -45,7 +51,7 @@
       } @else {
         <gu-icone nom="download" />
       }
-      PDF
+      Exporter PDF
     </button>
 
     <button type="button" class="gu-btn export export--word"
@@ -55,7 +61,7 @@
       } @else {
         <gu-icone nom="download" />
       }
-      Word
+      Exporter Word
     </button>
 
     <button type="button" class="gu-btn export export--tableur"
@@ -65,10 +71,34 @@
       } @else {
         <gu-icone nom="download" />
       }
-      Excel
+      Exporter Excel
     </button>
   </div>
-</div>
+</section>
+
+<!-- ================================================================== -->
+<!-- Le bandeau de période                                               -->
+<!-- ================================================================== -->
+<!-- ⚠️ Un bloc segmenté, et non les pastilles des autres écrans.
+     Une pastille répond « oui ou non » et plusieurs peuvent être vraies
+     à la fois ; ces trois-là sont EXCLUSIVES — on regarde sept jours OU
+     trente. Le rail commun le dit à l'œil avant qu'on ait lu les
+     libellés, et c'est ce que fait la référence. -->
+<section class="gu-carte bandeau bandeau--filtres">
+  <div class="segments" role="group" aria-label="Période observée">
+    @for (p of periodes; track p.jours) {
+      <button type="button" class="segment" [class.segment--actif]="jours() === p.jours"
+              [attr.aria-pressed]="jours() === p.jours"
+              (click)="changerPeriode(p.jours)">
+        {{ p.libelle }}
+      </button>
+    }
+  </div>
+
+  <p class="bandeau__texte bandeau__texte--seul">
+    @if (!chargement()) { {{ periodeLisible() }} }
+  </p>
+</section>
 
 @if (erreur(); as m) {
   <div class="gu-carte etat" role="alert">
