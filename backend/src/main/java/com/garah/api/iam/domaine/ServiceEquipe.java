@@ -94,6 +94,26 @@ public class ServiceEquipe {
                 .toList();
     }
 
+    /**
+     * Les membres d'un service — c'est-à-dire d'un profil.
+     *
+     * <p>Le chef y figure : il est membre de son propre service, et l'écran
+     * « mon service » serait étrange sans lui.</p>
+     *
+     * <p>⚠️ Le contrôle de qui a le droit de lire cette liste n'est PAS ici :
+     * il vit dans {@link ServiceHierarchie}, seul à connaître l'appelant. Un
+     * service qui vérifierait des permissions ne pourrait plus être appelé
+     * depuis un test sans monter une session.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<VueMembre> membresDu(Long categorieId) {
+        return responsables.chargerToutAvecCategories().stream()
+                .filter(r -> r.getCategories().stream()
+                        .anyMatch(rc -> rc.getCategorie().getId().equals(categorieId)))
+                .map(r -> VueMembre.de(r, stockage::urlPublique))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public VueMembre detail(Long id) {
         return responsables.chargerAvecCategories(id)
