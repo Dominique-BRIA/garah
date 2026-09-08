@@ -262,8 +262,29 @@ demandent que le SDK Flutter.
 
 | Écran | État |
 |---|---|
-| Passer commande, paiement | ✅ web · ⬜ mobile |
-| Liste d'envies, retours, réclamations, discussions | ✅ web · ⬜ mobile |
-| Détail d'une commande et code de retrait | ✅ web · ⬜ mobile (la liste seule) |
+| Accueil, catalogue, fiche produit | ✅ web · ✅ mobile |
+| Panier, passer commande, paiement | ✅ web · ✅ mobile |
+| Suivi public d un colis | ✅ web · ✅ mobile |
+| Détail d une commande et code de retrait | ✅ web · ✅ mobile |
+| Liste d envies | ✅ web · ✅ mobile |
+| Réclamations et retours | ✅ web (ouverture comprise) · ⚠️ mobile en **lecture seule** |
+| Discussions et négociation | ✅ web · ⚠️ mobile : la **liste seule** |
 | Police Outfit embarquée | ⬜ les fichiers ne sont pas au dépôt ; le mobile prend la police système en attendant |
-| Partage d'une fiche | ✅ web (`navigator.share`) · ⬜ mobile (demande un greffon natif) |
+| Partage d une fiche | ✅ web (`navigator.share`) · ⬜ mobile (demande un greffon natif) |
+
+⚠️ **Deux écrans sont volontairement en lecture seule sur mobile.**
+
+Ce n est pas un travail laissé en plan, c est un choix qu on peut défaire :
+
+- **Ouvrir une réclamation ou demander un retour** suppose de choisir des
+  lignes de commande, des quantités et un état déclaré par article. Sur un
+  écran de téléphone, le formulaire tient sur trois hauteurs d écran, et une
+  demande mal remplie coûte un aller-retour de plus au service client — ce
+  qu on cherchait précisément à éviter.
+- **Une négociation** se lit en comparant des chiffres et des dates. Sur
+  téléphone, la moitié de l information sort du cadre, et on accepte un prix
+  sans avoir vu celui d avant.
+
+Les deux listes, elles, sont bien là : elles répondent à la seule question
+qu on se pose en mobilité — « où en est mon dossier ? », « m a-t-on
+répondu ? »
