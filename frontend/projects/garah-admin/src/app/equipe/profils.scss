@@ -202,3 +202,86 @@
   font-size: 0.66rem;
   color: var(--texte-attenue);
 }
+
+// --- Le chef de service ------------------------------------------------------
+.chef {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--verre-bordure);
+  font-size: 0.85rem;
+}
+
+.chef__libelle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--texte-attenue);
+}
+
+.chef__nom { font-weight: 600; }
+
+// « Aucun » n'est pas une erreur : gris comme le libelle, et non en rouge.
+.chef__vide { color: var(--texte-attenue); font-style: italic; }
+
+.lien-chef {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// --- Le choix du chef --------------------------------------------------------
+.candidats {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.candidat {
+  width: 100%;
+  // 44 px comme partout : une liste de choix se rate autant qu'un bouton.
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--champ-bordure);
+  border-radius: var(--radius-md);
+  background: var(--surface-douce);
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+
+  &:hover { border-color: var(--primary-light); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+// Celui qui dirige deja : on le montre, mais on ne le cache pas. Le recliquer
+// ne casse rien — la nomination est idempotente.
+.candidat--actuel {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.candidat__etat {
+  font-size: 0.75rem;
+  color: var(--primary);
+  white-space: nowrap;
+}

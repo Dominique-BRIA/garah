@@ -69,6 +69,15 @@ export interface ProfilMetierResume {
   readonly description: string | null;
   readonly statut: 'ACTIF' | 'INACTIF';
   readonly principale: boolean | null;
+
+  /**
+   * Cette personne DIRIGE ce service.
+   *
+   * ⚠️ Le drapeau vit sur l'AFFECTATION, pas sur le profil : un profil n'est
+   *    chef de rien, c'est une personne qui l'est. D'ou sa place ici, dans le
+   *    profil vu DEPUIS quelqu'un, et non dans ProfilMetier.
+   */
+  readonly chef: boolean | null;
 }
 
 /**
@@ -90,6 +99,16 @@ export interface ProfilMetier {
   /** Combien de personnes le portent. Modifier le profil les touche toutes. */
   readonly nombreMembres: number;
   readonly permissions: readonly string[];
+
+  /**
+   * Qui dirige ce service.
+   *
+   * ⚠️ NUL est un etat NORMAL — celui d'avant la nomination — et non une
+   *    anomalie. L'ecran doit dire « aucun chef » et proposer d'en nommer un,
+   *    pas afficher un vide qui ressemble a un chargement rate.
+   */
+  readonly chefId: number | null;
+  readonly chefNom: string | null;
 }
 
 /** Une fonctionnalite attribuable, telle qu'on la propose a cocher. */

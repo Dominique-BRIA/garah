@@ -71,6 +71,34 @@
           </p>
         }
 
+        <!-- ================================================================ -->
+        <!-- LE CHEF DE SERVICE                                                -->
+        <!-- ================================================================ -->
+        <!-- 🎯 Le profil EST le service : « Logistique » donne les droits ET
+             désigne l'équipe. Le chef se nomme donc ici, sur la carte du
+             profil, et non dans un écran séparé qui aurait fait chercher.
+
+             ⚠️ « Aucun chef » est un état NORMAL — celui d'avant la
+                nomination. On le DIT, plutôt que de laisser un vide qui
+                ressemble à un chargement raté. -->
+        <div class="chef">
+          <span class="chef__libelle">
+            <gu-icone nom="users" /> Chef de service
+          </span>
+
+          @if (p.chefNom) {
+            <strong class="chef__nom">{{ p.chefNom }}</strong>
+          } @else {
+            <span class="chef__vide">aucun</span>
+          }
+
+          @if (session.peut('SERVICE_CHEF_NOMMER')) {
+            <button type="button" class="lien-chef" (click)="ouvrirNomination(p)">
+              @if (p.chefNom) { Changer } @else { Nommer }
+            </button>
+          }
+        </div>
+
         <div class="carte-profil__actions">
           @if (session.peut('CATEGORIE_RESPONSABLE_MODIFIER')) {
             <button type="button" class="gu-btn gu-btn--secondaire petit"
@@ -187,5 +215,66 @@
         </button>
       </div>
     </form>
+  </aside>
+}
+
+@if (nomination(); as profil) {
+  <div class="voile" (click)="fermerNomination()" aria-hidden="true"></div>
+
+  <aside class="panneau" role="dialog" aria-modal="true"
+         aria-label="Nommer le chef de service">
+    <h2>Chef de {{ profil.nom }}</h2>
+
+    <p class="aide">
+      Le chef dirige les personnes qui portent ce profil. Ce qu'il peut faire
+      sur elles dépend des fonctionnalités que vous lui accordez — c'est un
+      profil comme un autre.
+    </p>
+
+    @if (erreurNomination(); as m) {
+      <p class="aide aide--avertissement">
+        <gu-icone nom="triangle-exclamation" /> {{ m }}
+      </p>
+    }
+
+    @if (chargementMembres()) {
+      <p class="aide">Chargement des membres…</p>
+    } @else if (membres().length === 0) {
+      <!-- ⚠️ On ne dirige que le service dont on est membre. Le dire ICI, avec
+           le geste à faire, plutôt que de laisser une liste vide sans
+           explication. -->
+      <p class="aide">
+        Personne ne porte encore ce profil. Affectez d'abord quelqu'un depuis
+        l'écran de l'équipe.
+      </p>
+    } @else {
+      <ul class="candidats">
+        @for (m of membres(); track m.id) {
+          <li>
+            <button type="button" class="candidat"
+                    [class.candidat--actuel]="dirigeDeja(m)"
+                    (click)="nommer(m.id)">
+              <span class="candidat__nom">{{ m.prenom }} {{ m.nom }}</span>
+              @if (dirigeDeja(m)) {
+                <span class="candidat__etat">dirige déjà</span>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+    <div class="actions">
+      @if (profil.chefId) {
+        <!-- Démettre sans nommer personne : un service sans chef est un état
+             normal, et il faut pouvoir y revenir. -->
+        <button type="button" class="gu-btn gu-btn--secondaire" (click)="nommer(null)">
+          Démettre le chef actuel
+        </button>
+      }
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermerNomination()">
+        Fermer
+      </button>
+    </div>
   </aside>
 }

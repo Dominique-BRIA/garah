@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import {
   Fonctionnalite,
   Icone,
+  Membre,
   messageErreur,
   ProfilMetier,
   ServiceSession,
@@ -43,6 +44,17 @@ export class Profils {
   protected readonly enEdition = signal<ProfilMetier | null>(null);
   protected readonly enregistrement = signal(false);
   protected readonly erreurFormulaire = signal<string | null>(null);
+
+  // --- La nomination d'un chef ---------------------------------------------
+  //
+  // ⚠️ Les membres ne sont chargés QU'À L'OUVERTURE de la boîte, jamais avec
+  //    la liste des profils. Les charger d'avance ferait une requête par
+  //    profil affiché — vingt requêtes pour une nomination qui n'aura peut-être
+  //    pas lieu.
+  protected readonly nomination = signal<ProfilMetier | null>(null);
+  protected readonly membres = signal<readonly Membre[]>([]);
+  protected readonly chargementMembres = signal(false);
+  protected readonly erreurNomination = signal<string | null>(null);
 
   protected readonly nom = signal('');
   protected readonly description = signal('');
@@ -83,6 +95,78 @@ export class Profils {
 
   constructor() {
     this.charger();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Nommer le chef d'un service
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Ouvre la nomination et charge les membres du service.
+   *
+   * ⚠️ On ne propose QUE les membres du service. Un chef qui n'en serait pas
+   *    membre serait un supérieur sans équipe — et le serveur le refuserait de
+   *    toute façon. Proposer toute l'équipe ferait choisir quelqu'un pour se
+   *    voir refuser juste après, un refus qu'on peut éviter avant le clic.
+   */
+  protected ouvrirNomination(profil: ProfilMetier): void {
+    this.nomination.set(profil);
+    this.erreurNomination.set(null);
+    this.membres.set([]);
+    this.chargementMembres.set(true);
+
+    this.http.get<Membre[]>(`/api/profils/${profil.id}/membres`).subscribe({
+      next: (m) => {
+        this.membres.set(m);
+        this.chargementMembres.set(false);
+      },
+      error: (e: unknown) => {
+        this.chargementMembres.set(false);
+        this.erreurNomination.set(messageErreur(e, 'Les membres n’ont pas pu être chargés.'));
+      },
+    });
+  }
+
+  protected fermerNomination(): void {
+    this.nomination.set(null);
+    this.membres.set([]);
+    this.erreurNomination.set(null);
+  }
+
+  /**
+   * Nomme, ou démet.
+   *
+   * ⚠️ On recharge la LISTE ENTIÈRE après coup, et non la seule carte touchée.
+   *    Nommer un chef en démet un autre — parfois sur la même carte, parfois
+   *    ailleurs si la personne dirigeait déjà un autre service. Rafraîchir une
+   *    seule ligne laisserait un second chef affiché quelque part.
+   */
+  protected nommer(membreId: number | null): void {
+    const profil = this.nomination();
+    if (!profil) {
+      return;
+    }
+    this.erreurNomination.set(null);
+
+    const requete = membreId === null
+      ? this.http.delete<void>(`/api/services/${profil.id}/chef`)
+      : this.http.put<void>(`/api/services/${profil.id}/chef/${membreId}`, null);
+
+    requete.subscribe({
+      next: () => {
+        this.fermerNomination();
+        this.charger();
+      },
+      error: (e: unknown) =>
+        this.erreurNomination.set(messageErreur(e, 'La nomination a échoué.')),
+    });
+  }
+
+  /** Celui qui dirige déjà ce service, vu depuis la liste des membres. */
+  protected dirigeDeja(membre: Membre): boolean {
+    const profil = this.nomination();
+    return profil !== null
+      && membre.profils.some((p) => p.id === profil.id && p.chef === true);
   }
 
   protected charger(): void {
