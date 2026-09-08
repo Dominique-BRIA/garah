@@ -43,23 +43,51 @@ qu'on choisit.
 
 ## 2. Vercel
 
-Les deux dépôts portent déjà un `vercel.json` : **rien à régler dans
-l'interface**. Un réglage posé à la souris ne se relit pas, ne se versionne
-pas, et personne ne sait plus pourquoi il est là six mois plus tard.
+Les commandes, les réécritures et les en-têtes sont dans `vercel.json`. **Un
+seul réglage se fait à la souris**, et il n'y a pas moyen de faire autrement :
+la *Root Directory*.
+
+### ⚠️ La Root Directory — le réglage qui décide de tout le reste
+
+| Dépôt | Root Directory |
+|---|---|
+| `garah-client` | `web` |
+| `garah` | `frontend` |
+
+*Settings → General → Root Directory.* Vercel la propose souvent tout seul à
+l'import, en reconnaissant l'application Angular.
+
+**Ce réglage change le répertoire depuis lequel les commandes s'exécutent**, et
+c'est ce qui rend les chemins de `vercel.json` relatifs à lui — `npm ci` et non
+`cd web && npm ci`, `dist/garah-boutique/browser` et non
+`web/dist/garah-boutique/browser`.
+
+> Le `cd web && npm ci` a échoué avec « No such file or directory » précisément
+> parce que la Root Directory valait déjà `web` : la commande refaisait le
+> chemin une fois de trop.
+
+`vercel.json` est posé **à deux endroits**, identiques : à la racine du dépôt
+et dans le dossier applicatif. Ce n'est pas un doublon par négligence — selon
+la version, Vercel cherche le fichier dans l'un ou dans l'autre, et la copie
+rend la configuration insensible à ce détail.
+
+⚠️ **Les deux doivent rester identiques.** Modifier l'un sans l'autre donne un
+déploiement qui dépend de la version de Vercel — c'est-à-dire un déploiement
+qu'on ne peut plus expliquer.
 
 ### La boutique
 
 1. vercel.com → **Add New** → **Project** → importer `Dominique-BRIA/garah-client`
-2. Ne toucher à **rien** dans l'écran de configuration — `vercel.json` fixe
-   déjà la commande d'installation, celle de construction et le dossier de
-   sortie.
-3. **Deploy**
+2. Vérifier que **Root Directory** vaut `web`
+3. Ne toucher à rien d'autre
+4. **Deploy**
 
 ### Le back-office
 
-Même chose avec le dépôt `garah`. Le `vercel.json` de ce dépôt construit
-`garah-ui` **avant** `garah-admin` : sans cet ordre, la compilation échoue sur
-un module introuvable.
+Même chose avec le dépôt `garah`, **Root Directory** à `frontend`.
+
+⚠️ Le `vercel.json` de ce dépôt construit `garah-ui` **avant** `garah-admin` :
+sans cet ordre, la compilation échoue sur un module introuvable.
 
 ### ⚠️ Personne ne redéploie personne — là où ça compte
 
