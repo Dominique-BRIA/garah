@@ -168,3 +168,102 @@ conversations, favoris, profil.
 | **Les montants d'une commande ne se relisent pas dans le catalogue** | Une facture de mars devient fausse en septembre. |
 | **Le code de retrait ne va jamais dans une URL** | Journaux du serveur, historique du navigateur, en-tête `Referer`. Le numéro de **suivi**, lui, y va : il se partage, c'est son rôle. |
 | **La grille de paliers se voit avant le panier** | Le prix change en cours de route, et l'écran ressemble à une arnaque. |
+
+---
+
+## 5. Ce qui a été construit, et ce que la construction a appris
+
+Cette section est écrite **après** coup. Le plan des §2 et §3 supposait que
+l'API servait déjà tous les écrans du client ; la construction a montré que
+non, et à chaque fois pour la **même raison**.
+
+### 5.1 Un client n'a aucune autorité — il a une propriété
+
+Cinq écrans n'avaient aucune route pour les nourrir. Ce n'était pas un oubli
+d'interface : le référentiel de permissions est fait pour le back-office, et
+toutes les listes existantes exigeaient une autorité (`RETOUR_CONSULTER`,
+`CONVERSATION_CONSULTER`, `RETRAIT_CONSULTER`). Un client, lui, n'en a
+**aucune**. Son accès repose sur la propriété de ses données.
+
+| Route ajoutée | Ce qui était impossible sans elle |
+|---|---|
+| `GET /api/expeditions/commandes/{id}/mon-retrait` | Le code destiné au client ne pouvait lui parvenir qu'**à la voix**. Le seul moyen de prouver une remise circulait au téléphone. |
+| `GET /api/sav/retours/miens` | Une fois sa demande envoyée, le client n'avait **plus rien** : ni numéro, ni statut, ni moyen de savoir si le colis avait été reçu. |
+| `GET /api/conversations/miennes` | Une conversation ouverte était **perdue au premier rechargement**. Une négociation qui dure deux jours n'était pas praticable. |
+| `GET /api/favoris/miens` | Les favoris s'ajoutaient et se retiraient, mais ne se **listaient** pas. |
+| `GET /api/produits/par-ids` | Voir §5.2. |
+
+⚠️ Aucune ne porte de `@PreAuthorize`, et ce n'est pas un oubli. Une autorité
+dit « ce rôle a le droit de voir des retraits » ; ce qu'il faut dire est
+« celui-ci a le droit de voir **ce** retrait-là ». Le filtre est le porteur du
+jeton, **jamais** un paramètre de requête : une liste « mienne » filtrée par un
+identifiant reçu du navigateur est la liste de qui veut bien l'écrire.
+
+⚠️ Et la vérification de propriété vient **avant** la recherche, jamais en
+filtrant la liste obtenue. Filtrer confondrait deux situations très
+différentes — une commande légitime dont le retrait n'est pas encore préparé,
+et la commande de quelqu'un d'autre : les deux rendent une liste vide.
+
+### 5.2 Le défaut qui dormait : `/produits/tendance` ne rend pas des produits
+
+La route vient du module de **mesure**. Elle rend
+`{ produitId, nom, ventesRecentes, vuesRecentes, croissance }` — un
+**classement**, sans photo, sans prix, sans slug.
+
+La vitrine la lisait comme une liste de produits. Les cartes se dessinaient
+sans image et sans prix, et leur lien menait à `/produit/undefined`.
+
+Le symptôme ne s'était jamais montré : **un catalogue neuf n'a aucune
+tendance**, donc la liste arrivait vide et le bloc affichait sa phrase
+d'attente. Le défaut serait apparu le jour de la première vente — c'est-à-dire
+le plus mauvais jour possible.
+
+D'où `GET /api/produits/par-ids`, qui rend les vignettes d'une liste
+d'identifiants en **une** requête.
+
+⚠️ Elle les rend **dans l'ordre demandé**. Pour un palmarès, l'ordre EST
+l'information : le rendre dans l'ordre de la base transformerait un classement
+en liste alphabétique, sans que rien ne le signale.
+
+Un identifiant dépublié disparaît simplement de la réponse : une place vide
+dans un classement vaut mieux qu'un article qu'on ne peut plus acheter — et
+dans une liste d'envies, c'est la seule réponse honnête.
+
+### 5.3 Ce que le système sait déjà ne se saisit pas
+
+Trois fois le même défaut, à trois endroits sans rapport :
+
+- le `clientId` d'un retrait, que l'agent devait taper alors que l'expédition
+  le désigne ;
+- la destination d'une expédition, que la commande porte déjà ;
+- **l'identifiant d'une ligne de commande**, absent de `DetailCommande.Ligne`.
+
+Le troisième rendait l'écran « demander un retour » **impossible à écrire** :
+un retour désigne des lignes — c'est la ligne qui porte le prix figé, donc le
+montant remboursable — et le client voyait ses articles sans pouvoir en
+désigner aucun.
+
+### 5.4 Deux clients, une charte, aucun code partagé
+
+`charte/jetons.json` est engendré vers le SCSS du web et le Dart du mobile. Ce
+sont les **seules** valeurs communes.
+
+⚠️ La version mobile n'est **pas** la version web enveloppée. Le web doit être
+bon du téléphone à l'écran large ; le mobile n'a qu'un format à servir, et s'en
+sert : barre en bas, panier qui survit à la fermeture, session qui ne redemande
+pas le mot de passe à chaque ouverture.
+
+⚠️ Le **build Flutter se fait sur GitHub Actions**, jamais en local : le SDK
+Android et son cache Gradle pèsent plusieurs gigaoctets, et la connexion sur
+place se compte. L'analyse et les tests, eux, tournent en local — ils ne
+demandent que le SDK Flutter.
+
+### 5.5 Ce qui reste
+
+| Écran | État |
+|---|---|
+| Passer commande, paiement | ✅ web · ⬜ mobile |
+| Liste d'envies, retours, réclamations, discussions | ✅ web · ⬜ mobile |
+| Détail d'une commande et code de retrait | ✅ web · ⬜ mobile (la liste seule) |
+| Police Outfit embarquée | ⬜ les fichiers ne sont pas au dépôt ; le mobile prend la police système en attendant |
+| Partage d'une fiche | ✅ web (`navigator.share`) · ⬜ mobile (demande un greffon natif) |
