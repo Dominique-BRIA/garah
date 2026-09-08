@@ -97,7 +97,7 @@ public class ServiceEquipe {
     @Transactional(readOnly = true)
     public VueMembre detail(Long id) {
         return responsables.chargerAvecCategories(id)
-                .map(VueMembre::de)
+                .map(r -> VueMembre.de(r, stockage::urlPublique))
                 .orElseGet(() -> VueMembre.de(chargerUtilisateur(id), stockage::urlPublique));
     }
 
