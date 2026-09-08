@@ -32,13 +32,16 @@ public class ServiceProfilResponsable {
     private final CategorieResponsableRepository profils;
     private final CasUtilisationRepository casUtilisation;
     private final ResponsableRepository responsables;
+    private final com.garah.api.iam.infra.HierarchieRepository hierarchie;
 
     public ServiceProfilResponsable(CategorieResponsableRepository profils,
                                     CasUtilisationRepository casUtilisation,
-                                    ResponsableRepository responsables) {
+                                    ResponsableRepository responsables,
+                                    com.garah.api.iam.infra.HierarchieRepository hierarchie) {
         this.profils = profils;
         this.casUtilisation = casUtilisation;
         this.responsables = responsables;
+        this.hierarchie = hierarchie;
     }
 
     @Transactional(readOnly = true)
@@ -46,13 +49,38 @@ public class ServiceProfilResponsable {
         return profils.findAll().stream()
                 .sorted(Comparator.comparing(CategorieResponsable::getNom,
                         String.CASE_INSENSITIVE_ORDER))
-                .map(p -> VueProfil.complet(p, compterMembres(p.getId())))
+                .map(p -> avecChef(p))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public VueProfil detail(Long id) {
-        return VueProfil.complet(charger(id), compterMembres(id));
+        return avecChef(charger(id));
+    }
+
+    /**
+     * Le profil, avec le responsable qui le dirige.
+     *
+     * <p>⚠️ UN SEUL point de construction, et c'est délibéré. Composer la vue
+     * à cinq endroits ferait que la liste montrerait le chef et le détail non
+     * — ou l'inverse — sans que personne ne comprenne pourquoi.</p>
+     *
+     * <p>Un service sans chef rend {@code null} : c'est l'état d'avant la
+     * nomination, pas une anomalie.</p>
+     */
+    private VueProfil avecChef(CategorieResponsable profil) {
+        List<Object[]> chef = hierarchie.chefDu(profil.getId());
+
+        Long chefId = chef.isEmpty() ? null : (Long) chef.getFirst()[0];
+        String chefNom = chef.isEmpty() ? null : nomComplet(chef.getFirst()[1], chef.getFirst()[2]);
+
+        return VueProfil.complet(profil, compterMembres(profil.getId()), chefId, chefNom);
+    }
+
+    private static String nomComplet(Object prenom, Object nom) {
+        String p = prenom == null ? "" : prenom.toString().trim();
+        String n = nom == null ? "" : nom.toString().trim();
+        return (p + " " + n).trim();
     }
 
     /** Le catalogue des fonctionnalités attribuables, groupé par module. */
@@ -78,7 +106,7 @@ public class ServiceProfilResponsable {
         profil.setDescription(vide(description) ? null : description.strip());
         appliquerPermissions(profil, codes);
 
-        return VueProfil.complet(profils.save(profil), 0);
+        return avecChef(profils.save(profil));
     }
 
     @Transactional
@@ -99,7 +127,7 @@ public class ServiceProfilResponsable {
         profil.getCasUtilisation().clear();
         appliquerPermissions(profil, codes);
 
-        return VueProfil.complet(profil, compterMembres(id));
+        return avecChef(profil);
     }
 
     /**
@@ -118,7 +146,7 @@ public class ServiceProfilResponsable {
     public VueProfil changerStatut(Long id, boolean actif) {
         CategorieResponsable profil = charger(id);
         profil.setStatut(actif ? "ACTIF" : "INACTIF");
-        return VueProfil.complet(profil, compterMembres(id));
+        return avecChef(profil);
     }
 
     // -------------------------------------------------------------------------

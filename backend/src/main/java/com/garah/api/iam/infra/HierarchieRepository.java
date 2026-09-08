@@ -84,6 +84,24 @@ public interface HierarchieRepository
      *    entites deja chargees garderaient {@code chef = true} en memoire, et
      *    la lecture suivante rendrait deux chefs.</p>
      */
+    /**
+     * Qui dirige ce service, et sous quel nom.
+     *
+     * <p>Rend une ligne au plus — l index unique s en assure — ou rien du tout
+     * si le service n a pas encore de chef.</p>
+     *
+     * <p>⚠️ {@code Utilisateur} est joint pour le nom : « chef n 12 » n a
+     *    jamais dit a personne qui dirige.</p>
+     */
+    @Query("""
+            SELECT rc.responsable.id, u.prenom, u.nom
+              FROM ResponsableCategorie rc
+              JOIN Utilisateur u ON u.id = rc.responsable.id
+             WHERE rc.categorie.id = :categorieId
+               AND rc.chef = true
+            """)
+    List<Object[]> chefDu(@Param("categorieId") Long categorieId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE ResponsableCategorie rc

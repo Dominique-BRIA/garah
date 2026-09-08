@@ -1,7 +1,9 @@
 package com.garah.api.iam.web;
 
+import com.garah.api.iam.domaine.ServiceEquipe;
 import com.garah.api.iam.domaine.ServiceProfilResponsable;
 import com.garah.api.iam.domaine.VueCasUtilisation;
+import com.garah.api.iam.domaine.VueMembre;
 import com.garah.api.iam.domaine.VueProfil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -25,9 +27,11 @@ import java.util.List;
 public class ControleurProfilResponsable {
 
     private final ServiceProfilResponsable profils;
+    private final ServiceEquipe equipe;
 
-    public ControleurProfilResponsable(ServiceProfilResponsable profils) {
+    public ControleurProfilResponsable(ServiceProfilResponsable profils, ServiceEquipe equipe) {
         this.profils = profils;
+        this.equipe = equipe;
     }
 
     @GetMapping
@@ -50,6 +54,26 @@ public class ControleurProfilResponsable {
      * ne peut donc pas inventer une permission qui n'existe nulle part dans le
      * code.</p>
      */
+    /**
+     * Les membres d un profil — c est-a-dire d un service.
+     *
+     * <p>🎯 Elle existe pour NOMMER un chef : sans elle, l ecran ne saurait
+     * pas parmi qui choisir, et il faudrait taper un identifiant a la main.</p>
+     *
+     * <p>⚠️ Distincte de {@code /api/services/&#123;id&#125;/membres}, qui sert au
+     *    CHEF a voir son equipe. Celle-ci sert a l ADMIN, sur n importe quel
+     *    profil, et se garde donc par la permission des profils. Les fondre
+     *    donnerait une route dont le sens depend de qui appelle.</p>
+     *
+     * <p>Chaque membre porte, dans ses profils, un drapeau {@code chef} qui
+     * dit s il dirige celui-ci.</p>
+     */
+    @GetMapping("/{id}/membres")
+    @PreAuthorize("hasAuthority('CATEGORIE_RESPONSABLE_CONSULTER')")
+    public List<VueMembre> membres(@PathVariable Long id) {
+        return equipe.membresDu(id);
+    }
+
     @GetMapping("/fonctionnalites")
     @PreAuthorize("hasAuthority('CATEGORIE_RESPONSABLE_CONSULTER')")
     public List<VueCasUtilisation> fonctionnalites() {

@@ -65,7 +65,7 @@ public record VueMembre(
         Utilisateur u = r.getUtilisateur();
 
         List<VueProfil> profils = r.getCategories().stream()
-                .map(rc -> VueProfil.resume(rc.getCategorie(), rc.estPrincipale()))
+                .map(rc -> VueProfil.resume(rc.getCategorie(), rc.estPrincipale(), rc.estChef()))
                 .toList();
 
         return new VueMembre(u.getId(), u.getType().name(), u.getNom(), u.getPrenom(),
