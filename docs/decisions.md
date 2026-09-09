@@ -1700,3 +1700,65 @@ ouverte.
 > entité, ni écriture** — le même défaut que celui corrigé ici, sur le journal
 > voisin. Le parcours d'un client n'est aujourd'hui mesuré que par
 > `vue_produit`.
+
+---
+
+## D-33 — La boutique et le back-office partagent UNE session par navigateur
+
+**Ce qui a été observé.** Se connecter en tant que **client** sur la boutique,
+puis revenir sur le back-office et ouvrir `/statistiques` : l'écran s'ouvre au
+nom du client. Le compte d'administration qui y était connecté a été remplacé,
+sans un mot.
+
+**Pourquoi.** Le cookie de rafraîchissement s'appelle `garah_refresh`, il est
+posé par l'API pour l'API, sur le chemin `/api/auth`. Les deux applications
+appellent la même API : elles partagent donc **le même cookie**, et se
+connecter d'un côté écrase la session de l'autre.
+
+Le jeton d'accès, lui, vit en mémoire et disparaît à chaque rechargement
+(D-19). Toute navigation dans le back-office après le passage par la boutique
+passe donc par la **restauration**, qui relit ce cookie unique.
+
+**Ce qui n'était PAS ouvert.** Aucune élévation de privilège. Le compte obtenu
+était un compte client, c'est-à-dire un compte **sans aucune permission** : le
+serveur a refusé chaque appel, et l'écran l'a dit. La séparation des pouvoirs
+a tenu exactement comme prévu.
+
+**Ce qui l'était.** L'interface accueillait ce compte. Le menu se réduisait à
+une entrée, le nom s'affichait dans la barre latérale, et les refus se
+découvraient un écran après l'autre. « Deux publics, deux routes » était vrai
+côté serveur et faux côté écran.
+
+**La cause exacte, et elle est instructive.** Le formulaire de connexion du
+back-office refusait déjà un compte client — la règle était écrite, testée à
+l'œil, et juste. Mais on entre dans le back-office par **deux** portes :
+
+```
+le formulaire de connexion   →  la règle était là
+la restauration de session   →  la règle n'y était pas
+```
+
+C'est par la seconde qu'un client est entré. **Une règle qui ne vit qu'à un
+seul des endroits par où l'on entre n'est pas une règle, c'est une
+habitude.** Les deux lisent désormais `ServiceSession.estInterne`.
+
+**Ce que l'écran dit maintenant.** Le refus nomme ce qui s'est passé — « vous
+étiez connecté avec un compte client, probablement depuis la boutique, qui
+partage la même session que cet écran ». Sans cette phrase, le comportement
+est correct et parfaitement incompréhensible : on se retrouve devant un
+formulaire de connexion sans savoir pourquoi.
+
+> ⚠️ **Reste ouvert — le miroir.** Le garde de la boutique ne vérifie lui
+> aussi que « connecté ». Une session d'administration restaurée là-bas ouvre
+> donc les écrans « mon compte », qui n'ont rien à lui montrer : un
+> administrateur n'a pas de ligne `client`. Aucune donnée n'est exposée — ce
+> sont ses propres écrans, vides — mais c'est le même défaut, par l'autre
+> bout. Son modèle de session ne porte même pas le type de compte : le
+> corriger demande de l'y ajouter.
+
+> ⚠️ **Reste à décider — une session, ou deux ?** Aujourd'hui, un même
+> navigateur ne peut pas être connecté aux deux applications à la fois. C'est
+> défendable — un humain, une session — mais cela gêne quiconque travaille sur
+> les deux. L'alternative est un cookie par public, choisi d'après l'en-tête
+> `X-Garah-Client` que toute requête porte déjà. Elle coûte une déconnexion
+> unique de tout le monde, le jour où le nom du cookie change.

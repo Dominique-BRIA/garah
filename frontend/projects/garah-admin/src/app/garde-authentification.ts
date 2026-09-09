@@ -28,5 +28,37 @@ export const gardeAuthentification: CanActivateFn = () => {
   const session = inject(ServiceSession);
   const router = inject(Router);
 
-  return session.connecte() || router.createUrlTree(['/connexion']);
+  if (!session.connecte()) {
+    return router.createUrlTree(['/connexion']);
+  }
+
+  // 🎯 DEUX PUBLICS, DEUX ROUTES — et le controle doit etre fait aux DEUX
+  //    entrees.
+  //
+  //    Le formulaire de connexion refusait deja un compte client. Mais on
+  //    entre aussi par la RESTAURATION : le jeton d'acces vit en memoire et
+  //    disparait a chaque rechargement, alors que le cookie de
+  //    rafraichissement vit quatorze jours. Ce chemin-la ne verifiait rien.
+  //
+  //    Et ce cookie est pose par l'API, pour l'API : la boutique et le
+  //    back-office en partagent UN SEUL par navigateur. Se connecter en client
+  //    sur la boutique remplace donc la session d'administration ouverte a
+  //    cote — puis on revient sur le back-office, la session est restauree, et
+  //    l'ecran s'ouvre au nom d'un client.
+  //
+  // ⚠️ Ce n'est pas ce qui protege les donnees : un client n'a aucune
+  //    permission, et le serveur refusait deja chaque appel. Ce qu'on repare
+  //    ici, c'est une application qui accueillait quelqu'un pour lui refuser
+  //    ensuite chaque ecran, un par un.
+  if (!session.estInterne()) {
+    // On coupe la session cote back-office plutot que de la laisser trainer :
+    // sinon chaque navigation rejouerait ce refus, et le bouton « retour »
+    // ramenerait dans la coque.
+    session.terminer();
+    return router.createUrlTree(['/connexion'], {
+      queryParams: { motif: 'compte-client' },
+    });
+  }
+
+  return true;
 };

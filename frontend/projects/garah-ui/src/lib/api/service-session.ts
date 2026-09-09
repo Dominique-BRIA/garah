@@ -73,6 +73,30 @@ export class ServiceSession {
   readonly utilisateur = this._utilisateur.asReadonly();
   readonly connecte = computed(() => this._utilisateur() !== null);
 
+  /**
+   * Ce compte appartient-il a la MAISON ?
+   *
+   * ⚠️ « Connecte » et « interne » ne sont pas la meme question, et les
+   *    confondre a laisse un compte client entrer dans le back-office.
+   *
+   *    Le cookie de rafraichissement est pose par l'API, pour l'API. Les deux
+   *    applications — la boutique et le back-office — partagent donc UNE
+   *    session par navigateur : se connecter en client sur la boutique remplace
+   *    la session d'administration ouverte a cote. Le formulaire de connexion
+   *    du back-office refusait bien un client ; la RESTAURATION au demarrage,
+   *    elle, ne refaisait pas ce controle. La regle ne vivait qu'a un seul des
+   *    deux endroits par ou l'on entre.
+   *
+   * ⚠️ Confort et clarte, JAMAIS securite. Un client n'a aucune permission :
+   *    le serveur refusait deja chaque appel. Ce qu'on repare ici, c'est une
+   *    interface qui accueillait quelqu'un pour lui refuser ensuite chaque
+   *    ecran, un par un.
+   */
+  readonly estInterne = computed(() => {
+    const u = this._utilisateur();
+    return u !== null && u.type !== 'CLIENT';
+  });
+
   jetonAcces(): string | null {
     return this._jeton();
   }

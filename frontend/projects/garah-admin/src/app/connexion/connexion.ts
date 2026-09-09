@@ -24,11 +24,38 @@ export class Connexion {
    * panne.</p>
    */
   protected readonly avis = signal<string | null>(
-    inject(ActivatedRoute).snapshot.queryParamMap.get('motif') === 'mot-de-passe-change'
-      ? 'Votre mot de passe a été modifié et toutes vos sessions ont été fermées. '
-        + 'Connectez-vous avec le nouveau mot de passe.'
-      : null,
+    Connexion.avisPour(inject(ActivatedRoute).snapshot.queryParamMap.get('motif')),
   );
+
+  /**
+   * Ce qui explique la présence sur cet écran.
+   *
+   * <p>Se retrouver devant un formulaire de connexion sans un mot
+   * d'explication ressemble à une panne, ou à une session perdue sans raison.
+   * Chaque renvoi ici en donne donc une.</p>
+   */
+  private static avisPour(motif: string | null): string | null {
+    switch (motif) {
+      case 'mot-de-passe-change':
+        return 'Votre mot de passe a été modifié et toutes vos sessions ont été fermées. '
+          + 'Connectez-vous avec le nouveau mot de passe.';
+
+      // ⚠️ On dit CE QUI S'EST PASSÉ, pas seulement que c'est refusé.
+      //
+      //    La boutique et le back-office partagent une session par navigateur.
+      //    Se connecter en client d'un côté remplace donc la session
+      //    d'administration ouverte de l'autre — sans rien casser, mais sans
+      //    rien dire non plus. Le comportement est correct et parfaitement
+      //    incompréhensible tant qu'on ne l'explique pas.
+      case 'compte-client':
+        return 'Vous étiez connecté avec un compte client — probablement depuis la boutique, '
+          + 'qui partage la même session que cet écran. Le back-office est réservé aux comptes '
+          + 'de l’administration : connectez-vous avec le vôtre.';
+
+      default:
+        return null;
+    }
+  }
 
   protected readonly email = signal('');
   protected readonly motDePasse = signal('');
@@ -43,7 +70,7 @@ export class Connexion {
     this.erreur.set(null);
 
     this.session.connecter(this.email().trim(), this.motDePasse()).subscribe({
-      next: (utilisateur) => {
+      next: () => {
         this.enCours.set(false);
 
         // ⚠️ Un CLIENT n'a rien à faire dans le back-office.
@@ -52,7 +79,13 @@ export class Connexion {
         // aucune permission, donc chaque écran répondrait 403. Le laisser
         // entrer produirait une application vide et incompréhensible plutôt
         // qu'un refus clair.
-        if (utilisateur.type === 'CLIENT') {
+        //
+        // ⚠️ La MÊME règle est posée dans le garde de route. Ce n'est pas une
+        //    répétition inutile : on entre ici par le formulaire, et là-bas
+        //    par la restauration de session au démarrage. Elle n'était écrite
+        //    qu'ici, et c'est par l'autre porte qu'un compte client est entré.
+        //    Les deux lisent maintenant `estInterne`, à un seul endroit.
+        if (!this.session.estInterne()) {
           this.session.deconnecter().subscribe();
           this.erreur.set(
             "Ce compte est un compte client. Le back-office est réservé à l'administration.",
