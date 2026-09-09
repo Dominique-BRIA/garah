@@ -106,6 +106,29 @@
 
 nav { display: flex; flex-direction: column; gap: 0.25rem; }
 
+// L intertitre d un groupe.
+//
+// 🎯 Il doit se lire comme une ETIQUETTE, jamais comme une entree cliquable.
+//    Petit, gras, espace, en majuscules : quatre signes qui disent « ceci
+//    nomme ce qui suit ». Sans eux, on essaie de cliquer dessus.
+//
+// L ecart au-dessus est plus grand que celui du dessous : c est lui qui
+// rattache le titre a SON groupe plutot qu au precedent.
+.groupe {
+  margin: 1.1rem 0 0.3rem;
+  padding: 0 0.85rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texte-attenue);
+  opacity: 0.65;
+
+  // Le premier ne pousse pas le menu vers le bas : il n a rien au-dessus dont
+  // il faille le detacher.
+  &:first-child { margin-top: 0; }
+}
+
 nav a {
   display: flex;
   align-items: center;

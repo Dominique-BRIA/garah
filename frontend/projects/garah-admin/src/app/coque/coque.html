@@ -25,14 +25,23 @@
         </div>
       </div>
 
+      <!-- ⚠️ Le menu est rangé dans l'ordre de la VIE D'UNE VENTE, et les
+           intertitres ne sont pas décoratifs : vingt entrées à la file
+           forment un mur, quel que soit leur ordre. On cherche d'abord la
+           bonne QUESTION — « où en est-on ? », « ça part » — puis l'écran
+           dedans. Voir la liste dans coque.ts. -->
       <nav>
-        @for (entree of visibles(); track entree.chemin) {
-          <a [routerLink]="entree.chemin" routerLinkActive="actif"
-             [routerLinkActiveOptions]="{ exact: entree.chemin === '/' }"
-             (click)="fermerLeMenu()">
-            <gu-icone class="icone" [nom]="entree.icone" />
-            {{ entree.libelle }}
-          </a>
+        @for (groupe of visibles(); track groupe.titre) {
+          <p class="groupe">{{ groupe.titre }}</p>
+
+          @for (entree of groupe.entrees; track entree.chemin) {
+            <a [routerLink]="entree.chemin" routerLinkActive="actif"
+               [routerLinkActiveOptions]="{ exact: entree.chemin === '/' }"
+               (click)="fermerLeMenu()">
+              <gu-icone class="icone" [nom]="entree.icone" />
+              {{ entree.libelle }}
+            </a>
+          }
         }
       </nav>
     </div>
