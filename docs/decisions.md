@@ -1867,3 +1867,72 @@ qui mesure le pire cas et échoue au-delà de 12 Ko.
 >
 > Le frontend n'y perdrait rien : il lit les permissions dans le **corps** de
 > la réponse de connexion, pas dans le jeton.
+
+---
+
+## D-35 — Les droits d'un administrateur se déduisent, ils ne voyagent plus
+
+**Suite directe de D-34**, où le jeton dépassait la limite d'en-tête HTTP. Le
+réglage `16KB` réglait le symptôme ; voici la cause.
+
+**Le principe.** D-16 faisait voyager les permissions dans le jeton pour
+qu'aucune requête en base ne soit nécessaire à l'autorisation. La règle reste
+juste pour un **responsable** : ses droits sont une donnée le concernant — ses
+profils, ses exceptions individuelles — et rien ne permet de les recalculer
+sans la lire.
+
+Elle ne l'était pas pour les deux autres. Les droits d'un **super-administrateur**
+sont « toutes les fonctionnalités actives » : une fonction de son type et du
+catalogue, **pas une information sur lui**. Les énumérer violait la règle du
+projet — *ce qui est engendré n'est jamais saisi* — et coûtait cher.
+
+**La mesure.**
+
+| Jeton | Avant | Après |
+|-------|-------|-------|
+| super-administrateur (197 droits) | 6 915 o | **257 o** |
+| administrateur (186 droits) | ~6 800 o | **241 o** |
+
+**Vingt-sept fois plus léger, sur chaque appel**, depuis une connexion mobile
+camerounaise.
+
+**Où vit la règle.** Dans `DroitsParType`, et nulle part ailleurs. Elle est lue
+aux deux endroits qui en ont besoin :
+
+```
+ServiceAuthentification.permissionsDe   → la réponse de connexion, pour l'écran
+ConfigurationSecurite.convertisseurJeton → les autorisations, pour l'API
+```
+
+Deux copies auraient fini par diverger, et « pourquoi cet administrateur voit-il
+un bouton que l'API lui refuse ? » ne se répond qu'en relisant les deux.
+
+**Le frontend n'a rien perdu** : il lit les permissions dans le **corps** de la
+réponse de connexion, jamais dans le jeton. Aucune ligne à changer.
+
+**Le catalogue est lu une seule fois par instance.** `cas_utilisation` n'est
+écrit par **aucune route** — il est peuplé par les migrations. Son contenu ne
+peut donc pas changer pendant la vie d'une instance, et le garder en mémoire ne
+peut pas devenir faux.
+
+> ⚠️ Le jour où une route modifiera le référentiel — la permission
+> `CAS_UTILISATION_MODIFIER` existe et n'est encore vérifiée nulle part —
+> cette hypothèse tombera et il faudra vider ce cache à l'écriture. C'est
+> écrit dans `DroitsParType`, là où on le cherchera.
+
+**Ce qu'on accepte en échange.** L'autorisation d'un administrateur dépend
+maintenant du catalogue, donc d'une lecture en base — faite une fois. Si elle
+échoue, l'exception remonte et l'appel est refusé. C'est voulu : rendre un
+ensemble vide aurait produit une pluie de 403 sur un compte qui a **tous** les
+droits, un symptôme qu'on chercherait longtemps du côté des permissions.
+
+**Le test qui manquait.** Tous les tests d'autorisation existants passent par
+`jwt().authorities("...")` : ils **posent** les autorisations dans le contexte
+de sécurité et **ne traversent jamais le convertisseur**. Ils seraient restés
+verts même si celui-ci ne rendait plus rien — c'est-à-dire même si tous les
+administrateurs avaient perdu tous leurs droits.
+
+`DroitsDeduitsDuJetonTest` fabrique un **vrai jeton** et le présente en
+en-tête : c'est le seul chemin qui exerce la déduction. Il vérifie aussi qu'un
+`ADMIN` reste tenu à l'écart du module SÉCURITÉ — la séparation des pouvoirs ne
+devait pas se perdre dans le calcul.

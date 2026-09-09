@@ -1,5 +1,7 @@
 package com.garah.api.config;
 
+import com.garah.api.iam.domaine.DroitsParType;
+import com.garah.api.iam.domaine.TypeUtilisateur;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,6 +10,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -63,24 +67,78 @@ public class ConfigurationSecurite {
     }
 
     /**
-     * Traduit le claim {@code permissions} du jeton en autorisations Spring.
+     * Traduit le jeton en autorisations Spring.
      *
-     * <p>Par défaut, Spring cherche un claim {@code scope} et préfixe les
-     * valeurs par {@code SCOPE_}. On désactive le préfixe : nos autorisations
-     * sont les codes du référentiel {@code cas_utilisation}, tels quels.
-     * Ainsi {@code @PreAuthorize("hasAuthority('PRODUIT_PUBLIER')")} utilise
+     * <p>Aucun préfixe : nos autorisations <b>sont</b> les codes du référentiel
+     * {@code cas_utilisation}, tels quels. Ainsi
+     * {@code @PreAuthorize("hasAuthority('PRODUIT_PUBLIER')")} utilise
      * exactement le code de la base — sans traduction, donc sans erreur
      * possible.</p>
+     *
+     * <h2>🎯 Deux sources, selon que les droits se déduisent ou non</h2>
+     *
+     * <pre>
+     * SUPER_ADMIN, ADMIN   déduits du claim `type` + le catalogue
+     * RESPONSABLE          lus dans le claim `permissions`
+     * </pre>
+     *
+     * <p>Les droits d'un super-administrateur sont « toutes les fonctionnalités
+     * actives » : une fonction de son type, pas une information sur lui. Les
+     * énumérer dans le jeton faisait voyager 197 codes et près de 7 Ko
+     * d'en-tête sur chaque appel — jusqu'à dépasser la limite du serveur
+     * (D-34). Le claim {@code type} suffit à les retrouver.</p>
+     *
+     * <p>Ceux d'un responsable, eux, <b>sont</b> une donnée le concernant — ses
+     * profils, ses exceptions. Rien ne permet de les recalculer sans lire la
+     * base, et c'est précisément ce que D-16 voulait éviter à chaque requête.
+     * Ils continuent donc de voyager.</p>
+     *
+     * <h2>⚠️ Ce qu'on accepte en échange</h2>
+     *
+     * <p>L'autorisation d'un administrateur dépend désormais du catalogue, donc
+     * d'une lecture en base — <b>faite une seule fois</b> par instance, le
+     * référentiel n'étant écrit que par les migrations ({@code DroitsParType}).
+     * Si cette lecture échoue, l'exception remonte et l'appel est refusé. C'est
+     * voulu : rendre un ensemble vide aurait produit une pluie de 403 sur un
+     * compte qui a tous les droits — un symptôme qu'on chercherait longtemps
+     * du côté des permissions.</p>
      */
     @Bean
-    public JwtAuthenticationConverter convertisseurJeton() {
-        JwtGrantedAuthoritiesConverter autorites = new JwtGrantedAuthoritiesConverter();
-        autorites.setAuthoritiesClaimName("permissions");
-        autorites.setAuthorityPrefix("");
+    public JwtAuthenticationConverter convertisseurJeton(DroitsParType droitsDeduits) {
+        JwtGrantedAuthoritiesConverter duClaim = new JwtGrantedAuthoritiesConverter();
+        duClaim.setAuthoritiesClaimName("permissions");
+        duClaim.setAuthorityPrefix("");
 
         JwtAuthenticationConverter convertisseur = new JwtAuthenticationConverter();
-        convertisseur.setJwtGrantedAuthoritiesConverter(autorites);
+        convertisseur.setJwtGrantedAuthoritiesConverter(jeton -> {
+            TypeUtilisateur type = typeDe(jeton);
+
+            if (type != null && droitsDeduits.seDeduisent(type)) {
+                return droitsDeduits.pour(type).stream()
+                        .map(code -> (GrantedAuthority) new SimpleGrantedAuthority(code))
+                        .toList();
+            }
+            return duClaim.convert(jeton);
+        });
         return convertisseur;
+    }
+
+    /**
+     * Le type porté par le jeton, ou {@code null} s'il est illisible.
+     *
+     * <p>⚠️ Un type inconnu ne doit pas lever : un jeton d'une version
+     * antérieure, ou forgé, ferait alors tomber la requête sur une erreur
+     * technique au lieu d'un refus propre. On retombe sur le claim
+     * {@code permissions} — absent dans ce cas — donc sur aucune autorisation,
+     * c'est-à-dire un refus.</p>
+     */
+    private static TypeUtilisateur typeDe(Jwt jeton) {
+        try {
+            String declare = jeton.getClaimAsString("type");
+            return declare == null ? null : TypeUtilisateur.valueOf(declare);
+        } catch (IllegalArgumentException inconnu) {
+            return null;
+        }
     }
 
     @Bean

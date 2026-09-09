@@ -23,28 +23,25 @@ import java.util.Set;
 @Service
 public class ServiceAuthentification {
 
-    /** Module réservé au SuperAdmin : référentiel, surveillance, audit. */
-    private static final String MODULE_SECURITE = "SECURITE";
-
     /** Empreinte factice, utilisée quand le compte n'existe pas (voir §2). */
     private static final String EMPREINTE_LEURRE =
             "$2a$12$Yl3zvfM8xUqOl0lWq4mBOe5j6P3.pWpH0zGmHhKgqXqEYzGZ3d/8y";
 
     private final UtilisateurRepository utilisateurs;
-    private final CasUtilisationRepository casUtilisation;
+    private final DroitsParType droitsDeduits;
     private final ServicePermissions permissions;
     private final ServiceJeton jetons;
     private final PasswordEncoder encodeur;
     private final ServiceEvenementsSecurite securite;
 
     public ServiceAuthentification(UtilisateurRepository utilisateurs,
-                                   CasUtilisationRepository casUtilisation,
+                                   DroitsParType droitsDeduits,
                                    ServicePermissions permissions,
                                    ServiceJeton jetons,
                                    PasswordEncoder encodeur,
                                    ServiceEvenementsSecurite securite) {
         this.utilisateurs = utilisateurs;
-        this.casUtilisation = casUtilisation;
+        this.droitsDeduits = droitsDeduits;
         this.permissions = permissions;
         this.jetons = jetons;
         this.encodeur = encodeur;
@@ -148,11 +145,23 @@ public class ServiceAuthentification {
      * 15 minutes au lieu de 60.</p>
      */
     public Set<String> permissionsDe(Utilisateur utilisateur) {
-        return switch (utilisateur.getType()) {
-            case SUPER_ADMIN -> new LinkedHashSet<>(casUtilisation.tousLesCodesActifs());
-            case ADMIN -> new LinkedHashSet<>(casUtilisation.codesActifsHorsModule(MODULE_SECURITE));
+        TypeUtilisateur type = utilisateur.getType();
+
+        // 🎯 La règle « quel type reçoit quoi » vit dans DroitsParType, et
+        //    nulle part ailleurs. Elle est lue à DEUX endroits — ici, pour la
+        //    réponse de connexion que l'écran consomme, et dans le
+        //    convertisseur de jeton, pour Spring Security. Deux copies
+        //    auraient fini par diverger, et « pourquoi cet administrateur
+        //    voit-il un bouton que l'API lui refuse ? » ne se répond qu'en
+        //    relisant les deux.
+        if (droitsDeduits.seDeduisent(type)) {
+            return droitsDeduits.pour(type);
+        }
+
+        return switch (type) {
             case RESPONSABLE -> permissions.permissionsEffectives(utilisateur.getId());
             case CLIENT -> Set.of();
+            default -> throw new IllegalStateException("Type non traité : " + type);
         };
     }
 }

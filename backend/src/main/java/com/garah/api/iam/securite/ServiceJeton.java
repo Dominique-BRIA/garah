@@ -1,5 +1,6 @@
 package com.garah.api.iam.securite;
 
+import com.garah.api.iam.domaine.DroitsParType;
 import com.garah.api.iam.domaine.Utilisateur;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -32,6 +33,7 @@ import java.util.Set;
 public class ServiceJeton {
 
     private final JwtEncoder encodeur;
+    private final DroitsParType droitsDeduits;
     private final Duration duree;
 
     /**
@@ -48,15 +50,17 @@ public class ServiceJeton {
      * monde.</p>
      */
     public ServiceJeton(JwtEncoder encodeur,
+                        DroitsParType droitsDeduits,
                         @Value("${GARAH_JWT_EXPIRATION_MINUTES:15}") long minutes) {
         this.encodeur = encodeur;
+        this.droitsDeduits = droitsDeduits;
         this.duree = Duration.ofMinutes(minutes);
     }
 
     public String creer(Utilisateur utilisateur, Set<String> permissions) {
         Instant maintenant = Instant.now();
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder constructeur = JwtClaimsSet.builder()
                 .issuer("garah")
                 .issuedAt(maintenant)
                 .expiresAt(maintenant.plus(duree))
@@ -70,11 +74,35 @@ public class ServiceJeton {
                 //    chemins qui en ont déjà assez ; et la surveillance ne peut
                 //    pas interroger l'IAM sans créer un cycle entre les deux.
                 .claim("email", utilisateur.getEmail())
-                .claim("langue", utilisateur.getLangue())
-                // Les permissions voyagent DANS le jeton : aucune requête en
-                // base n'est nécessaire pour autoriser un appel (D-16).
-                .claim("permissions", permissions.stream().toList())
-                .build();
+                .claim("langue", utilisateur.getLangue());
+
+        // 🎯 ON N ÉNUMÈRE QUE CE QUI NE SE DÉDUIT PAS.
+        //
+        //    D-16 faisait voyager les permissions dans le jeton pour qu'aucune
+        //    requête en base ne soit nécessaire à l'autorisation. La règle
+        //    reste juste pour un RESPONSABLE : ses droits sont une donnée le
+        //    concernant — ses profils, ses exceptions — et rien ne permet de
+        //    les recalculer sans la lire.
+        //
+        //    Elle ne l'était pas pour les deux autres. Les droits d'un
+        //    SUPER_ADMIN sont « toutes les fonctionnalités actives » : une
+        //    fonction de son type et du catalogue, pas une information sur
+        //    lui. Les énumérer, c'était transporter 197 codes et près de 7 Ko
+        //    d'en-tête HTTP sur CHAQUE appel, depuis une connexion mobile
+        //    camerounaise — pour ce que le serveur sait recalculer.
+        //
+        // ⚠️ Et cela dépassait la limite d'en-tête du serveur. Tomcat répondait
+        //    400 avec sa propre page d'erreur, produite avant la chaîne de
+        //    filtres, donc SANS en-tête CORS : le navigateur jetait la réponse
+        //    et l'écran affichait « le service ne répond pas » pendant que le
+        //    service répondait. Voir D-34.
+        //
+        //    Le claim `type` suffit au convertisseur pour retrouver la liste.
+        if (!droitsDeduits.seDeduisent(utilisateur.getType())) {
+            constructeur.claim("permissions", permissions.stream().toList());
+        }
+
+        JwtClaimsSet claims = constructeur.build();
 
         // ⚠️ L'en-tête DOIT déclarer HS256.
         //
