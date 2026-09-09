@@ -1,0 +1,99 @@
+<header class="entete">
+  <div>
+    <h1>Messages</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else if (totalNonLus(); as n) { {{ n }} message(s) non lu(s) }
+      @else { {{ fils().length }} conversation(s) }
+    </p>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="commencer()">
+      Nouveau message
+    </button>
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</header>
+
+@if (erreur(); as m) {
+  <div class="gu-alerte" role="alert">{{ m }}</div>
+}
+
+<div class="messagerie">
+  <!-- La colonne des fils. Ceux qui attendent une réponse sont en tête : on
+       ouvre cet écran pour savoir QUI ATTEND, pas qui a parlé en dernier. -->
+  <aside class="fils">
+    @if (chargement()) {
+      <p class="vide">Chargement…</p>
+    } @else if (fils().length === 0) {
+      <p class="vide">
+        Aucune conversation.
+        <span class="vide__aide">« Nouveau message » pour écrire à un collègue.</span>
+      </p>
+    } @else {
+      @for (f of filsTries(); track f.id) {
+        <button type="button" class="fil"
+                [class.fil--ouvert]="ouvert()?.id === f.id"
+                (click)="ouvrir(f)">
+          <span class="fil__nom">{{ f.interlocuteurNom }}</span>
+          <span class="fil__date">{{ quand(f.dateDernier) }}</span>
+          @if (f.nonLus > 0) {
+            <span class="fil__pastille" [attr.aria-label]="f.nonLus + ' non lu(s)'">
+              {{ f.nonLus }}
+            </span>
+          }
+        </button>
+      }
+    }
+  </aside>
+
+  <section class="fil-ouvert">
+    @if (nouveau()) {
+      <div class="destinataire">
+        <label class="gu-libelle" for="m-destinataire">À qui écrivez-vous ?</label>
+        <select id="m-destinataire" name="destinataire" class="gu-champ"
+                [ngModel]="destinataire()"
+                (ngModelChange)="destinataire.set($event)">
+          <option [ngValue]="null">Choisissez un collègue</option>
+          @for (c of collegues(); track c.responsableId) {
+            <option [ngValue]="c.responsableId">{{ c.nom }}</option>
+          }
+        </select>
+        <!-- ⚠️ La liste ne contient que les collègues JOIGNABLES : le serveur
+             en retire ceux qui vous ont bloqué. Afficher tout le monde
+             produirait des envois refusés sans qu'on comprenne pourquoi. -->
+      </div>
+    } @else if (!ouvert()) {
+      <p class="vide">Choisissez une conversation à gauche.</p>
+    }
+
+    @if (ouvert() || nouveau()) {
+      <div class="bulles">
+        @for (m of messages(); track m.id) {
+          <div class="bulle" [class.bulle--moi]="estDeMoi(m)">
+            <p class="bulle__texte">{{ m.contenu }}</p>
+            <span class="bulle__heure">{{ quand(m.dateEnvoi) }}</span>
+          </div>
+        }
+        @if (ouvert() && messages().length === 0) {
+          <p class="vide">Cette conversation est vide.</p>
+        }
+      </div>
+
+      <div class="composer">
+        <textarea class="gu-champ" rows="2" placeholder="Votre message…"
+                  [ngModel]="texte()" (ngModelChange)="texte.set($event)"></textarea>
+        <button type="button" class="gu-btn gu-btn--primaire"
+                [disabled]="!texte().trim() || envoi()
+                            || (nouveau() && destinataire() === null)"
+                (click)="envoyer()">
+          {{ envoi() ? 'Envoi…' : 'Envoyer' }}
+        </button>
+      </div>
+    }
+  </section>
+</div>

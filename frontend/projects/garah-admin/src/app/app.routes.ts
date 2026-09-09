@@ -63,6 +63,10 @@ export const routes: Routes = [
       // elles : elles vivent DANS une conversation, et les en sortir leur
       // ferait perdre leur contexte.
       { path: 'conversations', loadComponent: () => import('./serviceclient/conversations').then((m) => m.Conversations) },
+      // La messagerie INTERNE : entre collegues, pas avec les clients. Deux
+      // ecrans distincts parce que ce sont deux metiers — repondre a un
+      // client se fait dans une file partagee, ecrire a un collegue non.
+      { path: 'messages', loadComponent: () => import('./messagerie/messagerie').then((m) => m.Messagerie) },
       // La finance marchand. « /finance » et non « /marchands/soldes » : la
       // question posee ici est « qui doit-on payer ? », pas « qui sont nos
       // marchands ? » — et ce ne sont pas les memes gens qui la posent.

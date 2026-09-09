@@ -78,6 +78,29 @@ public class ServiceMessagerie {
                     "On ne s'écrit pas à soi-même.");
         }
 
+        // ⚠️ LES DEUX DOIVENT ÊTRE DES RESPONSABLES.
+        //
+        //    `message_interne.expediteur_id` et `fil_interne` référencent
+        //    `responsable`. Un ADMIN ou un SUPER_ADMIN n'a pas de ligne dans
+        //    cette table : sans ce contrôle, la clé étrangère refusait et le
+        //    gestionnaire d'erreurs traduisait cela en « cette opération
+        //    renvoie à un élément qui n'existe pas, ou qui a été supprimé
+        //    entre-temps ».
+        //
+        //    Le message était faux dans les deux moitiés de sa phrase : rien
+        //    n'avait été supprimé, et l'élément n'a jamais existé. On cherchait
+        //    une donnée disparue là où il fallait lire « ce compte n'est pas
+        //    concerné par cette fonctionnalité ».
+        if (!noms.existsResponsable(expediteurId)) {
+            throw new RegleMetierViolee("EXPEDITEUR_NON_RESPONSABLE",
+                    "La messagerie interne relie les membres de l'équipe entre eux. "
+                    + "Un compte d'administration n'y a pas de place.");
+        }
+        if (!noms.existsResponsable(destinataireId)) {
+            throw new RegleMetierViolee("DESTINATAIRE_NON_RESPONSABLE",
+                    "Cette personne n'est pas un membre de l'équipe.");
+        }
+
         // ⚠️ Le sens du test compte : le DESTINATAIRE m'a-t-il bloqué ? Tester
         //    l'inverse laisserait un bloqueur incapable d'écrire à celui qu'il
         //    a bloqué, ce qui n'est pas ce qu'on a voulu.

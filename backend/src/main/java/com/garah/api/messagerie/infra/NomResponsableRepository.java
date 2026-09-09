@@ -30,6 +30,18 @@ import java.util.List;
  */
 public interface NomResponsableRepository extends JpaRepository<FilInterne, Long> {
 
+    /**
+     * Ce compte est-il un responsable ?
+     *
+     * <p>⚠️ La messagerie interne relie les membres de l'équipe. Un ADMIN ou un
+     * SUPER_ADMIN n'a pas de ligne `responsable` : sans ce contrôle, la clé
+     * étrangère refuse et l'erreur se lit « élément supprimé entre-temps »,
+     * ce qui est faux dans les deux moitiés de la phrase.</p>
+     */
+    @Query("SELECT count(r) > 0 FROM Responsable r WHERE r.id = :id")
+    boolean existsResponsable(@Param("id") Long id);
+
+
     @Query("""
             SELECT r.id, u.prenom, u.nom
               FROM Responsable r

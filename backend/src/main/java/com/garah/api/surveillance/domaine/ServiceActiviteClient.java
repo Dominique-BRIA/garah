@@ -61,7 +61,7 @@ public class ServiceActiviteClient {
      */
     @Transactional(readOnly = true)
     public Page<VueActiviteClient> parcoursDe(Long clientId, Pageable pagination) {
-        return activites.findByClientIdOrderByDateHeureDesc(clientId, pagination)
+        return activites.findByClientIdOrderByDateHeureDescIdDesc(clientId, pagination)
                 .map(VueActiviteClient::de);
     }
 }

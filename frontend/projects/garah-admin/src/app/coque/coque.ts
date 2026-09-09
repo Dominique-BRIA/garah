@@ -127,6 +127,11 @@ export class Coque {
         // utilisateurs, et ils ne se gerent pas ici.
         { libelle: 'Equipe', chemin: '/equipe', icone: 'users', permission: 'RESPONSABLE_CONSULTER' },
         { libelle: 'Mon service', chemin: '/mon-service', icone: 'users', permission: 'SERVICE_MEMBRE_CONSULTER' },
+        // ⚠️ La messagerie INTERNE, a ne pas confondre avec « Service client »
+        //    range sous Apres-vente : celle-ci sert a se parler entre
+        //    collegues, celle-la a repondre aux clients. Deux metiers, deux
+        //    ecrans — et c'est pour ca que celui-ci vit avec « Les gens ».
+        { libelle: 'Messages', chemin: '/messages', icone: 'comments', permission: 'MESSAGE_INTERNE_ECRIRE' },
       ],
     },
     {
