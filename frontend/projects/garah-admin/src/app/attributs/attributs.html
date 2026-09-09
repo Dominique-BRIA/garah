@@ -102,7 +102,7 @@
             @for (v of a.valeurs; track v.id) {
               <li class="valeur">
                 @if (estPastille(a) && v.valeurAffichage) {
-                  <span class="pastille" [style.background]="v.valeurAffichage"
+                  <span class="valeur__teinte" [style.background]="v.valeurAffichage"
                         aria-hidden="true"></span>
                 }
                 <span class="valeur__libelle">{{ v.libelle }}</span>

@@ -67,9 +67,22 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
      * <p>Le {@code sum(case ...)} plutot qu un second {@code count} filtre :
      * on veut les deux chiffres dans le MEME balayage, pas deux passes sur la
      * meme table.</p>
+     *
+     * <p>⚠️ LES NON LUS NE COMPTENT QUE LES MESSAGES DU CLIENT. Le
+     * {@code lu} d'un message est faux a l'ecriture, quel qu'en soit
+     * l'auteur : sans le test sur l'expediteur, la reponse que l'agent vient
+     * de taper se comptait comme un non-lu de plus. On envoyait un message et
+     * le compteur montait — 2 non lus devenaient 3.</p>
+     *
+     * <p>Un message vient du client quand son expediteur EST le client de la
+     * conversation. Les deux pointent vers {@code utilisateur}, la racine
+     * commune : la comparaison est directe, sans colonne supplementaire.</p>
      */
     @Query("""
-            SELECT m.conversation.id, count(m), sum(CASE WHEN m.lu THEN 0 ELSE 1 END),
+            SELECT m.conversation.id, count(m),
+                   sum(CASE WHEN m.lu = false
+                                 AND m.expediteurId = m.conversation.clientId
+                            THEN 1 ELSE 0 END),
                    max(m.dateEnvoi)
               FROM Message m
              WHERE m.conversation.id IN :ids

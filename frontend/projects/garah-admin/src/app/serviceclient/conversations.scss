@@ -57,8 +57,19 @@
 }
 
 // Le compteur de non lus. C'est le seul chiffre qui reponde a « laquelle
-// attend ma reponse ? », donc le seul qui merite une pastille.
-.pastille {
+// attend ma reponse ? », donc le seul qui merite d etre mis en avant.
+//
+// ⚠️ IL S APPELAIT .pastille, ET C ETAIT UNE COLLISION. ecrans-communs.scss
+//    porte une .pastille GLOBALE : une tuile carree de 3,5 rem en 1,5 rem de
+//    texte, faite pour le tableau de bord. L encapsulation Angular donnait la
+//    priorite aux regles d ici — mais seulement pour les proprietes ECRITES
+//    ici. width, height, display et font-size, absentes, tombaient de la
+//    globale : la pilule devenait un carre geant et « non lu(s) » debordait
+//    de la carte.
+//
+//    D ou un nom qui ne peut appartenir qu a cet ecran.
+.conv__nonlus {
+  white-space: nowrap;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--primary) 14%, transparent);

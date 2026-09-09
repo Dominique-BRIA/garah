@@ -286,4 +286,47 @@ class ServiceConversationTest {
         assertThatThrownBy(() -> conversations.evaluer(convId, 0, null))
                 .isInstanceOf(RegleMetierViolee.class);
     }
+
+    @Test
+    @DisplayName("repondre ne fait pas monter le compteur de non lus")
+    void reponseAgentPasComptee() {
+        // 🎯 CE QUI SE PASSAIT A L'ECRAN : l'agent tapait sa reponse, et la
+        //    pastille passait de 2 non lus a 3. On repondait, et le dossier
+        //    avait l'air d'attendre davantage.
+        //
+        //    `lu` est faux a l'ecriture pour TOUT message, quel qu'en soit
+        //    l'auteur. L'agregat comptait donc la reponse de l'agent parmi les
+        //    messages qui attendent une reponse de l'agent.
+        Long convId = conversations.ouvrir(clientId, "Question prix", "Bonjour").getId();
+        conversations.repondre(convId, clientId, "Es-ce gratuit ?");
+
+        assertThat(nonLusDe(convId)).isEqualTo(2);
+
+        Long responsableId = responsableIds.getFirst();
+        conversations.prendre(convId, responsableId);
+        conversations.repondre(convId, responsableId, "Bonjour, elle coute 2000F");
+
+        // Le total monte — trois messages ont bien ete ecrits.
+        assertThat(nombreMessagesDe(convId)).isEqualTo(3);
+
+        // ⚠️ Les non lus, EUX, ne bougent pas : ce sont toujours les deux
+        //    memes messages du client qui attendent.
+        assertThat(nonLusDe(convId)).isEqualTo(2);
+    }
+
+    private long nonLusDe(Long convId) {
+        return vueDe(convId).nonLus();
+    }
+
+    private long nombreMessagesDe(Long convId) {
+        return vueDe(convId).nombreMessages();
+    }
+
+    private ResumeConversation vueDe(Long convId) {
+        return conversations.administration(null, null, PageRequest.of(0, 25))
+                .getContent().stream()
+                .filter(c -> c.id().equals(convId))
+                .findFirst()
+                .orElseThrow();
+    }
 }

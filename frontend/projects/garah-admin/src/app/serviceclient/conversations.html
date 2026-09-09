@@ -86,7 +86,7 @@
           <!-- 🎯 Le compteur de NON LUS, pas le total : une conversation de
                quarante messages tous lus n'attend rien. -->
           @if (c.nonLus > 0) {
-            <span class="pastille">{{ c.nonLus }} non lu(s)</span>
+            <span class="conv__nonlus">{{ c.nonLus }} non lu(s)</span>
           } @else {
             <span class="attenue">{{ c.nombreMessages }} message(s)</span>
           }

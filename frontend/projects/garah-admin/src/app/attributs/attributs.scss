@@ -123,9 +123,14 @@
 
 .valeur__libelle { font-variant-numeric: tabular-nums; }
 
-// La pastille MONTRE la teinte. « Bleu ciel » écrit en toutes lettres oblige
+// La rondelle MONTRE la teinte. « Bleu ciel » écrit en toutes lettres oblige
 // le client à l'imaginer — et deux personnes n'imaginent pas la même.
-.pastille {
+//
+// ⚠️ Nommee .pastille, elle heritait de la tuile globale d ecrans-communs
+//    (display: grid, font-size: 1.5rem). Sans texte dedans ca ne se voyait
+//    pas — mais c est la meme collision que celle qui a casse le service
+//    client, et elle attendait son tour.
+.valeur__teinte {
   width: 0.95rem;
   height: 0.95rem;
   border-radius: 50%;
