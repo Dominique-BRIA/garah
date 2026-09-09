@@ -248,7 +248,8 @@ compte et les discussions.
 | Messagerie interne | API et WebSocket livrés (V30) — **aucun écran ne les consomme**. |
 | Appareils connus | Table `appareil_connu`, aucune route. |
 | Téléversement logo et photo | Colonnes prêtes depuis V23. |
-| `GARAH_MAIL_*` sur Azure | Sans elles, la vérification d'adresse ne part pas. **Ne bloque rien** : aucune route n'exige un e-mail vérifié. |
+| `GARAH_MAIL_*` sur Azure | ✅ **Configurées** — vérifié par `GET /api/sante` : `courrielConfigure: true`. ⚠️ Ce point était annoncé comme manquant, et il ne l'est pas. Il l'était d'autant moins qu'il aurait été **bloquant** : commander exige une adresse confirmée (403 `ADRESSE_NON_CONFIRMEE`), contrairement à ce qui était écrit ici. |
+| `GARAH_S3_*` sur Azure | ✅ **Configurées** — `stockageConfigure: true`. |
 | `GARAH_FIREBASE_CREDENTIALS` | À poser **avec une clé renouvelée** — l'ancienne est compromise. |
 | Azure Static Web Apps | Jamais créé : le workflow est *skipped* à chaque exécution. |
 | Base de recette | ✅ Faite (D-37). |
