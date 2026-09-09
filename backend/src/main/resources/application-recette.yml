@@ -1,0 +1,90 @@
+# =============================================================================
+# Profil RECETTE — l'API qu'on lance sur son poste pour travailler
+# =============================================================================
+# 🎯 CE PROFIL EXISTE POUR QU'ON CESSE DE TRAVAILLER SUR LA PRODUCTION.
+#
+#    `ng serve` visait l'API Azure, donc la base Neon, donc les VRAIES données.
+#    C'était assumé et documenté — cela exerçait pour de bon le CORS, les
+#    cookies inter-sites et les URL signées. Mais la contrepartie a fini par se
+#    voir : deux lignes du journal d'audit de production portent des gestes
+#    faits pendant un développement, et une suppression depuis le back-office
+#    supprimait pour de bon.
+#
+#    Ce profil pointe sur PostgreSQL en local. Rien de ce qu'on y fait ne
+#    quitte le poste.
+#
+# -----------------------------------------------------------------------------
+# Comment le lancer
+# -----------------------------------------------------------------------------
+#     ./mvnw spring-boot:run -Dspring-boot.run.profiles=recette
+#
+# Puis pointer les frontends dessus : `environment.development.ts` côté
+# back-office, `configuration.ts` côté boutique.
+#
+# -----------------------------------------------------------------------------
+# ⚠️ CE QUE CE PROFIL NE VÉRIFIE PLUS
+# -----------------------------------------------------------------------------
+# En local, le navigateur et l'API sont sur le MÊME site (localhost). Trois
+# mécanismes cessent donc d'être exercés :
+#
+#   - le CORS inter-sites, qui n'a plus rien à arbitrer ;
+#   - le cookie `SameSite=None; Secure`, qui n'a plus besoin de l'être ;
+#   - les URL de médias signées, si le stockage n'est pas configuré.
+#
+# Ce sont exactement les trois qui, en production, échouent silencieusement.
+# Un passage sur l'environnement déployé reste donc obligatoire AVANT de
+# livrer — la recette ne remplace pas la recette.
+#
+# -----------------------------------------------------------------------------
+# ⚠️ La base `garah` n'est pas `garah_test`
+# -----------------------------------------------------------------------------
+# `garah_test` est effacée et rejouée à chaque exécution de la suite de tests.
+# Y travailler ferait disparaître les données de recette au premier `mvn test`,
+# sans prévenir. Les deux bases restent séparées, et c'est délibéré.
+# =============================================================================
+
+spring:
+  datasource:
+    url:      ${GARAH_RECETTE_DB_URL:jdbc:postgresql://localhost:5432/garah}
+    username: ${GARAH_RECETTE_DB_USER:${GARAH_TEST_DB_USER:garah_app}}
+    password: ${GARAH_RECETTE_DB_PASSWORD:${GARAH_TEST_DB_PASSWORD}}
+
+  flyway:
+    # ⚠️ La base locale peut être en retard de plusieurs versions. On laisse
+    #    Flyway la rattraper : c'est le seul endroit où l'on vérifie que la
+    #    chaîne des migrations tient debout sur une base DÉJÀ peuplée, et pas
+    #    seulement sur une base vierge comme en intégration continue.
+    enabled: true
+
+# -----------------------------------------------------------------------------
+# ⚠️ CE QUI NE PEUT PAS ÊTRE RÉGLÉ ICI — mesuré, pas supposé
+# -----------------------------------------------------------------------------
+# `spring-dotenv` charge le fichier `.env` dans une source de propriétés qui
+# passe AVANT les fichiers de profil. Les variables `GARAH_*` posées ici
+# seraient donc écrasées, en silence.
+#
+# Vérifié : `GARAH_CORS_ORIGINS` déclaré dans ce fichier ne s'appliquait pas —
+# un préflight depuis `http://localhost:4300` répondait 403 alors que
+# l'origine y figurait.
+#
+# Les trois réglages ci-dessous vont donc dans `.env`, qui n'est pas versionné :
+#
+#     GARAH_CORS_ORIGINS=http://localhost:4200,http://localhost:4300
+#     GARAH_COOKIE_SECURE=false
+#     GARAH_COOKIE_SAMESITE=Lax
+#
+# ⚠️ Les deux derniers ne sont pas facultatifs en local. `SameSite=None` impose
+#    `Secure`, et `Secure` impose HTTPS : servi en clair, le cookie de session
+#    ne serait jamais posé, et l'on chercherait longtemps pourquoi la session
+#    ne survit pas à un rechargement.
+#
+# ⚠️ Oublier une origine donne le symptôme le plus déroutant qui soit : l'API
+#    répond correctement, et le NAVIGATEUR jette la réponse. Pas d'erreur
+#    serveur, pas de trace, un écran vide.
+
+logging:
+  level:
+    # De quoi voir passer les requêtes quand un écran ne montre pas ce qu'on
+    # attend — sans le détail des paramètres, qui noierait le reste.
+    org.springframework.web: INFO
+    com.garah.api: DEBUG
