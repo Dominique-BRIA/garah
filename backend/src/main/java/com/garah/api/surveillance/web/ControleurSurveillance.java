@@ -120,6 +120,41 @@ public class ControleurSurveillance {
         return audit.historiqueDe(entite, entiteId).stream().map(VueAudit::de).toList();
     }
 
+    /**
+     * Le journal entier, le plus récent d'abord.
+     *
+     * <p>C'est la lecture qui répond à « qui a annulé cette commande ? » quand
+     * on ne sait <b>pas encore</b> qui chercher — les deux routes ci-dessous
+     * supposent qu'on connaît déjà la personne ou l'objet.</p>
+     */
+    @GetMapping("/audit")
+    @PreAuthorize("hasAuthority('AUDIT_CONSULTER')")
+    public Page<VueAudit> journal(@RequestParam(required = false) String action,
+                                  @RequestParam(required = false) String entite,
+                                  @RequestParam(required = false) Long utilisateurId,
+                                  @RequestParam(defaultValue = "0") int page,
+                                  @RequestParam(defaultValue = "50") int taille) {
+        return audit.rechercher(action, entite, utilisateurId,
+                        PageRequest.of(Math.max(page, 0), Math.clamp(taille, 1, TAILLE_MAX)))
+                .map(VueAudit::de);
+    }
+
+    /**
+     * Ce que le journal contient réellement, pour ne proposer que ça.
+     *
+     * <p>Une liste déroulante peuplée à la main proposerait des filtres qui ne
+     * rendent rien — et laisserait croire, le jour où une action nouvelle
+     * apparaît, qu'elle n'est pas tracée.</p>
+     */
+    @GetMapping("/audit/filtres")
+    @PreAuthorize("hasAuthority('AUDIT_CONSULTER')")
+    public FiltresAudit filtres() {
+        return new FiltresAudit(audit.actionsConnues(), audit.entitesConnues());
+    }
+
+    public record FiltresAudit(List<String> actions, List<String> entites) {
+    }
+
     /** Tout ce qu'un utilisateur a fait. L'autre sens de la même question. */
     @GetMapping("/audit/acteurs/{utilisateurId}")
     @PreAuthorize("hasAuthority('AUDIT_CONSULTER')")

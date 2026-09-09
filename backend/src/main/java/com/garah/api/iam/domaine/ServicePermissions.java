@@ -1,5 +1,6 @@
 package com.garah.api.iam.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.iam.infra.CasUtilisationRepository;
@@ -28,13 +29,16 @@ public class ServicePermissions {
     private final ResponsableRepository responsables;
     private final CasUtilisationRepository casUtilisation;
     private final ResponsableCasUtilisationRepository exceptions;
+    private final JournalActions journal;
 
     public ServicePermissions(ResponsableRepository responsables,
                               CasUtilisationRepository casUtilisation,
-                              ResponsableCasUtilisationRepository exceptions) {
+                              ResponsableCasUtilisationRepository exceptions,
+                              JournalActions journal) {
         this.responsables = responsables;
         this.casUtilisation = casUtilisation;
         this.exceptions = exceptions;
+        this.journal = journal;
     }
 
     /**
@@ -92,5 +96,13 @@ public class ServicePermissions {
         // La clé primaire composite (responsable, cas) empêche d'avoir à la fois
         // un ADD et un REMOVE : save() remplace l'exception existante (I-04).
         exceptions.save(new ResponsableCasUtilisation(responsable, cas, type, motif, accordePar));
+
+        // 🎯 C'est LE geste qui contourne les profils : un droit donné à une
+        //    personne et à elle seule, sans que le profil qu'elle porte le
+        //    dise. Le motif est déjà exigé ; le journal ajoute qui l'a posé et
+        //    quand, ce que la ligne d'exception n'apprend pas si on la retire
+        //    plus tard.
+        journal.enregistrer("PERMISSION_EXCEPTION", "responsable", responsableId, null,
+                JournalActions.cliche("permission", code, "sens", type, "motif", motif));
     }
 }

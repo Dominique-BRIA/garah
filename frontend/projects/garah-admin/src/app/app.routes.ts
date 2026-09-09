@@ -86,6 +86,7 @@ export const routes: Routes = [
       // qu on dirige. Aucun garde de permission sur la route — la reponse est
       // simplement vide pour qui ne dirige rien.
       { path: 'mon-service', loadComponent: () => import('./equipe/mon-service').then((m) => m.MonService) },
+      { path: 'journal', loadComponent: () => import('./journal/journal').then((m) => m.Journal) },
     ],
   },
   { path: '**', redirectTo: '' },

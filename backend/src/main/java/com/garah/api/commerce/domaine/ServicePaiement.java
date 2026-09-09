@@ -3,6 +3,7 @@ package com.garah.api.commerce.domaine;
 import com.garah.api.commerce.infra.CommandeRepository;
 import com.garah.api.commerce.infra.PaiementRepository;
 import com.garah.api.commerce.infra.TentativePaiementRepository;
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -46,10 +47,19 @@ public class ServicePaiement {
     private final ServiceEvenementsSecurite securite;
     private final ServiceGrandLivre grandLivre;
 
+    /**
+     * ⚠️ Un ENCAISSEMENT n'est pas journalisé ici : c'est le client qui paie,
+     * et c'est l'opérateur mobile qui confirme. Un REMBOURSEMENT, lui, est
+     * toujours décidé chez nous — et fait sortir de l'argent.
+     */
+    private final JournalActions journal;
+
     public ServicePaiement(PaiementRepository paiements, TentativePaiementRepository tentatives,
                            CommandeRepository commandes, ServiceStock stock,
                            ServiceEvenementsSecurite securite,
-                           ServiceGrandLivre grandLivre) {
+                           ServiceGrandLivre grandLivre,
+                           JournalActions journal) {
+        this.journal = journal;
         this.paiements = paiements;
         this.tentatives = tentatives;
         this.commandes = commandes;
@@ -236,8 +246,14 @@ public class ServicePaiement {
                     + encaisse.subtract(dejaRembourse) + " restant).");
         }
 
-        return paiements.save(
+        Paiement remboursement = paiements.save(
                 Paiement.remboursement(commandeId, montant, moyen, origineType, origineId));
+
+        journal.creation("REMBOURSEMENT_EMETTRE", "paiement", remboursement.getId(),
+                JournalActions.cliche("commande", commandeId, "montant", montant,
+                        "moyen", moyen, "origine", origineType + " n° " + origineId));
+
+        return remboursement;
     }
 
     /**

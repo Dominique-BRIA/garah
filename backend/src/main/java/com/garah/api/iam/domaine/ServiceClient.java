@@ -1,5 +1,6 @@
 package com.garah.api.iam.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.iam.infra.ClientRepository;
 import org.springframework.data.domain.Page;
@@ -24,9 +25,12 @@ import java.util.stream.Collectors;
 public class ServiceClient {
 
     private final ClientRepository clients;
+    private final JournalActions journal;
 
-    public ServiceClient(ClientRepository clients) {
+    public ServiceClient(ClientRepository clients,
+                         JournalActions journal) {
         this.clients = clients;
+        this.journal = journal;
     }
 
     /**
@@ -93,7 +97,16 @@ public class ServiceClient {
     @Transactional
     public FicheClient activer(Long clientId, boolean actif) {
         Client client = charger(clientId);
+        StatutUtilisateur ancien = client.getStatut();
         client.setStatut(actif ? StatutUtilisateur.ACTIF : StatutUtilisateur.INACTIF);
+
+        // 🎯 Le client, lui, n'est pas l'acteur : c'est quelqu'un de la maison
+        //    qui suspend son compte. Le geste est donc interne, et il se
+        //    journalise — « qui m'a fermé mon compte ? » est une réclamation
+        //    qui arrive, et elle doit trouver une réponse.
+        journal.changement(actif ? "CLIENT_ACTIVER" : "CLIENT_SUSPENDRE",
+                "client", clientId, "statut", ancien, client.getStatut());
+
         return FicheClient.de(client);
     }
 

@@ -1,5 +1,6 @@
 package com.garah.api.iam.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -47,17 +48,20 @@ public class ServiceEquipe {
     private final CategorieResponsableRepository profils;
     private final PasswordEncoder encodeur;
     private final StockageObjet stockage;
+    private final JournalActions journal;
 
     public ServiceEquipe(UtilisateurRepository utilisateurs,
                          ResponsableRepository responsables,
                          CategorieResponsableRepository profils,
                          PasswordEncoder encodeur,
-                         StockageObjet stockage) {
+                         StockageObjet stockage,
+                         JournalActions journal) {
         this.utilisateurs = utilisateurs;
         this.responsables = responsables;
         this.profils = profils;
         this.encodeur = encodeur;
         this.stockage = stockage;
+        this.journal = journal;
     }
 
     // -------------------------------------------------------------------------
@@ -167,6 +171,13 @@ public class ServiceEquipe {
         utilisateur.setTelephone(vide(telephone) ? null : telephone.strip());
         utilisateurs.save(utilisateur);
 
+        // ⚠️ Le mot de passe n'entre PAS dans le cliché. Le journal recopie ce
+        //    qu'on lui donne et se conserve pour toujours : une empreinte y
+        //    resterait lisible longtemps après que le compte l'ait changée.
+        journal.creation("COMPTE_CREER", "utilisateur", utilisateur.getId(),
+                JournalActions.cliche("type", type, "nom", utilisateur.getNom(),
+                        "email", adresse));
+
         if (type == TypeUtilisateur.ADMIN) {
             return VueMembre.de(utilisateur, stockage::urlPublique);
         }
@@ -195,9 +206,24 @@ public class ServiceEquipe {
     public VueMembre modifier(Long id, String nom, String prenom, String telephone,
                               LocalDate dateEmbauche) {
         Utilisateur utilisateur = chargerUtilisateur(id);
+
+        // Le cliché se prend AVANT l'écriture : après, l'ancien n'existe plus
+        // nulle part, et « il a modifié la fiche » sans dire quoi ne règle
+        // aucun désaccord.
+        var avant = JournalActions.cliche(
+                "nom", utilisateur.getNom(),
+                "prenom", utilisateur.getPrenom(),
+                "telephone", utilisateur.getTelephone());
+
         utilisateur.renommer(nom.strip());
         utilisateur.setPrenom(vide(prenom) ? null : prenom.strip());
         utilisateur.setTelephone(vide(telephone) ? null : telephone.strip());
+
+        journal.enregistrer("MEMBRE_MODIFIER", "utilisateur", id, avant,
+                JournalActions.cliche(
+                        "nom", utilisateur.getNom(),
+                        "prenom", utilisateur.getPrenom(),
+                        "telephone", utilisateur.getTelephone()));
 
         return responsables.chargerAvecCategories(id)
                 .map(r -> {
@@ -220,6 +246,13 @@ public class ServiceEquipe {
         Responsable responsable = responsables.chargerAvecCategories(id)
                 .orElseThrow(() -> RessourceIntrouvable.de("Responsable", id));
 
+        // Relevé AVANT le vidage : après, la liste est vide, et « il a changé
+        // les profils » ne dit pas lesquels ont été retirés.
+        List<Long> anciens = responsable.getCategories().stream()
+                .map(rc -> rc.getCategorie().getId())
+                .sorted()
+                .toList();
+
         responsable.getCategories().clear();
         // ⚠️ Le vidage doit atteindre la base AVANT les nouvelles lignes :
         // l'index unique sur la catégorie principale refuserait deux « true »
@@ -227,6 +260,15 @@ public class ServiceEquipe {
         responsables.saveAndFlush(responsable);
 
         appliquerProfils(responsable, profilIds, profilPrincipalId);
+
+        // 🎯 Redistribuer des droits n'est pas corriger un nom. C'est le geste
+        //    qui explique, six mois plus tard, pourquoi quelqu'un a pu publier
+        //    un produit ou approcher la caisse.
+        journal.enregistrer("PROFILS_AFFECTER", "responsable", id,
+                JournalActions.cliche("profils", anciens),
+                JournalActions.cliche("profils", profilIds,
+                        "principal", profilPrincipalId));
+
         return VueMembre.de(responsables.save(responsable), stockage::urlPublique);
     }
 
@@ -255,7 +297,13 @@ public class ServiceEquipe {
         }
 
         StatutUtilisateur statut = actif ? StatutUtilisateur.ACTIF : StatutUtilisateur.INACTIF;
+        StatutUtilisateur ancien = utilisateur.getStatut();
         utilisateur.setStatut(statut);
+
+        // « Qui a mis ce compte dehors, et quand ? » est une des premières
+        // questions posées après un départ conflictuel.
+        journal.changement(actif ? "COMPTE_ACTIVER" : "COMPTE_DESACTIVER",
+                "utilisateur", id, "statut", ancien, statut);
 
         return responsables.chargerAvecCategories(id)
                 .map(r -> {
@@ -275,6 +323,13 @@ public class ServiceEquipe {
     @Transactional
     public void reinitialiserMotDePasse(Long id, String motDePasse) {
         chargerUtilisateur(id).setMotDePasse(encodeur.encode(motDePasse));
+
+        // ⚠️ Le geste seul, sans aucune valeur. Ni l'ancien mot de passe ni le
+        //    nouveau, ni leurs empreintes : le journal est immuable et se
+        //    conserve, il ne doit jamais devenir l'endroit où les retrouver.
+        //    Ce qui compte ici, c'est que quelqu'un a pris la main sur ce
+        //    compte, et qui.
+        journal.geste("MOT_DE_PASSE_REINITIALISER", "utilisateur", id);
     }
 
     // -------------------------------------------------------------------------

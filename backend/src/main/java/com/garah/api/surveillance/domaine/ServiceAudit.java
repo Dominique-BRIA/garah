@@ -90,6 +90,39 @@ public class ServiceAudit {
     }
 
     /**
+     * Le journal entier, filtré.
+     *
+     * <p>C'est la lecture du SuperAdmin : « qui a annulé cette commande ? »,
+     * « qu'est-ce qui a bougé hier soir ? ». Les filtres se combinent et sont
+     * tous facultatifs.</p>
+     *
+     * <p>⚠️ Une chaîne vide n'est pas un filtre : elle vient d'un champ de
+     * formulaire qu'on a ouvert puis refermé. La traiter comme une valeur
+     * ferait chercher les actions dont le code est « », c'est-à-dire aucune,
+     * et l'écran répondrait « rien à afficher » sur un journal plein.</p>
+     */
+    @Transactional(readOnly = true)
+    public Page<AuditLog> rechercher(String action, String entite, Long utilisateurId,
+                                     Pageable pagination) {
+        return journal.rechercher(vide(action), vide(entite), utilisateurId, pagination);
+    }
+
+    /** Les valeurs réellement présentes — on ne propose pas un filtre qui ne rend rien. */
+    @Transactional(readOnly = true)
+    public List<String> actionsConnues() {
+        return journal.actionsConnues();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> entitesConnues() {
+        return journal.entitesConnues();
+    }
+
+    private static String vide(String valeur) {
+        return valeur == null || valeur.isBlank() ? null : valeur.strip();
+    }
+
+    /**
      * La même question, posée par un chef de service — et donc allégée.
      *
      * <p>⚠️ La réduction se fait <b>ici</b>, et pas à l'écran. Les clichés JSON

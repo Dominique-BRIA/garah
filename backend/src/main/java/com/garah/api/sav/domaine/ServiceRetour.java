@@ -4,6 +4,7 @@ import com.garah.api.commerce.domaine.LigneCommande;
 import com.garah.api.commerce.domaine.MoyenPaiement;
 import com.garah.api.commerce.domaine.ServicePaiement;
 import com.garah.api.commerce.infra.LigneCommandeRepository;
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -59,10 +60,21 @@ public class ServiceRetour {
     private final ServiceClient clients;
     private final CommandeRepository commandes;
 
+    /**
+     * ⚠️ {@code retour} porte un statut, pas un parcours.
+     *
+     * <p>Les cinq étapes — accepté, reçu, contrôlé, validé, clôturé — écrasent
+     * la précédente dans la même colonne. Qui a accepté un retour que le
+     * contrôle a ensuite démenti, personne ne peut le dire une fois le statut
+     * avancé. C'est le trou que ce journal comble.</p>
+     */
+    private final JournalActions journal;
+
     public ServiceRetour(RetourRepository retours, LigneCommandeRepository lignesCommande,
                          ServiceStock stock, ServicePaiement paiements,
                          ServiceGrandLivre grandLivre, ServiceClient clients,
-                         CommandeRepository commandes) {
+                         CommandeRepository commandes, JournalActions journal) {
+        this.journal = journal;
         this.retours = retours;
         this.lignesCommande = lignesCommande;
         this.stock = stock;
@@ -122,6 +134,7 @@ public class ServiceRetour {
         Retour retour = charger(retourId);
         verifierTransition(retour, StatutRetour.ACCEPTE);
         retour.accepter();
+        journal.geste("RETOUR_ACCEPTER", "retour", retourId);
         return retour;
     }
 
@@ -130,6 +143,8 @@ public class ServiceRetour {
         Retour retour = charger(retourId);
         verifierTransition(retour, StatutRetour.REFUSE);
         retour.refuser();
+        // Un refus revient. Une acceptation, presque jamais.
+        journal.geste("RETOUR_REFUSER", "retour", retourId);
         return retour;
     }
 
@@ -139,6 +154,10 @@ public class ServiceRetour {
         Retour retour = charger(retourId);
         verifierTransition(retour, StatutRetour.RECEPTIONNE);
         retour.receptionner();
+        // ⚠️ « Accepté » n'est pas « reçu ». Confondre les deux, c'est
+        //    rembourser une marchandise qui n'est jamais rentrée — d'où une
+        //    ligne distincte pour chacune des deux étapes.
+        journal.geste("RETOUR_RECEPTIONNER", "retour", retourId);
         return retour;
     }
 
@@ -212,6 +231,17 @@ public class ServiceRetour {
         }
 
         retour.valider();
+
+        // 🎯 LE geste qui fait sortir de l'argent vers un client, après
+        //    contrôle physique de la marchandise. C'est celui qu'on voudra
+        //    relire en premier si un remboursement est contesté — ou s'il ne
+        //    l'est pas et qu'il aurait dû l'être.
+        journal.enregistrer("RETOUR_VALIDER", "retour", retourId, null,
+                JournalActions.cliche("numero", retour.getNumero(),
+                        "commande", retour.getCommandeId(),
+                        "montantRembourse", totalARembourser,
+                        "moyen", moyen));
+
         return retour;
     }
 
@@ -220,6 +250,7 @@ public class ServiceRetour {
         Retour retour = charger(retourId);
         verifierTransition(retour, StatutRetour.CLOTURE);
         retour.cloturer();
+        journal.geste("RETOUR_CLOTURER", "retour", retourId);
         return retour;
     }
 

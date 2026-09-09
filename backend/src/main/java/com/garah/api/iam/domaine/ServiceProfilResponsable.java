@@ -1,5 +1,6 @@
 package com.garah.api.iam.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -33,15 +34,18 @@ public class ServiceProfilResponsable {
     private final CasUtilisationRepository casUtilisation;
     private final ResponsableRepository responsables;
     private final com.garah.api.iam.infra.HierarchieRepository hierarchie;
+    private final JournalActions journal;
 
     public ServiceProfilResponsable(CategorieResponsableRepository profils,
                                     CasUtilisationRepository casUtilisation,
                                     ResponsableRepository responsables,
-                                    com.garah.api.iam.infra.HierarchieRepository hierarchie) {
+                                    com.garah.api.iam.infra.HierarchieRepository hierarchie,
+                                    JournalActions journal) {
         this.profils = profils;
         this.casUtilisation = casUtilisation;
         this.responsables = responsables;
         this.hierarchie = hierarchie;
+        this.journal = journal;
     }
 
     @Transactional(readOnly = true)
@@ -105,8 +109,12 @@ public class ServiceProfilResponsable {
         CategorieResponsable profil = new CategorieResponsable(propre);
         profil.setDescription(vide(description) ? null : description.strip());
         appliquerPermissions(profil, codes);
+        CategorieResponsable enregistre = profils.save(profil);
 
-        return avecChef(profils.save(profil));
+        journal.creation("PROFIL_CREER", "categorie_responsable", enregistre.getId(),
+                JournalActions.cliche("nom", propre, "permissions", codes));
+
+        return avecChef(enregistre);
     }
 
     @Transactional
@@ -121,11 +129,25 @@ public class ServiceProfilResponsable {
             throw new ConflitEtat("PROFIL_EXISTANT", "Un profil porte déjà ce nom.");
         }
 
+        // 🎯 Relevé AVANT le vidage. Un profil est porté par toute une équipe :
+        //    lui retirer une permission la retire à tout le monde d'un seul
+        //    clic, et « le profil a été modifié » ne dit pas ce qui a été
+        //    perdu. La liste d'avant est la seule façon de le retrouver.
+        List<String> anciennes = profil.getCasUtilisation().stream()
+                .map(CasUtilisation::getCode)
+                .sorted()
+                .toList();
+        String ancienNom = profil.getNom();
+
         profil.renommer(propre);
         profil.setDescription(vide(description) ? null : description.strip());
 
         profil.getCasUtilisation().clear();
         appliquerPermissions(profil, codes);
+
+        journal.enregistrer("PROFIL_MODIFIER", "categorie_responsable", id,
+                JournalActions.cliche("nom", ancienNom, "permissions", anciennes),
+                JournalActions.cliche("nom", propre, "permissions", codes));
 
         return avecChef(profil);
     }
@@ -145,7 +167,12 @@ public class ServiceProfilResponsable {
     @Transactional
     public VueProfil changerStatut(Long id, boolean actif) {
         CategorieResponsable profil = charger(id);
+        String ancien = profil.getStatut();
         profil.setStatut(actif ? "ACTIF" : "INACTIF");
+
+        journal.changement(actif ? "PROFIL_ACTIVER" : "PROFIL_DESACTIVER",
+                "categorie_responsable", id, "statut", ancien, profil.getStatut());
+
         return avecChef(profil);
     }
 

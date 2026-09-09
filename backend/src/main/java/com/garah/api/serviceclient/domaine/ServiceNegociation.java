@@ -1,6 +1,7 @@
 package com.garah.api.serviceclient.domaine;
 
 import com.garah.api.catalogue.domaine.ServiceTarification;
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -29,9 +30,21 @@ public class ServiceNegociation {
     private final ConversationRepository conversations;
     private final ServiceTarification tarification;
 
+    /**
+     * ⚠️ Seules les propositions de la MAISON entrent au journal.
+     *
+     * <p>Un client qui propose un prix ne fait que demander ; l'écouteur écarte
+     * les acteurs externes, et c'est voulu. Un conseiller qui accorde une
+     * remise, lui, décide de ce que l'entreprise encaisse — et rien d'autre
+     * dans le système ne dit qui l'a accordée.</p>
+     */
+    private final JournalActions journal;
+
     public ServiceNegociation(PropositionPrixRepository propositions,
                               ConversationRepository conversations,
-                              ServiceTarification tarification) {
+                              ServiceTarification tarification,
+                              JournalActions journal) {
+        this.journal = journal;
         this.propositions = propositions;
         this.conversations = conversations;
         this.tarification = tarification;
@@ -65,8 +78,9 @@ public class ServiceNegociation {
                     "Un prix proposé doit être strictement positif.");
         }
 
+        BigDecimal tarifPublic = null;
         if (sens == SensProposition.RESPONSABLE) {
-            BigDecimal tarifPublic = tarification.prixUnitaire(varianteId, quantite);
+            tarifPublic = tarification.prixUnitaire(varianteId, quantite);
             if (prixPropose.compareTo(tarifPublic) > 0) {
                 throw new RegleMetierViolee("PROPOSITION_SUPERIEURE_AU_TARIF",
                         "Le prix proposé (" + prixPropose + ") dépasse le tarif public ("
@@ -74,8 +88,19 @@ public class ServiceNegociation {
             }
         }
 
-        return propositions.save(new PropositionPrix(conversationId, varianteId, quantite,
-                prixPropose, auteurId, sens, validite));
+        PropositionPrix proposition = propositions.save(
+                new PropositionPrix(conversationId, varianteId, quantite,
+                        prixPropose, auteurId, sens, validite));
+
+        // Le tarif public est recopié À CÔTÉ du prix accordé : sans lui, la
+        // remise ne se lit pas — il faudrait retrouver quelle grille
+        // s'appliquait ce jour-là, et la grille a pu changer depuis.
+        journal.creation("REMISE_ACCORDER", "proposition_prix", proposition.getId(),
+                JournalActions.cliche("conversation", conversationId,
+                        "variante", varianteId, "quantite", quantite,
+                        "prixAccorde", prixPropose, "tarifPublic", tarifPublic));
+
+        return proposition;
     }
 
     /**

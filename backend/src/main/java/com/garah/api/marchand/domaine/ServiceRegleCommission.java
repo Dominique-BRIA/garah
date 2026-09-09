@@ -1,5 +1,6 @@
 package com.garah.api.marchand.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.marchand.infra.MarchandRepository;
@@ -70,10 +71,22 @@ public class ServiceRegleCommission {
     private final RegleCommissionRepository regles;
     private final MarchandRepository marchands;
 
+    /**
+     * ⚠️ {@code regle_commission} ne porte aucune colonne d'auteur.
+     *
+     * <p>Un taux décide de ce que l'entreprise prélève sur chaque vente d'un
+     * marchand. « Qui a mis ce taux à 30 % ? » est la première question posée
+     * quand le décompte du mois surprend quelqu'un, et la table seule n'y
+     * répond pas.</p>
+     */
+    private final JournalActions journal;
+
     public ServiceRegleCommission(RegleCommissionRepository regles,
-                                  MarchandRepository marchands) {
+                                  MarchandRepository marchands,
+                                  JournalActions journal) {
         this.regles = regles;
         this.marchands = marchands;
+        this.journal = journal;
     }
 
     /**
@@ -123,7 +136,15 @@ public class ServiceRegleCommission {
         }
         regle.setDateFin(dateFin);
 
-        return habiller(List.of(regles.save(regle))).getFirst();
+        RegleCommission enregistree = regles.save(regle);
+
+        journal.creation("COMMISSION_CREER", "regle_commission", enregistree.getId(),
+                JournalActions.cliche("marchand", marchandId,
+                        "categorie", categorieProduitId, "taux", taux,
+                        "priorite", priorite, "dateDebut", enregistree.getDateDebut(),
+                        "dateFin", dateFin));
+
+        return habiller(List.of(enregistree)).getFirst();
     }
 
     /**
@@ -149,7 +170,12 @@ public class ServiceRegleCommission {
                     "Une règle ne peut pas se terminer avant d'avoir commencé.");
         }
 
+        LocalDate ancienneFin = regle.getDateFin();
         regle.setDateFin(fin);
+
+        journal.changement("COMMISSION_FERMER", "regle_commission", regleId,
+                "dateFin", ancienneFin, fin);
+
         return habiller(List.of(regle)).getFirst();
     }
 

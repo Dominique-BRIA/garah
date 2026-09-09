@@ -1598,3 +1598,105 @@ devaient répondre 403 — et la suite paraissait verte.
 de sécurité n'entoure la méthode. Un corps invalide n'atteint donc jamais
 `@PreAuthorize`. **Un test d'autorisation nourri de données invalides ne teste
 pas l'autorisation.**
+
+---
+
+## D-32 — Le journal d'audit existait, personne n'y écrivait
+
+**Le constat.** `audit_log` est en base depuis V12, avec ses index, ses
+commentaires de table et sa contrainte `ON DELETE SET NULL`. `ServiceAudit`
+existe, il est testé — il survit au rollback, il survit à la suppression de son
+acteur. Deux routes de lecture sont exposées sous `AUDIT_CONSULTER`.
+
+Et `ServiceAudit.enregistrer` n'était appelé **depuis aucun service métier**.
+Aucun aspect, aucun écouteur d'entité. La table est restée vide depuis sa
+création.
+
+C'est le défaut le plus discret possible : tout ce qui entoure la trace est
+correct, documenté et vérifié. Seule la trace manque. Les tests passaient parce
+qu'ils écrivaient eux-mêmes la ligne qu'ils allaient relire.
+
+**Ce qui est fait.** Trois pièces, et aucun service métier ne connaît le
+journal :
+
+```
+un service         →  JournalActions.changement(...)     (commun)
+                          ↓  ActionAuditee               (événement Spring)
+                   →  EcouteurAudit                      (surveillance)
+                          ↓
+                      audit_log
+```
+
+L'événement n'est pas une élégance : le journal vit dans `surveillance`, et dix
+modules l'appelant directement auraient formé un cycle avec un module qui, lui,
+lit des comptes. Le test d'architecture l'aurait refusé.
+
+**L'acteur est capturé à la source**, dans `JournalActions`, et voyage dans
+l'événement. Relu par l'écouteur, il serait relu dans un contexte qui a pu
+changer — et le jour où l'écoute deviendrait asynchrone, toutes les lignes
+porteraient « Système ». Ce défaut-là ne se voit pas : il se lit six mois plus
+tard, dans un journal devenu inutile.
+
+**Trois natures d'acteur, et une seule règle.** `SYSTEME` et `INTERNE`
+s'écrivent, `CLIENT` non. Le journal répond à « qui, chez nous, a touché à
+cette donnée » ; y verser le parcours des clients le noierait sous le trafic de
+la boutique. La règle vit dans l'écouteur, à un seul endroit — ce qui compte
+parce que `ServiceCommande.annuler` et `ServiceRetour` servent les deux publics
+par la même méthode.
+
+`SYSTEME` n'est pas « inconnu » : c'est la réponse à « pourquoi ma commande
+a-t-elle été annulée ? » — parce que le paiement n'est pas arrivé dans le
+délai, pas parce que quelqu'un l'a décidé.
+
+**Ce qu'on n'a PAS journalisé, et pourquoi.** Le stock et la logistique ont
+déjà leur journal d'événements — `mouvement_stock` et `evenement_expedition`
+portent tous deux un `responsable_id`. Les tracer une seconde fois ferait
+grossir `audit_log` sans rien apprendre. Les connexions ont
+`evenement_securite`. Ce qui est journalisé ici, ce sont les gestes dont
+**aucune table ne dit l'auteur** : les prix (`tarification` n'a pas de colonne
+d'auteur), les commissions, les droits, la confirmation d'un règlement
+(`cree_par` dit qui a préparé, pas qui a payé), les remboursements, les cinq
+étapes d'un retour, la décision sur une réclamation.
+
+**Deux défauts trouvés en écrivant les tests.**
+
+*L'en-tête qui empêche une vente.* `adresse_ip` est de type `inet`.
+`X-Forwarded-For` est fourni par le client et se falsifie trivialement. Une
+chaîne de dix caractères y aurait suffi à faire échouer l'écriture du journal,
+donc l'action journalisée. `AdresseIp` écarte ce qui ne peut pas être une
+adresse — sans jamais résoudre un nom : `InetAddress.getByName` serait parti en
+requête DNS vers un serveur choisi par l'appelant.
+
+*La clé étrangère qui empêche une vente.* `utilisateur_id` référence
+`utilisateur`. Un jeton dont le sujet ne désigne plus personne faisait échouer
+l'insertion, et l'échec remontait dans l'action. La ligne s'écrit désormais
+**sans le lien** : le nom et l'adresse sont recopiés depuis le début,
+précisément pour que la trace survive à la disparition du compte. C'est la même
+raison qui avait fait choisir `ON DELETE SET NULL` plutôt que `CASCADE`.
+
+Dans les deux cas, le même défaut de fond : **le témoin devenait le maillon qui
+casse la chaîne.**
+
+**Ce que cela coûte.** `enregistrer` ouvre sa propre transaction — c'est ce qui
+fait survivre la trace à l'annulation de ce qu'elle décrit. Une action auditée
+tient donc **deux connexions** pendant l'écriture. `GARAH_DB_POOL_MAX` vaut huit
+par défaut ; le réduire à la moitié des actions simultanées ferait attendre les
+écritures de journal derrière les transactions qu'elles doivent journaliser.
+
+**Ce qu'on peut lire.** Un écran « Journal des actions » dans le back-office,
+gardé par `AUDIT_CONSULTER` — module sécurité, donc super-administrateur seul.
+Celui qui administre les comptes ne relit pas la trace de ce qu'il a fait.
+
+Un chef de service voit l'activité de son équipe par une route distincte, qui
+rend une vue **allégée** : l'action, l'objet, l'heure. Pas les clichés — ils
+contiennent l'état des objets modifiés, donc potentiellement n'importe quelle
+donnée du système. Leur donner accès aurait ouvert la lecture de tout GARAH à
+quiconque dirige une équipe, par un droit que personne n'aurait accordé s'il
+avait été demandé en ces termes. La réduction se fait dans `ServiceAudit`, pas
+à l'écran : filtrer à l'affichage aurait été un rideau devant une fenêtre
+ouverte.
+
+> ⚠️ **Reste ouvert.** `activite_client` est déclarée en V12 et n'a **ni
+> entité, ni écriture** — le même défaut que celui corrigé ici, sur le journal
+> voisin. Le parcours d'un client n'est aujourd'hui mesuré que par
+> `vue_produit`.

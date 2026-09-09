@@ -5,6 +5,7 @@ import com.garah.api.catalogue.domaine.ServiceTarification;
 import com.garah.api.catalogue.infra.VarianteRepository;
 import com.garah.api.commerce.infra.CommandeRepository;
 import com.garah.api.commerce.infra.PanierRepository;
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -74,11 +75,22 @@ public class ServiceCommande {
     /** La lecture des clients, pour afficher un nom plutot qu un identifiant. */
     private final ServiceClient clients;
 
+    /**
+     * ⚠️ Le journal ne retient QUE ce qui vient de la maison.
+     *
+     * <p>Un client qui annule sa propre commande n'écrit rien ici — l'écouteur
+     * écarte les acteurs externes. Sans quoi le journal des actions internes
+     * serait rempli d'annulations de clients, et la seule qui compte — celle
+     * qu'un employé a décidée — deviendrait introuvable.</p>
+     */
+    private final JournalActions journal;
+
     public ServiceCommande(CommandeRepository commandes, PanierRepository paniers,
                            VarianteRepository variantes, ServiceTarification tarification,
                            ServiceCommission commissions, ServiceStock stock,
                            LieuRepository lieux, ServiceVerificationEmail verification,
-                           ServiceClient clients) {
+                           ServiceClient clients, JournalActions journal) {
+        this.journal = journal;
         this.commandes = commandes;
         this.paniers = paniers;
         this.variantes = variantes;
@@ -252,7 +264,13 @@ public class ServiceCommande {
         // Une commande PAYEE annulée par un Admin exige en plus un
         // remboursement — c'est le sujet du chapitre 13.
 
+        StatutCommande ancien = commande.getStatut();
         commande.changerStatut(StatutCommande.ANNULEE);
+
+        journal.enregistrer("COMMANDE_ANNULER", "commande", commandeId,
+                JournalActions.cliche("statut", ancien),
+                JournalActions.cliche("statut", StatutCommande.ANNULEE, "motif", motif));
+
         return DetailCommande.de(commande);
     }
 
@@ -262,8 +280,13 @@ public class ServiceCommande {
             return annuler(commandeId, null);
         }
         Commande commande = charger(commandeId);
+        StatutCommande ancien = commande.getStatut();
         verifierTransition(commande, nouveau);
         commande.changerStatut(nouveau);
+
+        journal.changement("COMMANDE_STATUT", "commande", commandeId,
+                "statut", ancien, nouveau);
+
         return DetailCommande.de(commande);
     }
 
@@ -289,6 +312,17 @@ public class ServiceCommande {
         for (Commande commande : expirees) {
             libererLeStock(commande);
             commande.changerStatut(StatutCommande.ANNULEE);
+
+            // 🎯 L'acteur est « Système », et c'est une vraie réponse :
+            //    « pourquoi ma commande a-t-elle été annulée ? » — parce que
+            //    le paiement n'est pas arrivé dans le délai, pas parce que
+            //    quelqu'un l'a décidé. Sans cette ligne, la commande porte le
+            //    même statut ANNULEE qu'une annulation humaine, et plus rien
+            //    ne distingue les deux.
+            journal.enregistrer("COMMANDE_EXPIRER", "commande", commande.getId(),
+                    JournalActions.cliche("statut", StatutCommande.EN_ATTENTE_PAIEMENT),
+                    JournalActions.cliche("statut", StatutCommande.ANNULEE,
+                            "motif", "Paiement non reçu dans le délai"));
         }
         return expirees.size();
     }

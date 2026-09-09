@@ -2,6 +2,7 @@ package com.garah.api.catalogue.domaine;
 
 import com.garah.api.catalogue.infra.TarificationRepository;
 import com.garah.api.catalogue.infra.VarianteRepository;
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import org.springframework.stereotype.Service;
@@ -29,9 +30,21 @@ public class ServiceTarification {
     private final TarificationRepository tarifications;
     private final VarianteRepository variantes;
 
-    public ServiceTarification(TarificationRepository tarifications, VarianteRepository variantes) {
+    /**
+     * ⚠️ La table {@code tarification} ne porte AUCUNE colonne d'auteur.
+     *
+     * <p>Elle sait dire quel prix s'appliquait le 12 mars — c'est tout son
+     * intérêt — mais pas qui l'a posé. Le journal des actions répond à la
+     * seconde question, celle qui se pose quand un prix a bougé d'un chiffre
+     * la veille d'une grosse commande.</p>
+     */
+    private final JournalActions journal;
+
+    public ServiceTarification(TarificationRepository tarifications, VarianteRepository variantes,
+                               JournalActions journal) {
         this.tarifications = tarifications;
         this.variantes = variantes;
+        this.journal = journal;
     }
 
     /**
@@ -120,8 +133,15 @@ public class ServiceTarification {
                     + "« quel prix pour cette quantité ? » aurait deux réponses.");
         }
 
-        return PalierPrix.de(
-                tarifications.save(new Tarification(variante, quantiteMin, quantiteMax, prixUnitaire)));
+        Tarification palier = tarifications.save(
+                new Tarification(variante, quantiteMin, quantiteMax, prixUnitaire));
+
+        journal.creation("PRIX_DEFINIR", "tarification", palier.getId(),
+                JournalActions.cliche("variante", varianteId,
+                        "quantiteMin", quantiteMin, "quantiteMax", quantiteMax,
+                        "prixUnitaire", prixUnitaire));
+
+        return PalierPrix.de(palier);
     }
 
     /**
@@ -157,8 +177,15 @@ public class ServiceTarification {
 
         Tarification nouveau = new Tarification(ancien.getVariante(),
                 ancien.getQuantiteMin(), ancien.getQuantiteMax(), nouveauPrix);
+        tarifications.save(nouveau);
 
-        return PalierPrix.de(tarifications.save(nouveau));
+        // 🎯 Le journal porte l'ANCIEN identifiant de palier : c'est celui que
+        //    l'écran affichait au moment du clic, et celui qu'on retrouvera en
+        //    remontant une commande contestée.
+        journal.changement("PRIX_MODIFIER", "tarification", tarificationId,
+                "prixUnitaire", ancien.getPrixUnitaire(), nouveauPrix);
+
+        return PalierPrix.de(nouveau);
     }
 
     /**
@@ -182,5 +209,11 @@ public class ServiceTarification {
 
         palier.setDateFin(LocalDate.now());
         tarifications.save(palier);
+
+        journal.enregistrer("PRIX_RETIRER", "tarification", tarificationId,
+                JournalActions.cliche("quantiteMin", palier.getQuantiteMin(),
+                        "quantiteMax", palier.getQuantiteMax(),
+                        "prixUnitaire", palier.getPrixUnitaire()),
+                null);
     }
 }

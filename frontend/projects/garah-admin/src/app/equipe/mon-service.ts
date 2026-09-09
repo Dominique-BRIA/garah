@@ -1,7 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Avatar, Icone, Membre, messageErreur, ProfilMetier, ServiceSession } from 'garah-ui';
+import {
+  ActiviteMembre,
+  Avatar,
+  Icone,
+  Membre,
+  messageErreur,
+  Page,
+  ProfilMetier,
+  ServiceSession,
+} from 'garah-ui';
 
 /**
  * Mon service — l'écran du chef.
@@ -68,6 +77,16 @@ export class MonService {
   protected readonly motDePasse = signal('');
   /** Le mot de passe se transmet : on doit pouvoir le relire pour le dicter. */
   protected readonly mdpVisible = signal(false);
+
+  // --- L'activité d'un membre ------------------------------------------------
+  //
+  // ⚠️ Ce n'est PAS le journal d'audit. Celui-ci porte les clichés des objets
+  //    modifiés — potentiellement n'importe quelle donnée du système — et
+  //    reste réservé au module sécurité. Un chef reçoit le geste, l'objet visé
+  //    et l'heure. La réduction se fait sur le serveur, pas ici.
+  protected readonly activiteDe = signal<Membre | null>(null);
+  protected readonly activite = signal<readonly ActiviteMembre[]>([]);
+  protected readonly chargementActivite = signal(false);
 
   /** Les services que je dirige, nommés. */
   protected readonly mesServices = computed<readonly ProfilMetier[]>(() => {
@@ -279,9 +298,57 @@ export class MonService {
 
   // -------------------------------------------------------------------------
 
+  // -------------------------------------------------------------------------
+  // Voir ce qu'un membre a fait
+  // -------------------------------------------------------------------------
+
+  protected ouvrirActivite(membre: Membre): void {
+    this.fermerPanneaux();
+    this.activite.set([]);
+    this.chargementActivite.set(true);
+    this.activiteDe.set(membre);
+
+    this.http
+      .get<Page<ActiviteMembre>>(`/api/services/membres/${membre.id}/activite`)
+      .subscribe({
+        next: (p) => {
+          this.activite.set(p.content);
+          this.chargementActivite.set(false);
+        },
+        error: (e: unknown) => {
+          this.chargementActivite.set(false);
+          this.erreurPanneau.set(messageErreur(e, 'L’activité n’a pas pu être chargée.'));
+        },
+      });
+  }
+
+  /**
+   * Le code du geste, rendu lisible.
+   *
+   * <p>Pas de table de libellés : il faudrait la tenir à jour à chaque geste
+   * ajouté, sous peine d'afficher un code brut le jour où on l'oublie.</p>
+   */
+  protected libelleGeste(code: string): string {
+    const mots = code.toLowerCase().replace(/_/g, ' ');
+    return mots.charAt(0).toUpperCase() + mots.slice(1);
+  }
+
+  protected quand(iso: string): string {
+    return new Date(iso).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  // -------------------------------------------------------------------------
+
   protected fermerPanneaux(): void {
     this.edition.set(null);
     this.reinitialisation.set(null);
+    this.activiteDe.set(null);
     this.erreurPanneau.set(null);
     this.enregistrement.set(false);
     this.motDePasse.set('');

@@ -1,0 +1,141 @@
+<header class="entete">
+  <div>
+    <h1>Journal des actions</h1>
+    <p class="sous-titre">
+      @if (chargement()) { Chargement… }
+      @else { {{ total() }} action(s) enregistrée(s) }
+    </p>
+  </div>
+</header>
+
+<div class="barre-outils">
+  <div class="barre-outils__groupe">
+    <!-- ⚠️ Les listes sont peuplées par ce que le journal CONTIENT. Écrites à
+         la main, elles proposeraient des filtres qui ne rendent rien, et
+         laisseraient croire qu'un geste nouveau n'est pas tracé. -->
+    <label class="gu-libelle sr" for="j-action">Geste</label>
+    <select id="j-action" name="action" class="gu-champ"
+            [ngModel]="action()" (ngModelChange)="action.set($event); filtrer()">
+      <option value="">Tous les gestes</option>
+      @for (a of actions(); track a) {
+        <option [value]="a">{{ libelle(a) }}</option>
+      }
+    </select>
+
+    <label class="gu-libelle sr" for="j-entite">Objet</label>
+    <select id="j-entite" name="entite" class="gu-champ"
+            [ngModel]="entite()" (ngModelChange)="entite.set($event); filtrer()">
+      <option value="">Tous les objets</option>
+      @for (e of entites(); track e) {
+        <option [value]="e">{{ e }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="barre-outils__groupe">
+    @if (action() || entite()) {
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="effacer()">
+        Effacer
+      </button>
+    }
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
+</div>
+
+@if (erreur(); as m) {
+  <div class="gu-carte etat" role="alert">
+    <gu-icone nom="triangle-exclamation" class="etat__icone etat__icone--alerte" />
+    <p class="etat__titre">{{ m }}</p>
+    <button type="button" class="gu-btn gu-btn--primaire" (click)="charger()">Réessayer</button>
+  </div>
+} @else if (chargement()) {
+  <div class="gu-carte etat">
+    <gu-icone nom="circle-notch" tourne class="etat__icone" />
+    <p class="etat__titre">Chargement…</p>
+  </div>
+} @else if (lignes().length === 0) {
+  <div class="gu-carte etat">
+    <gu-icone nom="bars" class="etat__icone" />
+    @if (action() || entite()) {
+      <p class="etat__titre">Aucune action ne correspond à ce filtre</p>
+    } @else {
+      <p class="etat__titre">Le journal est vide</p>
+      <!-- On dit ce qui l'alimente : sinon on cherche un réglage à activer. -->
+      <p class="etat__aide">
+        Il se remplit tout seul, dès qu’une personne de la maison modifie une
+        donnée : un prix, un compte, un règlement, un remboursement.
+      </p>
+    }
+  </div>
+} @else {
+  <div class="gu-tableau-defilant">
+    <table class="gu-tableau">
+      <thead>
+        <tr>
+          <th>Quand</th>
+          <th>Qui</th>
+          <th>A fait</th>
+          <th>Sur</th>
+          <th>Depuis</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of lignes(); track l.id) {
+          <tr [class.cliquable]="aDesDetails(l)" (click)="basculer(l)">
+            <td class="attenue quand">{{ date(l.dateHeure) }}</td>
+
+            <!-- ⚠️ Le NOM, jamais l'identifiant. Il est recopié au moment de
+                 l'action : un compte retiré laisse la trace entière et le lien
+                 vide. Afficher le lien perdrait exactement ces lignes-là. -->
+            <td>
+              <span class="nom">{{ l.acteurNom }}</span>
+              @if (l.acteurEmail) {
+                <span class="attenue courriel">{{ l.acteurEmail }}</span>
+              }
+            </td>
+
+            <td>
+              <span class="geste">{{ libelle(l.action) }}</span>
+              @if (aDesDetails(l)) {
+                <gu-icone nom="chevron-right" class="chevron"
+                          [class.chevron--ouvert]="ouverte() === l.id" />
+              }
+            </td>
+
+            <td class="attenue">
+              {{ l.entite }}
+              @if (l.entiteId !== null) { <code>n° {{ l.entiteId }}</code> }
+            </td>
+
+            <td class="attenue">{{ l.adresseIp || '—' }}</td>
+          </tr>
+
+          @if (ouverte() === l.id && aDesDetails(l)) {
+            <tr class="details">
+              <td colspan="5">
+                <div class="cliches">
+                  <div class="cliche">
+                    <p class="cliche__titre">Avant</p>
+                    <pre>{{ lisible(l.ancienneValeur) }}</pre>
+                  </div>
+                  <div class="cliche">
+                    <p class="cliche__titre">Après</p>
+                    <pre>{{ lisible(l.nouvelleValeur) }}</pre>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (!chargement() && !erreur()) {
+  <gu-pagination [page]="page()" [totalPages]="totalPages()" [total]="total()"
+                 [taille]="taille" (changement)="allerA($event)" />
+}

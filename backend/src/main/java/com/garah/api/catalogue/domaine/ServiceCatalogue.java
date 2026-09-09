@@ -1,6 +1,7 @@
 package com.garah.api.catalogue.domaine;
 
 import com.garah.api.catalogue.infra.*;
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -89,6 +90,16 @@ public class ServiceCatalogue {
      */
     private final ApplicationEventPublisher evenements;
 
+    /**
+     * ⚠️ {@code produit} porte {@code modifie_par} : le DERNIER qui a touché.
+     *
+     * <p>C'est une photo, pas un fait. Elle ne dit ni quand, ni quoi, ni
+     * combien de fois — et la modification d'avant a été écrasée par
+     * celle-ci. Les gestes qui décident du sort d'un produit sont journalisés
+     * en plus : publier, archiver, jeter.</p>
+     */
+    private final JournalActions journal;
+
     public ServiceCatalogue(ProduitRepository produits,
                             VarianteRepository variantes,
                             CategorieProduitRepository categories,
@@ -98,7 +109,9 @@ public class ServiceCatalogue {
                             DepotFichiers fichiers,
                             ServiceMarchand marchands,
                             ApplicationEventPublisher evenements,
-                            ValeurAttributRepository valeursAttribut) {
+                            ValeurAttributRepository valeursAttribut,
+                            JournalActions journal) {
+        this.journal = journal;
         this.produits = produits;
         this.variantes = variantes;
         this.categories = categories;
@@ -467,7 +480,9 @@ public class ServiceCatalogue {
      */
     @Transactional
     public DetailProduit publier(Long produitId) {
-        return DetailProduit.de(publierEntite(produitId), urlsMedias::urlPublique);
+        Produit publie = publierEntite(produitId);
+        journal.geste("PRODUIT_PUBLIER", "produit", produitId);
+        return DetailProduit.de(publie, urlsMedias::urlPublique);
     }
 
     private Produit publierEntite(Long produitId) {
@@ -537,8 +552,15 @@ public class ServiceCatalogue {
         Produit produit = produits.findById(produitId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId));
 
+        StatutProduit ancien = produit.getStatut();
         verifierTransition(produit, nouveau);
         produit.changerStatut(nouveau);
+
+        // Retirer un produit de la vitrine se voit tout de suite ; savoir qui
+        // l'a fait, six mois plus tard, non.
+        journal.changement("PRODUIT_STATUT", "produit", produitId,
+                "statut", ancien, nouveau);
+
         return DetailProduit.de(produit, urlsMedias::urlPublique);
     }
 
@@ -596,6 +618,9 @@ public class ServiceCatalogue {
 
         produit.mettreALaCorbeille();
         produits.save(produit);
+
+        journal.enregistrer("PRODUIT_CORBEILLE", "produit", produitId,
+                JournalActions.cliche("nom", produit.getNom()), null);
     }
 
     /** Les produits en corbeille, du plus récemment jeté au plus ancien. */
@@ -618,6 +643,7 @@ public class ServiceCatalogue {
         if (produits.restaurer(produitId) == 0) {
             throw RessourceIntrouvable.de("Produit en corbeille", produitId);
         }
+        journal.geste("PRODUIT_RESTAURER", "produit", produitId);
     }
 
     /**
@@ -649,6 +675,13 @@ public class ServiceCatalogue {
         // plus et les fichiers resteraient sur le stockage sans que rien ne
         // permette de les retrouver.
         List<String> cles = produits.clesMediasDe(produitId);
+
+        // ⚠️ LE SEUL EFFACEMENT DÉFINITIF DE TOUT LE SYSTÈME. Après lui, la
+        //    ligne n'existe plus et les fichiers partent du stockage : le
+        //    journal est la dernière chose qui garde le nom de ce qui a
+        //    disparu, et le nom de qui l'a fait disparaître.
+        journal.enregistrer("PRODUIT_SUPPRIMER", "produit", produitId,
+                JournalActions.cliche("nom", nom, "fichiers", cles.size()), null);
 
         produits.supprimerDefinitivement(produitId);
         return cles;

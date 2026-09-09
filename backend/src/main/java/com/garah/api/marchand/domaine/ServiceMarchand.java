@@ -1,5 +1,6 @@
 package com.garah.api.marchand.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.marchand.infra.MarchandRepository;
@@ -24,8 +25,11 @@ public class ServiceMarchand {
 
     private final MarchandRepository marchands;
 
-    public ServiceMarchand(MarchandRepository marchands) {
+    private final JournalActions journal;
+
+    public ServiceMarchand(MarchandRepository marchands, JournalActions journal) {
         this.marchands = marchands;
+        this.journal = journal;
     }
 
     /**
@@ -45,7 +49,13 @@ public class ServiceMarchand {
         marchand.setTelephone(vide(telephone) ? null : telephone.strip());
         marchand.setEmail(vide(email) ? null : email.strip());
 
-        return VueMarchand.de(marchands.save(marchand));
+        Marchand enregistre = marchands.save(marchand);
+
+        journal.creation("MARCHAND_CREER", "marchand", enregistre.getId(),
+                JournalActions.cliche("code", enregistre.getCode(),
+                        "nom", enregistre.getNom(), "type", type));
+
+        return VueMarchand.de(enregistre);
     }
 
     @Transactional
@@ -75,7 +85,14 @@ public class ServiceMarchand {
     @Transactional
     public VueMarchand changerStatut(Long id, StatutMarchand statut) {
         Marchand marchand = charger(id);
+        StatutMarchand ancien = marchand.getStatut();
         marchand.setStatut(statut);
+
+        // Un marchand désactivé disparaît des listes ; le grand livre lui doit
+        // peut-être encore de l'argent. « Depuis quand, et sur décision de
+        // qui ? » se posera au moment du décompte.
+        journal.changement("MARCHAND_STATUT", "marchand", id, "statut", ancien, statut);
+
         return VueMarchand.de(marchand);
     }
 

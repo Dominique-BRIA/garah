@@ -1,5 +1,6 @@
 package com.garah.api.finance.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -43,12 +44,16 @@ public class ServiceGrandLivre {
      */
     private final MarchandRepository marchands;
 
+    private final JournalActions journal;
+
     public ServiceGrandLivre(EcritureMarchandRepository ecritures,
                              ReglementMarchandRepository reglements,
-                             MarchandRepository marchands) {
+                             MarchandRepository marchands,
+                             JournalActions journal) {
         this.ecritures = ecritures;
         this.reglements = reglements;
         this.marchands = marchands;
+        this.journal = journal;
     }
 
     /**
@@ -197,8 +202,14 @@ public class ServiceGrandLivre {
                     "Le montant dépasse ce qui est dû (" + du + " FCFA).");
         }
 
-        return reglements.save(new ReglementMarchand(
+        ReglementMarchand prepare = reglements.save(new ReglementMarchand(
                 genererNumero(), marchandId, montant, moyen, creePar));
+
+        journal.creation("REGLEMENT_PREPARER", "reglement_marchand", prepare.getId(),
+                JournalActions.cliche("numero", prepare.getNumero(),
+                        "marchand", marchandId, "montant", montant, "moyen", moyen));
+
+        return prepare;
     }
 
     /**
@@ -227,6 +238,16 @@ public class ServiceGrandLivre {
                 reglement.getMontant(), OrigineEcriture.REGLEMENT, reglement.getId(),
                 "Règlement " + reglement.getNumero(), reglement.getCreePar()));
 
+        // 🎯 LE geste où l'argent sort. La référence du virement est déjà
+        //    obligatoire ; ce que le règlement ne dit pas, c'est QUI a appuyé,
+        //    et c'est la première question posée quand un marchand affirme
+        //    n'avoir rien reçu.
+        journal.enregistrer("REGLEMENT_CONFIRMER", "reglement_marchand", reglementId, null,
+                JournalActions.cliche("numero", reglement.getNumero(),
+                        "marchand", reglement.getMarchandId(),
+                        "montant", reglement.getMontant(),
+                        "reference", reference));
+
         return reglement;
     }
 
@@ -244,6 +265,9 @@ public class ServiceGrandLivre {
         }
 
         reglement.annuler();
+
+        journal.geste("REGLEMENT_ANNULER", "reglement_marchand", reglementId);
+
         return reglement;
     }
 
@@ -265,8 +289,18 @@ public class ServiceGrandLivre {
                     "Un ajustement de zéro n'apprend rien à personne.");
         }
 
-        return ecritures.save(EcritureMarchand.ajustement(
+        EcritureMarchand ajustement = ecritures.save(EcritureMarchand.ajustement(
                 marchandId, montantSigne, motif, creePar));
+
+        // ⚠️ Une écriture d'ajustement sans justification est indiscernable
+        //    d'un détournement. Le motif est exigé au-dessus ; il est recopié
+        //    ici parce que le grand livre, lui, se corrige par une écriture de
+        //    plus — et qu'on veut pouvoir remonter la série.
+        journal.creation("ECRITURE_AJUSTER", "ecriture_marchand", ajustement.getId(),
+                JournalActions.cliche("marchand", marchandId,
+                        "montant", montantSigne, "motif", motif));
+
+        return ajustement;
     }
 
     private String genererNumero() {

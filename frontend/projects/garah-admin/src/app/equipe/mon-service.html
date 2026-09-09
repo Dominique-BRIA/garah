@@ -83,6 +83,12 @@
                   <gu-icone nom="pen" /> Modifier
                 </button>
               }
+              @if (session.peut('SERVICE_MEMBRE_ACTIVITE')) {
+                <button type="button" class="gu-btn gu-btn--secondaire petit"
+                        (click)="ouvrirActivite(m)">
+                  <gu-icone nom="bars" /> Activité
+                </button>
+              }
               @if (session.peut('SERVICE_MEMBRE_MOT_DE_PASSE')) {
                 <button type="button" class="gu-btn gu-btn--secondaire petit"
                         (click)="ouvrirMotDePasse(m)">
@@ -208,5 +214,55 @@
         </button>
       </div>
     </form>
+  </aside>
+}
+
+<!-- ============================================================= Activité -->
+@if (activiteDe(); as m) {
+  <div class="voile" (click)="fermerPanneaux()" aria-hidden="true"></div>
+
+  <aside class="panneau panneau--large" role="dialog" aria-modal="true"
+         aria-label="Activité d’un membre">
+    <h2>Activité de {{ m.prenom }} {{ m.nom }}</h2>
+
+    <!-- 🎯 On dit ce que la liste NE contient PAS. Sans cette phrase, un chef
+         cherche le détail de ce qui a été modifié et conclut que l’écran est
+         incomplet. Il ne l’est pas : ce détail ne lui est pas destiné. -->
+    <p class="aide">
+      Les gestes posés, et leur date. Le contenu de ce qui a été modifié
+      n’apparaît pas ici.
+    </p>
+
+    @if (erreurPanneau(); as msg) {
+      <p class="alerte" role="alert">{{ msg }}</p>
+    }
+
+    @if (chargementActivite()) {
+      <p class="aide"><gu-icone nom="circle-notch" tourne /> Chargement…</p>
+    } @else if (activite().length === 0) {
+      <p class="aide">
+        Rien pour le moment. Les consultations ne sont pas enregistrées : seuls
+        les gestes qui modifient une donnée le sont.
+      </p>
+    } @else {
+      <ul class="activite">
+        @for (a of activite(); track a.id) {
+          <li class="activite__ligne">
+            <span class="activite__geste">{{ libelleGeste(a.action) }}</span>
+            <span class="activite__cible">
+              {{ a.entite }}
+              @if (a.entiteId !== null) { n° {{ a.entiteId }} }
+            </span>
+            <span class="activite__quand">{{ quand(a.dateHeure) }}</span>
+          </li>
+        }
+      </ul>
+    }
+
+    <div class="boutons">
+      <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermerPanneaux()">
+        Fermer
+      </button>
+    </div>
   </aside>
 }

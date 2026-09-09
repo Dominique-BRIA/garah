@@ -68,6 +68,11 @@ export class Coque {
     { libelle: 'Statistiques', chemin: '/statistiques', icone: 'chart-pie', permission: 'STATISTIQUE_GENERALE_CONSULTER' },
     { libelle: 'Clients', chemin: '/clients', icone: 'users', permission: 'CLIENT_CONSULTER' },
     { libelle: 'Equipe', chemin: '/equipe', icone: 'users', permission: 'RESPONSABLE_CONSULTER' },
+    // En DERNIER, et garde par AUDIT_CONSULTER : cette permission appartient au
+    // module SECURITE, donc au seul super-administrateur. Celui qui administre
+    // les comptes ne doit pas pouvoir relire — ni un jour effacer — la trace de
+    // ce qu il a fait.
+    { libelle: 'Journal des actions', chemin: '/journal', icone: 'bars', permission: 'AUDIT_CONSULTER' },
   ];
 
   protected visibles(): readonly Entree[] {

@@ -1,5 +1,6 @@
 package com.garah.api.iam.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.iam.infra.HierarchieRepository;
@@ -45,13 +46,16 @@ public class ServiceHierarchie {
     private final UtilisateurRepository utilisateurs;
     private final ResponsableRepository responsables;
     private final HierarchieRepository hierarchie;
+    private final JournalActions journal;
 
     public ServiceHierarchie(UtilisateurRepository utilisateurs,
                              ResponsableRepository responsables,
-                             HierarchieRepository hierarchie) {
+                             HierarchieRepository hierarchie,
+                             JournalActions journal) {
         this.utilisateurs = utilisateurs;
         this.responsables = responsables;
         this.hierarchie = hierarchie;
+        this.journal = journal;
     }
 
     /**
@@ -152,6 +156,11 @@ public class ServiceHierarchie {
         futur.getCategories().stream()
                 .filter(rc -> rc.getCategorie().getId().equals(categorieId))
                 .forEach(rc -> rc.nommerChef(true));
+
+        // Nommer un chef donne autorité sur des personnes. C'est un
+        // déplacement de pouvoir, pas un réglage.
+        journal.changement("SERVICE_CHEF_NOMMER", "categorie_responsable", categorieId,
+                "chef", null, responsableId);
     }
 
     /**
@@ -183,6 +192,12 @@ public class ServiceHierarchie {
      */
     @Transactional
     public void demettreLeChef(Long categorieId) {
-        hierarchie.demettreLeChef(categorieId);
+        // Le geste n'est journalisé que s'il a démis quelqu'un. Le rappeler
+        // sur un service qui n'avait pas de chef écrirait une ligne pour un
+        // clic sans effet, et un journal qu'on ne peut plus lire d'un coup
+        // d'œil cesse d'être consulté.
+        if (hierarchie.demettreLeChef(categorieId) > 0) {
+            journal.geste("SERVICE_CHEF_DEMETTRE", "categorie_responsable", categorieId);
+        }
     }
 }

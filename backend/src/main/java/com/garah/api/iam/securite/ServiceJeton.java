@@ -63,6 +63,13 @@ public class ServiceJeton {
                 .subject(String.valueOf(utilisateur.getId()))
                 .claim("type", utilisateur.getType().name())
                 .claim("nom", utilisateur.getNom())
+                // ⚠️ L'adresse voyage pour le JOURNAL DES ACTIONS, qui recopie
+                //    l'acteur au lieu de le référencer — un audit qu'on efface
+                //    en supprimant un compte n'est pas un audit. La relire en
+                //    base à chaque geste tracé ajouterait une requête sur des
+                //    chemins qui en ont déjà assez ; et la surveillance ne peut
+                //    pas interroger l'IAM sans créer un cycle entre les deux.
+                .claim("email", utilisateur.getEmail())
                 .claim("langue", utilisateur.getLangue())
                 // Les permissions voyagent DANS le jeton : aucune requête en
                 // base n'est nécessaire pour autoriser un appel (D-16).

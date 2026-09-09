@@ -1,0 +1,76 @@
+// Le journal des actions. Les motifs communs viennent de ecrans-communs.scss.
+
+.quand { white-space: nowrap; }
+
+.courriel {
+  display: block;
+  font-size: 0.78rem;
+}
+
+.geste {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+// Le chevron dit qu il y a quelque chose dessous. Sans lui, on ne devine pas
+// qu une ligne se deplie — et les cliches, qui sont l interet du journal,
+// resteraient invisibles.
+.chevron {
+  margin-left: 0.4rem;
+  font-size: 0.65rem;
+  color: var(--texte-attenue);
+  transition: var(--transition);
+}
+
+.chevron--ouvert { transform: rotate(90deg); }
+
+// --- Les cliches -------------------------------------------------------------
+.details td {
+  background: var(--surface-douce);
+  padding: 0.9rem 1rem;
+}
+
+.cliches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.9rem;
+}
+
+.cliche__titre {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texte-attenue);
+}
+
+.cliche pre {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: var(--police-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+
+  // Un cliche peut etre long : il defile DANS son cadre, jamais en poussant
+  // la page entiere de cote.
+  overflow-x: auto;
+  white-space: pre;
+}
+
+// Un libelle qui n existe que pour les lecteurs d ecran : les listes sont
+// explicites a l oeil, elles ne le sont pas a l oreille.
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

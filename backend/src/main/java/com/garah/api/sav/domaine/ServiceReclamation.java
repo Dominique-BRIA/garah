@@ -2,6 +2,7 @@ package com.garah.api.sav.domaine;
 
 import com.garah.api.commerce.domaine.NumeroCommande;
 import com.garah.api.commerce.infra.CommandeRepository;
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -38,11 +39,14 @@ public class ServiceReclamation {
     private final ServiceClient clients;
     private final CommandeRepository commandes;
 
+    private final JournalActions journal;
+
     public ServiceReclamation(ReclamationRepository reclamations, ServiceClient clients,
-                              CommandeRepository commandes) {
+                              CommandeRepository commandes, JournalActions journal) {
         this.reclamations = reclamations;
         this.clients = clients;
         this.commandes = commandes;
+        this.journal = journal;
     }
 
     @Transactional
@@ -94,7 +98,16 @@ public class ServiceReclamation {
                     "Cette réclamation est déjà close.");
         }
 
+        StatutReclamation ancien = reclamation.getStatut();
         reclamation.cloturer(favorable ? StatutReclamation.RESOLUE : StatutReclamation.FERMEE);
+
+        // 🎯 Trancher un litige est une DÉCISION, prise par une personne, sur
+        //    le dossier de quelqu'un d'autre. Elle n'est jamais reprochée tant
+        //    qu'elle est favorable ; c'est le refus qui revient, des semaines
+        //    plus tard, avec « qui a décidé ça ? ».
+        journal.changement("RECLAMATION_TRANCHER", "reclamation", reclamationId,
+                "statut", ancien, reclamation.getStatut());
+
         return reclamation;
     }
 
