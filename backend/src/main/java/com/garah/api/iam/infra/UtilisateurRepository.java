@@ -10,6 +10,17 @@ import java.util.Optional;
 public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> {
 
     /**
+     * Ce compte est-il de ce type ?
+     *
+     * <p>⚠️ Rend un <b>booléen</b>, et non l'utilisateur : {@link
+     * com.garah.api.iam.web.GardeEquipe} vit dans la couche web, à qui le test
+     * d'architecture interdit de toucher une entité. Charger la ligne entière
+     * pour lire une colonne aurait de toute façon été payer trop cher.</p>
+     */
+    boolean existsByIdAndType(Long id, com.garah.api.iam.domaine.TypeUtilisateur type);
+
+
+    /**
      * Recherche insensible à la casse, comme l'index unique
      * {@code utilisateur_email_unique} qui porte sur {@code lower(email)}.
      *

@@ -74,8 +74,17 @@ public class ControleurEquipe {
                 demande.dateEmbauche(), demande.profilIds(), demande.profilPrincipalId());
     }
 
+    /**
+     * ⚠️ Le droit {@code ADMIN_MODIFIER} s'ajoute quand la cible est un
+     *    administrateur — voir {@link GardeEquipe}. Sans lui, un responsable
+     *    pouvait modifier un compte placé au-dessus du sien.
+     */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('RESPONSABLE_MODIFIER')")
+    @PreAuthorize("""
+            hasAuthority('RESPONSABLE_MODIFIER') and (
+                !@gardeEquipe.cibleUnAdmin(#id)
+                or hasAuthority('ADMIN_MODIFIER'))
+            """)
     public VueMembre modifier(@PathVariable Long id,
                               @Valid @RequestBody DemandeModificationMembre demande) {
         return equipe.modifier(id, demande.nom(), demande.prenom(),
@@ -90,7 +99,11 @@ public class ControleurEquipe {
      * plus, donc un endroit de plus où se tromper.</p>
      */
     @PutMapping("/{id}/profils")
-    @PreAuthorize("hasAuthority('RESPONSABLE_MODIFIER')")
+    @PreAuthorize("""
+            hasAuthority('RESPONSABLE_MODIFIER') and (
+                !@gardeEquipe.cibleUnAdmin(#id)
+                or hasAuthority('ADMIN_MODIFIER'))
+            """)
     public VueMembre affecterProfils(@PathVariable Long id,
                                      @Valid @RequestBody DemandeProfils demande) {
         return equipe.affecterProfils(id, demande.profilIds(), demande.profilPrincipalId());
@@ -103,13 +116,21 @@ public class ControleurEquipe {
      * se confient pas forcement a la meme personne.
      */
     @PostMapping("/{id}/activation")
-    @PreAuthorize("hasAuthority('RESPONSABLE_ACTIVER')")
+    @PreAuthorize("""
+            hasAuthority('RESPONSABLE_ACTIVER') and (
+                !@gardeEquipe.cibleUnAdmin(#id)
+                or hasAuthority('ADMIN_ACTIVER'))
+            """)
     public VueMembre activer(@PathVariable Long id) {
         return equipe.changerStatut(id, true);
     }
 
     @DeleteMapping("/{id}/activation")
-    @PreAuthorize("hasAuthority('RESPONSABLE_DESACTIVER')")
+    @PreAuthorize("""
+            hasAuthority('RESPONSABLE_DESACTIVER') and (
+                !@gardeEquipe.cibleUnAdmin(#id)
+                or hasAuthority('ADMIN_DESACTIVER'))
+            """)
     public VueMembre desactiver(@PathVariable Long id) {
         return equipe.changerStatut(id, false);
     }
@@ -120,10 +141,19 @@ public class ControleurEquipe {
      * <p>L'ancien n'est pas demandé : un administrateur ne le connaît pas, et
      * c'est très bien ainsi. Cette route sert au dépannage, quand quelqu'un a
      * perdu le sien.</p>
+     *
+     * <p>⚠️ <b>C'est la route la plus dangereuse du contrôleur.</b> Imposer un
+     * mot de passe à quelqu'un, c'est pouvoir se connecter à sa place. Sans le
+     * droit {@code ADMIN_MODIFIER}, un responsable pouvait donc prendre le
+     * compte d'un administrateur — pas seulement le gêner.</p>
      */
     @PostMapping("/{id}/mot-de-passe")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAuthority('RESPONSABLE_MODIFIER')")
+    @PreAuthorize("""
+            hasAuthority('RESPONSABLE_MODIFIER') and (
+                !@gardeEquipe.cibleUnAdmin(#id)
+                or hasAuthority('ADMIN_MODIFIER'))
+            """)
     public void reinitialiserMotDePasse(@PathVariable Long id,
                                         @Valid @RequestBody DemandeMotDePasse demande) {
         equipe.reinitialiserMotDePasse(id, demande.motDePasse());
