@@ -17,8 +17,8 @@ pres.title = 'GARAH — Vendre, servir et acheminer';
 const W = 10, H = 5.625;
 
 // --- La charte ---------------------------------------------------------------
-const VERT = '12A594';       // la marque
-const VERT_SOMBRE = '0B7A6D';
+const BLEU = '31AEF3';       // la marque, relevée sur le fichier du graphiste
+const BLEU_SOMBRE = '1A6FA8';   // le bleu assombri, pour les aplats
 const ENCRE = '0F172A';
 const GRIS = '64748B';
 const GRIS_CLAIR = 'E2E8F0';
@@ -38,15 +38,15 @@ function couverture({ titre, sousTitre, pied, note }) {
   const s = pres.addSlide();
   s.background = { color: ENCRE };
 
-  // Un aplat vert en biais : la seule fantaisie graphique du jeu, et elle
+  // Un aplat de marque en biais : la seule fantaisie graphique du jeu, et elle
   // n'apparait que sur les deux diapositives qui encadrent la presentation.
-  s.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: 0.28, h: H, fill: { color: VERT } });
+  s.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: 0.28, h: H, fill: { color: BLEU } });
 
   s.addText(titre, {
     x: 0.9, y: 1.55, w: 8.5, h: 1.0, ...TITRE, fontSize: 54, color: BLANC, charSpacing: 2,
   });
   s.addText(sousTitre, {
-    x: 0.9, y: 2.6, w: 8.2, h: 0.9, ...TEXTE, fontSize: 20, color: VERT, lineSpacingMultiple: 1.2,
+    x: 0.9, y: 2.6, w: 8.2, h: 0.9, ...TEXTE, fontSize: 20, color: BLEU, lineSpacingMultiple: 1.2,
   });
   if (pied) {
     s.addText(pied, { x: 0.9, y: 4.55, w: 8.2, h: 0.5, ...TEXTE, fontSize: 12, color: GRIS });
@@ -61,12 +61,12 @@ function partie({ numero, titre, phrase, note }) {
   s.background = { color: ENCRE };
 
   s.addText(String(numero).padStart(2, '0'), {
-    x: 0.9, y: 1.5, w: 2, h: 1.4, ...TITRE, fontSize: 96, color: VERT_SOMBRE,
+    x: 0.9, y: 1.5, w: 2, h: 1.4, ...TITRE, fontSize: 96, color: BLEU_SOMBRE,
   });
   s.addText(titre, {
     x: 0.9, y: 2.8, w: 8.2, h: 0.8, ...TITRE, fontSize: 40, color: BLANC,
   });
-  s.addShape(pres.ShapeType.rect, { x: 0.95, y: 3.62, w: 1.2, h: 0.05, fill: { color: VERT } });
+  s.addShape(pres.ShapeType.rect, { x: 0.95, y: 3.62, w: 1.2, h: 0.05, fill: { color: BLEU } });
   if (phrase) {
     s.addText(phrase, {
       x: 0.9, y: 3.85, w: 7.8, h: 0.8, ...TEXTE, fontSize: 16, color: GRIS, lineSpacingMultiple: 1.3,
@@ -81,7 +81,7 @@ function page(titre, chapeau) {
   const s = pres.addSlide();
   s.background = { color: FOND };
 
-  s.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: 0.14, h: H, fill: { color: VERT } });
+  s.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: 0.14, h: H, fill: { color: BLEU } });
   s.addText(titre, {
     x: 0.62, y: 0.42, w: 8.8, h: 0.6, ...TITRE, fontSize: 28, color: ENCRE,
   });
@@ -136,7 +136,7 @@ function opposition({ titre, chapeau, gauche, droite, lignes, note }) {
     });
   };
   enTete(gauche, 0.62, GRIS);
-  enTete(droite, 5.23, VERT);
+  enTete(droite, 5.23, BLEU);
 
   let yy = y + 0.55;
   for (const [a, b] of lignes) {
@@ -144,7 +144,7 @@ function opposition({ titre, chapeau, gauche, droite, lignes, note }) {
     s.addShape(pres.ShapeType.rect, { x: 0.62, y: yy, w: 4.15, h: haut, fill: { color: BLANC }, line: { color: GRIS_CLAIR, width: 1 } });
     s.addText(a, { x: 0.77, y: yy, w: 3.85, h: haut, ...TEXTE, fontSize: 12, color: GRIS, valign: 'middle' });
 
-    s.addShape(pres.ShapeType.rect, { x: 5.23, y: yy, w: 4.15, h: haut, fill: { color: BLANC }, line: { color: VERT, width: 1 } });
+    s.addShape(pres.ShapeType.rect, { x: 5.23, y: yy, w: 4.15, h: haut, fill: { color: BLANC }, line: { color: BLEU, width: 1 } });
     s.addText(b, { x: 5.38, y: yy, w: 3.85, h: haut, ...TEXTE, fontSize: 12, color: ENCRE, valign: 'middle' });
 
     yy += haut + 0.12;
@@ -161,9 +161,9 @@ function chiffres({ titre, chapeau, blocs, bas, note }) {
   blocs.forEach((b, i) => {
     const x = 0.62 + i * (large + ecart);
     s.addShape(pres.ShapeType.rect, { x, y: y + 0.1, w: large, h: 1.75, fill: { color: BLANC }, line: { color: GRIS_CLAIR, width: 1 } });
-    s.addShape(pres.ShapeType.rect, { x, y: y + 0.1, w: large, h: 0.06, fill: { color: VERT } });
+    s.addShape(pres.ShapeType.rect, { x, y: y + 0.1, w: large, h: 0.06, fill: { color: BLEU } });
     s.addText(b.valeur, {
-      x, y: y + 0.32, w: large, h: 0.8, ...TITRE, fontSize: 44, color: VERT, align: 'center',
+      x, y: y + 0.32, w: large, h: 0.8, ...TITRE, fontSize: 44, color: BLEU, align: 'center',
     });
     s.addText(b.libelle, {
       x: x + 0.15, y: y + 1.15, w: large - 0.3, h: 0.6, ...TEXTE, fontSize: 12, color: GRIS,
@@ -184,15 +184,15 @@ function chiffres({ titre, chapeau, blocs, bas, note }) {
 /** Une affirmation seule, qu'on veut voir rester. */
 function citation({ texte, appui, note }) {
   const s = pres.addSlide();
-  s.background = { color: VERT };
+  s.background = { color: BLEU };
 
-  s.addText('“', { x: 0.7, y: 0.5, w: 1, h: 1, ...TITRE, fontSize: 90, color: VERT_SOMBRE });
+  s.addText('“', { x: 0.7, y: 0.5, w: 1, h: 1, ...TITRE, fontSize: 90, color: BLEU_SOMBRE });
   s.addText(texte, {
     x: 1.0, y: 1.5, w: 8.0, h: 1.6, ...TITRE, fontSize: 32, color: BLANC, lineSpacingMultiple: 1.2,
   });
   if (appui) {
     s.addText(appui, {
-      x: 1.0, y: 3.3, w: 8.0, h: 1.3, ...TEXTE, fontSize: 15, color: 'D6F5F0', lineSpacingMultiple: 1.35,
+      x: 1.0, y: 3.3, w: 8.0, h: 1.3, ...TEXTE, fontSize: 15, color: 'D8EEFB', lineSpacingMultiple: 1.35,
     });
   }
   if (note) s.addNotes(note);
@@ -206,7 +206,7 @@ function tableau({ titre, chapeau, entetes, lignes, note }) {
   const corps = [
     entetes.map((h) => ({
       text: h,
-      options: { bold: true, color: BLANC, fill: { color: VERT }, fontSize: 12 },
+      options: { bold: true, color: BLANC, fill: { color: BLEU }, fontSize: 12 },
     })),
     ...lignes.map((l) =>
       l.map((c, i) => {
@@ -216,7 +216,7 @@ function tableau({ titre, chapeau, entetes, lignes, note }) {
           text: c,
           options: {
             fontSize: 12,
-            color: i === 0 ? ENCRE : cours ? AMBRE : fini ? VERT_SOMBRE : GRIS,
+            color: i === 0 ? ENCRE : cours ? AMBRE : fini ? BLEU_SOMBRE : GRIS,
             bold: i > 0,
             align: i === 0 ? 'left' : 'center',
             fill: { color: BLANC },

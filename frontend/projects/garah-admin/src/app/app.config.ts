@@ -33,7 +33,7 @@ export const appConfig: ApplicationConfig = {
      *
      * Le mecanisme, decouvert en regardant une page vide :
      *
-     *   1. index.html affiche l'ecran d'attente (le mot GARAH, la calebasse)
+     *   1. index.html affiche l'ecran d'attente (le mot GARAH, la marque)
      *   2. Angular demarre et REMPLACE le contenu de <ga-root> :
      *      l'ecran d'attente disparait
      *   3. le garde d'authentification appelle SEULEMENT MAINTENANT l'API

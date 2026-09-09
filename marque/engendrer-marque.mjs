@@ -189,6 +189,39 @@ svgs['web/favicon-minuscule.svg'] =
   + `  <rect width="512" height="512" rx="96" fill="${NUIT}"/>\n`
   + poser(MINUSCULE, 512, 512, 0.68) + '\n</svg>\n';
 
+// --- Les assets de la librairie -----------------------------------------------
+// ⚠️ Ces trois fichiers vivent dans `garah-ui/assets/marque/`. Ils ne sont
+//    utilisés par aucun code — seuls les deux `logo-*.jpg` le sont — mais ils
+//    servent de source à qui prépare un support. Laissés en place, ils
+//    montreraient encore la calebasse verte des mois après le changement de
+//    marque, et quelqu'un finirait par la reprendre en croyant bien faire.
+const ASSETS = path.resolve(ICI, '../frontend/projects/garah-ui/assets/marque');
+if (fs.existsSync(ASSETS)) {
+  fs.writeFileSync(path.join(ASSETS, 'marque.svg'),
+    enTete(512, 512, 'GARAH — le symbole') + poser(COMPLET, 512, 512, 0.88) + '\n</svg>\n');
+  fs.writeFileSync(path.join(ASSETS, 'marque-mono.svg'),
+    enTete(512, 512, 'GARAH — le symbole, une seule couleur')
+    + poser(COMPLET, 512, 512, 0.88).replace(`fill="${BLEU}"`, 'fill="currentColor"')
+    + '\n</svg>\n');
+  // La version animée : elle respire, elle ne se trace pas. Voir <gu-marque>.
+  fs.writeFileSync(path.join(ASSETS, 'marque-animee.svg'),
+    enTete(512, 512, 'GARAH — le symbole, animé')
+    + `  <style>
+    .dessin { animation: respirer 2s ease-in-out infinite; transform-origin: center; }
+    @keyframes respirer {
+      0% { opacity: .5; transform: scale(.93); }
+      45%, 60% { opacity: 1; transform: none; }
+      100% { opacity: .5; transform: scale(.93); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dessin { animation: none; opacity: 1; transform: none; }
+    }
+  </style>\n`
+    + poser(COMPLET, 512, 512, 0.88).replace('<path ', '<path class="dessin" ')
+    + '\n</svg>\n');
+  console.log('SVG : 3 assets de garah-ui');
+}
+
 // --- La bannière de partage ---------------------------------------------------
 svgs['web/og-image.svg'] = (() => {
   const L = 1200, H = 630;

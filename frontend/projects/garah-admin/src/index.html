@@ -93,42 +93,41 @@
       display: block;
     }
 
-    /* Le niveau monte, tient en haut, redescend. Le palier est ce qui
-       distingue une respiration d'un va-et-vient mécanique. */
-    #demarrage-niveau-rect {
-      animation: demarrage-remplir 2s ease-in-out infinite;
+    /* La marque respire : elle pâlit, revient, tient en haut, repart. Le
+       palier est ce qui distingue une respiration d'un va-et-vient mécanique.
+
+       ⚠️ L'ancienne animation faisait MONTER UN NIVEAU dans la panse de la
+          calebasse — un rectangle de découpage qu'on translatait. Le dessin
+          actuel est une surface pleine percée de trous : un niveau qui monte
+          n'y veut rien dire, et le découpage aurait rogné le panier au
+          hasard. */
+    .demarrage__marque {
+      animation: demarrage-respirer 2s ease-in-out infinite;
     }
 
-    @keyframes demarrage-remplir {
-      0% { transform: translateY(17px); }
-      45%, 60% { transform: none; }
-      100% { transform: translateY(17px); }
+    @keyframes demarrage-respirer {
+      0% { opacity: 0.5; transform: scale(0.93); }
+      45%, 60% { opacity: 1; transform: none; }
+      100% { opacity: 0.5; transform: scale(0.93); }
     }
 
     /* Le réglage système « réduire les animations » vaut aussi ici : la marque
-       doit alors apparaître ENTIÈRE, jamais figée à mi-remplissage. */
+       doit alors apparaître ENTIÈRE, jamais figée à mi-course. */
     @media (prefers-reduced-motion: reduce) {
-      #demarrage-niveau-rect { animation: none; transform: none; }
+      .demarrage__marque { animation: none; opacity: 1; transform: none; }
     }
   </style>
 </head>
 <body>
   <ga-root>
     <div class="demarrage">
-      <svg class="demarrage__marque" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-        <defs>
-          <clipPath id="demarrage-niveau">
-            <rect id="demarrage-niveau-rect" x="8" y="24" width="34" height="18" />
-          </clipPath>
-        </defs>
-        <!-- Le vert de la marque, recopié en dur : c'est le seul endroit du
-             projet où c'est justifié, la feuille de style qui porte
-             `--marque` n'est pas forcément arrivée quand ceci s'affiche.
-             Si la charte change, cette valeur change AUSSI. -->
-        <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="#12a594"
-              stroke-width="5" />
-        <path d="M10 25A15 15 0 0 0 40 25Z" fill="#12a594"
-              clip-path="url(#demarrage-niveau)" />
+      <!-- Le bleu de la marque, recopié en dur : c'est le seul endroit du
+           projet où c'est justifié, la feuille de style qui porte
+           `--marque` n'est pas forcément arrivée quand ceci s'affiche.
+           Si la charte change, cette valeur change AUSSI. -->
+      <svg class="demarrage__marque" viewBox="0 0 313 457" aria-hidden="true" focusable="false">
+        <path fill="#31AEF3" fill-rule="evenodd"
+              d="M34.4 0.0L230.6 1.0L242.8 6.1L250.9 15.2L255.0 24.4L255.0 173.6L248.9 186.8L238.8 195.9L230.6 199.0L33.4 236.0L25.2 239.1L21.0 246.4L21.4 272.0L173.6 248.0L233.8 237.9L239.1 227.2L247.2 219.1L299.4 199.0L307.8 199.1L313.0 204.4L313.0 212.6L308.8 217.9L263.2 234.1L256.1 239.2L255.0 349.6L253.9 354.8L246.9 365.8L236.8 372.9L226.6 375.0L28.4 375.0L15.2 370.9L4.1 359.8L0.0 346.6L0.0 247.4L5.1 231.2L13.2 222.1L28.4 216.0L221.6 180.0L230.8 175.9L234.0 170.6L234.0 27.4L231.8 24.1L226.6 21.0L29.4 21.0L26.2 22.1L21.0 28.4L21.0 183.6L15.8 189.9L5.2 189.9L0.0 182.6L0.0 28.4L2.1 19.2L11.2 7.1L20.4 2.0L34.2 0.1ZM103.4 37.0L157.6 37.0L161.0 40.4L161.0 47.6L157.6 51.0L102.4 51.0L99.1 47.8L99.0 41.4L103.2 37.1ZM232.6 258.0L208.1 263.2L209.2 302.9L233.9 302.8L232.9 258.0ZM183.6 266.0L161.1 270.2L162.2 302.9L187.9 301.8L188.0 267.4L183.9 266.0ZM133.6 274.0L114.1 278.2L115.2 302.9L140.9 301.8L141.0 274.4L133.9 274.0ZM85.6 282.0L68.1 285.2L68.2 301.9L93.9 301.8L93.9 282.2L85.9 282.0ZM43.6 289.0L21.2 293.1L21.1 301.8L45.8 302.9L47.0 289.4L43.9 289.0ZM21.6 323.0L22.1 349.8L27.4 354.0L46.8 353.9L46.9 323.2L21.9 323.0ZM68.6 323.0L68.1 353.8L93.8 353.9L93.9 323.2L68.9 323.0ZM115.6 323.0L114.0 324.4L114.1 352.8L140.8 353.9L140.9 323.2L115.9 323.0ZM161.6 323.0L161.1 353.8L186.8 353.9L187.9 324.2L161.9 323.0ZM209.6 323.0L208.0 324.4L208.1 353.8L228.6 354.0L231.8 351.9L234.0 348.6L233.9 323.2L209.9 323.0ZM64.4 389.0L73.6 390.0L85.8 396.1L94.9 406.2L99.0 416.4L99.0 429.6L94.9 440.8L85.8 450.9L72.6 457.0L57.4 457.0L46.2 451.9L36.1 441.8L31.0 426.6L33.0 411.4L39.1 401.2L53.2 391.1L64.2 389.1ZM192.4 389.0L207.8 392.1L214.8 397.1L220.9 403.2L227.0 419.4L226.0 431.6L220.9 442.8L209.8 452.9L199.6 457.0L185.4 457.0L172.2 450.9L163.1 440.8L159.0 429.6L159.0 416.4L166.1 402.2L178.2 392.1L192.2 389.1ZM60.6 410.0L53.1 416.2L52.0 427.6L57.2 434.9L68.6 437.0L76.9 430.8L79.0 421.4L75.9 414.2L71.8 411.1L60.9 410.0ZM188.6 410.0L182.1 414.2L179.0 425.6L185.2 434.9L189.4 437.0L196.6 437.0L203.9 431.8L206.0 427.6L206.0 419.4L199.8 411.1L188.9 410.0Z" />
       </svg>
       <span class="demarrage__mot">GARAH</span>
     </div>

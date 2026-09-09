@@ -156,21 +156,37 @@ SVG indépendants de toute police.
 
 ---
 
-## ⚠️ Ce logo ne correspond pas à la charte actuelle de l'application
+## Où la marque vit, dans les trois applications
 
-L'application utilise aujourd'hui **une autre marque** : la calebasse verte,
-`--marque: #12a594`, définie dans `garah-ui/theme/_jetons.scss` et dessinée
-par le composant `<gu-marque>`.
+La calebasse verte a été retirée partout le 09/09/2026. Voici les endroits
+qu'il a fallu toucher — la liste vaut pour le prochain changement.
 
-Les icônes livrées ici sont donc en place, mais **l'intérieur des écrans est
-resté vert**. Il y a deux marques dans le projet, et c'est visible.
+| Où | Quoi |
+|---|---|
+| `garah-ui/theme/_jetons.scss` | `--marque`, la couleur |
+| `garah-ui/src/lib/marque/traces.ts` | **engendré** — les deux tracés |
+| `garah-ui/src/lib/marque/marque.ts` | le composant `<gu-marque>` |
+| `garah-ui/assets/marque/*.svg` | **engendrés** — trois fichiers de travail |
+| `garah-admin/src/index.html` | l'écran d'attente, tracé **en dur** |
+| `garah-admin/.../statistiques/rapport.ts` | l'en-tête des PDF et Word |
+| `garah-client/charte/jetons.json` | la couleur, pour la boutique et le mobile |
+| `garah-client/web/src/app/marque.ts` | le composant `<gb-marque>` |
+| `garah-client/web/src/index.html` | l'écran d'attente de la boutique |
+| `garah-client/mobile/.../marque_garah*.xml` | **engendrés** — les VectorDrawable |
 
-Aligner l'application demande trois gestes :
+⚠️ **Les écrans d'attente portent le tracé en dur**, et c'est justifié : ils
+s'affichent avant que le JavaScript n'existe. Ils ne peuvent donc pas lire
+`--marque` ni importer un composant. Ce sont les deux endroits qu'on oublie.
 
-1. changer `--marque` en `#2E9CE9` dans `_jetons.scss` ;
-2. remplacer les tracés de `<gu-marque>` par ceux du nouveau symbole ;
-3. reprendre `--primary` (indigo `#6366f1`) si l'on veut que toute
-   l'interface suive le bleu.
+⚠️ `rapport.ts` gardait sa propre copie du tracé et de la couleur. Elle aurait
+survécu au changement : les documents seraient sortis avec l'ancienne marque
+pendant que tous les écrans portaient la nouvelle, et personne ne l'aurait vu
+sans ouvrir un PDF. Il lit maintenant `MARQUE_COMPLETE` et `MARQUE_BLEU`
+depuis la librairie.
 
-Le troisième est le plus lourd : `--primary` colore les boutons, les états
-actifs et les liens de tous les écrans.
+### Ce qui n'a pas changé
+
+`--primary`, l'indigo `#6366f1`, colore les boutons, les états actifs et les
+liens de tous les écrans. Il est **distinct de la marque** par construction
+(D-03) et n'a pas été touché. Le faire suivre le bleu de la marque est une
+décision d'interface, pas de logo.

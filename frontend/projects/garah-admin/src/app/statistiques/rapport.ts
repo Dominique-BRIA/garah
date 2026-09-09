@@ -120,8 +120,18 @@ const SANS_DONNEES = 'Aucune donnée sur cette période.';
 // L'en-tête de marque
 // -----------------------------------------------------------------------------
 
-/** Le bleu de la marque, en composantes — jsPDF ne lit pas les couleurs CSS. */
-const MARQUE: [number, number, number] = [49, 174, 243];
+/**
+ * Le bleu de la marque, en composantes — jsPDF ne lit pas les couleurs CSS.
+ *
+ * <p>⚠️ CALCULÉ depuis {@code MARQUE_BLEU}, jamais écrit à la main. Ces trois
+ * nombres et la chaîne hexadécimale disaient la même couleur à deux endroits :
+ * au changement de marque, l'un a suivi et l'autre non.</p>
+ */
+const MARQUE: [number, number, number] = [
+  Number.parseInt(MARQUE_BLEU.slice(1, 3), 16),
+  Number.parseInt(MARQUE_BLEU.slice(3, 5), 16),
+  Number.parseInt(MARQUE_BLEU.slice(5, 7), 16),
+];
 
 /**
  * Le côté de la marque tramée, en pixels.
@@ -323,7 +333,7 @@ export async function versTableur(r: Rapport): Promise<void> {
       section.colonnes.map((c) => ({
         value: c.titre,
         fontWeight: 'bold' as const,
-        backgroundColor: '#12a594',
+        backgroundColor: MARQUE_BLEU,
         color: '#ffffff',
       })),
       ...section.lignes.map((ligne) =>
@@ -364,7 +374,7 @@ export async function versWord(r: Rapport): Promise<void> {
 
   const enTete = (texte: string) =>
     new TableCell({
-      shading: { fill: '12A594' },
+      shading: { fill: MARQUE_BLEU.slice(1) },
       children: [
         new Paragraph({
           children: [new TextRun({ text: texte, bold: true, color: 'FFFFFF' })],
@@ -395,7 +405,7 @@ export async function versWord(r: Rapport): Promise<void> {
           data: octets(marque),
           transformation: { width: 26, height: 26 },
         }),
-        new TextRun({ text: '  GARAH', bold: true, size: 30, color: '12A594' }),
+        new TextRun({ text: '  GARAH', bold: true, size: 30, color: MARQUE_BLEU.slice(1) }),
       ],
     }),
     new Paragraph({ text: r.titre, heading: HeadingLevel.HEADING_1 }),
