@@ -2041,3 +2041,34 @@ savoir ce qu'il désigne. Une requête de plus sur des gestes rares.
 Le miroir côté boutique est fermé aussi : son garde n'exigeait que « connecté »
 — une session d'administration ouvrait « mes commandes ». La session porte
 maintenant le **type** du compte, qu'elle ne portait même pas.
+
+---
+
+## D-39 — « Négocier » devient « Contacter » : le prix est ferme
+
+Un bouton « Négocier » sur chaque fiche promettait le marchandage comme **mode
+normal d'achat**. Le prix affiché est ferme : il ne se discute pas article par
+article — sauf cas rare, qui se traite alors dans le fil, à la main.
+
+Ce qui manquait vraiment était plus simple : **poser une question**. Les
+dimensions réelles, la matière, le délai, la garantie — tout ce qui décide un
+achat et qu'une fiche ne dira jamais entièrement.
+
+**Le mécanisme ne change pas.** Le bouton ouvre toujours une conversation. Le
+sujet devient « Question : *article* », et le message **ne recopie plus le
+prix** : il est sur la fiche, et le répéter dans un fil en ferait une valeur
+qui vieillit sans que personne s'en avise.
+
+> ⚠️ **Le fil manquait sur mobile.** On pouvait *ouvrir* une discussion et
+> *voir la liste* de ses discussions. Pas la lire. On écrivait au service
+> client sans jamais pouvoir relire sa réponse — la moitié d'une conversation.
+>
+> C'était assumé, et documenté : une négociation se lit en comparant des
+> chiffres et des dates, ce qu'un petit écran rend pénible. Mais le bouton pose
+> maintenant une **question**, et une question et sa réponse sont du texte. **La
+> raison de ne pas l'afficher a disparu avec le bouton.**
+
+**Les propositions de prix restent hors du client.** Elles demeurent une
+possibilité du serveur pour le cas rare, traitée depuis le back-office. Les
+faire apparaître chez le client réinstallerait le marchandage qu'on vient d'en
+retirer.
