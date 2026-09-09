@@ -47,9 +47,7 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "projects/garah-admin/src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": [],
             "tsConfig": "projects/garah-admin/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -115,10 +113,7 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
+            "polyfills": [],
             "tsConfig": "projects/garah-admin/tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "assets": [
