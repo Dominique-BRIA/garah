@@ -2160,3 +2160,71 @@ entre-temps »*.
 
 Le contrôle est désormais explicite des deux côtés : on ne peut ni écrire
 depuis un compte d'administration, ni écrire **à** un tel compte.
+
+---
+
+## D-42 — L'écran de confirmation d'adresse, et le piège de son absence
+
+**La règle de départ.** On ne peut pas commander tant que son adresse e-mail
+n'est pas confirmée : le serveur répond `ADRESSE_NON_CONFIRMEE`. Le lien du
+courriel est donc **la porte la plus importante du parcours**.
+
+**Comment le lien se construit.** `ServiceVerificationEmail.lienDe()` regarde
+deux variables, dans cet ordre :
+
+| Variable | Le lien devient |
+|---|---|
+| `GARAH_URL_VERIFICATION` | `<valeur>?jeton=…` |
+| `GARAH_URL_API` *(repli)* | `<valeur>/api/auth/verification?jeton=…` |
+
+> ⚠️ **Le piège.** Le nom de la première invitait à la faire pointer vers la
+> boutique — un commentaire du serveur l'annonçait même : « ensuite,
+> `GARAH_URL_VERIFICATION` fera pointer le lien vers le frontend ». **Sauf que
+> la page n'existait pas.** La route était absente, la règle de repli
+> (`** → accueil`) attrapait la visite, et le jeton disparaissait.
+>
+> Le pire est que **tout avait l'air normal** : le courriel partait, le lien
+> ouvrait bien la boutique, l'accueil s'affichait sans un message. Le client se
+> croyait confirmé, remplissait son panier des semaines plus tard, et se
+> faisait refuser au paiement — avec un message lui demandant de confirmer une
+> adresse qu'il **croyait** avoir confirmée. Personne n'aurait relié les deux.
+
+**L'écran est écrit.** Quatre issues, quatre affichages :
+
+```
+attente     l'appel est en cours
+confirme    c'est fait, et on propose la suite
+perime      410 — expiré, déjà utilisé ou inconnu : UN SEUL message
+echec       le réseau — et surtout PAS « lien invalide »
+sansJeton   l'adresse ouverte à la main, sans ?jeton=
+```
+
+> ⚠️ La distinction **410 / panne réseau** est celle qui compte. Dire « votre
+> lien est mort » quand c'est la connexion fait jeter un lien parfaitement
+> valide, et redemander un lien qu'on a déjà. Un test la tient.
+
+**Le renvoi exige d'être connecté**, et c'est délibéré côté serveur : ouvert
+aux anonymes, il deviendrait un outil d'envoi de courriels vers n'importe
+quelle adresse, à notre nom et à nos frais. Un compte non confirmé **peut** se
+connecter — c'est justement ce qui rend ce chemin possible. L'écran le dit et
+propose la connexion, au lieu d'offrir un bouton qui échouerait.
+
+**La route est publique**, et elle doit l'être : on arrive depuis un courriel,
+sans session. Derrière le garde, elle renverrait vers la connexion et le jeton
+serait perdu en chemin.
+
+### La configuration, désormais
+
+| Variable | Valeur |
+|---|---|
+| `GARAH_URL_VERIFICATION` | `https://www.garah.me/verification` |
+| `GARAH_URL_API` | l'adresse de l'API Azure *(repli)* |
+
+> ⚠️ **L'ordre compte au déploiement.** La variable ne doit être posée
+> qu'**une fois l'écran en ligne**. Renseignée avant, elle envoie tous les
+> liens vers une page qui n'existe pas encore — et ces liens-là ne se
+> rattrapent pas.
+
+> ⚠️ `garah.me` redirige en 308 vers `www.garah.me`. Les deux origines sont
+> autorisées, mais le lien vaut mieux avec `www` : c'est celle qui sert
+> réellement l'application, sans détour.
