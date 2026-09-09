@@ -1,16 +1,47 @@
 # La marque GARAH
 
-Tout ce dossier est **engendré**. Rien ne s'y retouche à la main.
+## 🎯 Le logo fourni est la source — on ne le redessine pas, on le SUIT
+
+Tout part de **`source/logo-original.png`**, le fichier livré par le
+graphiste. `vectoriser.mjs` en relève le contour pixel par pixel ;
+`engendrer-marque.mjs` compose et décline ce relevé.
+
+Redessiner « d'après » l'image donnerait un **second logo** : les proportions
+dérivent de quelques pour cent, et deux marques cohabitent sans que personne
+ne sache laquelle fait foi. C'est exactement ce qui est arrivé au premier
+essai.
 
 ```bash
 cd marque
+
+# 1. Relever le contour — trois paliers (voir plus bas)
+node vectoriser.mjs source/logo-original.png source/garah-symbole.svg           0.55
+node vectoriser.mjs source/logo-original.png source/garah-symbole-petit.svg     0.7  4
+node vectoriser.mjs source/logo-original.png source/garah-symbole-minuscule.svg 1.0  9
+
+# 2. Composer et décliner
 node engendrer-marque.mjs
 ```
 
-Le script n'a besoin d'aucune bibliothèque — seulement de **Google Chrome**,
-qui sert à convertir les tracés en images. Ce qui se corrige se corrige dans
-`engendrer-marque.mjs`, jamais dans un fichier produit : la prochaine
-exécution l'écraserait.
+Aucune bibliothèque — seulement **Google Chrome**, qui convertit les tracés en
+images. Ce qui se corrige se corrige dans les scripts ou dans le PNG
+d'origine, **jamais** dans un fichier produit : la prochaine exécution
+l'écraserait.
+
+### Comment le relevé fonctionne
+
+| Étape | Ce qu'elle fait |
+|---|---|
+| Décodage | le PNG est lu à la main — `zlib` suffit |
+| Seuil | opaque à plus de la moitié : le milieu de la frange d'anticrénelage |
+| Contour | suivi par les **arêtes des pixels**, orienté, donc toujours refermable |
+| Adoucissement | Chaikin, deux passes : l'escalier d'un pixel s'arrondit |
+| Réduction | Douglas-Peucker : 4 870 points bruts → 733 retenus |
+
+⚠️ L'adoucissement passe **avant** la réduction, jamais après. Après, on
+lisserait une ligne déjà réduite : les points restants flotteraient loin du
+contour, et les angles vifs — le bout de la barre de poussée — seraient
+rabotés.
 
 ---
 
@@ -26,12 +57,8 @@ Le symbole est **un seul ruban**. Le téléphone n'est pas posé sur un chariot 
 son flanc droit descend, tourne, et devient le bord haut du panier. On achète
 depuis son téléphone, et la marchandise part.
 
-⚠️ Le bord haut du panier est donc **en pente**, et la première rangée de trous
-suit cette pente. C'est ce détail qui rend la forme lisible : à plat, on
-verrait une caisse posée sous un téléphone, et le lien se perdrait.
-
-Le panier est une forme **pleine percée de trous**, et non une grille de
-barreaux. Des barreaux en trait se refermeraient en pâté dès 48 px.
+Le bleu n'est pas choisi : il est **relevé** sur le fichier d'origine par
+`vectoriser.mjs`. Le vert et le nuit viennent de la maquette du logo complet.
 
 ---
 
@@ -40,14 +67,19 @@ barreaux. Des barreaux en trait se refermeraient en pâté dès 48 px.
 Un logo qui rétrécit ne se contente pas de rétrécir. Le symbole existe en
 **trois paliers**, et le script choisit lui-même lequel employer :
 
-| Palier | À partir de | Ce qu'il garde |
+| Palier | Employé à | Épaississement |
 |---|---|---|
-| Complet | 64 px | dix trous, roues en anneaux, barre de poussée |
-| Simplifié | 32 px | quatre trous plus grands, roues pleines, traits épaissis |
-| Minuscule | 16 px | téléphone et panier plein, rien d'autre |
+| Complet | 48 px et plus | aucun |
+| Épaissi | 32 et 48 px | 4 pixels |
+| Minuscule | 16 px | 9 pixels |
 
-Sans ces paliers, le favicon de 16 px n'est qu'une tache bleue : dix trous de
-38 unités y font des carrés d'un pixel, qui se remplissent d'anticrénelage.
+Sans ces paliers, le favicon de 16 px n'est qu'une tache : les dix trous du
+panier y font des carrés d'un pixel, qui se remplissent d'anticrénelage.
+
+⚠️ **Les réductions ne sont pas redessinées.** Elles sortent du même fichier,
+dont le masque a été **dilaté** avant le relevé — le trait grossit, les trous
+se referment, et les proportions ne bougent pas d'un pixel. Redessiner une
+version simplifiée produirait, là encore, un second logo.
 
 ---
 
@@ -57,7 +89,10 @@ Sans ces paliers, le favicon de 16 px n'est qu'une tache bleue : dix trous de
 
 | Fichier | Quand s'en servir |
 |---|---|
-| `garah-symbole.svg` | le symbole seul, en couleur |
+| `logo-original.png` | **le fichier du graphiste** — la source de tout |
+| `garah-symbole.svg` | le relevé, cadré au dessin |
+| `garah-symbole-petit.svg`, `-minuscule.svg` | les deux relevés épaissis |
+| `garah-symbole-carre.svg` | le symbole centré dans un carré, transparent |
 | `garah-symbole-mono.svg` | une seule couleur (`currentColor`) — tampon, gravure, aplat |
 | `garah-symbole-nuit.svg` | le symbole sur pastille nuit — base des icônes d'application |
 | `garah-vertical-nuit.svg` | le bloc complet sur fond nuit |
