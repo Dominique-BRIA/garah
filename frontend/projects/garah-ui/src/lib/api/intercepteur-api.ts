@@ -1,6 +1,6 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Observable, catchError, switchMap, take, throwError } from 'rxjs';
+import { Observable, catchError, retry, switchMap, take, throwError, timer } from 'rxjs';
 
 import { ConfigurationApi } from './configuration-api';
 import { ServiceSession } from './service-session';
@@ -62,6 +62,7 @@ export function intercepteurApi(
   }
 
   return suite(preparer(requete, config, session)).pipe(
+    reessayerSiConnexionMorte(requete),
     catchError((erreur: unknown) => {
       if (!(erreur instanceof HttpErrorResponse) || erreur.status !== 401) {
         return throwError(() => erreur);
@@ -90,6 +91,54 @@ export function intercepteurApi(
       return rejouerApresRafraichissement(requete, suite, config, session, erreur);
     }),
   );
+}
+
+/**
+ * Un seul réessai, et seulement quand la requête n'a jamais abouti.
+ *
+ * <h2>🎯 Le défaut que cela corrige</h2>
+ *
+ * <p>Le navigateur garde ses connexions ouvertes pour les réutiliser. Quand le
+ * serveur est remplacé — c'est ce que fait <b>chaque mise en ligne</b> —
+ * celles-ci meurent sans que le navigateur en soit averti. La requête suivante
+ * part dans le vide et échoue <b>instantanément</b>, avec un statut 0 : pas de
+ * réponse, donc pas de code.</p>
+ *
+ * <p>À l'écran, cela donnait « Le service ne répond pas » alors que le service
+ * répondait parfaitement — et le seul remède connu était de <b>recharger la
+ * page</b>, ce qui ouvre de nouvelles connexions. Un réessai fait la même
+ * chose, sans que personne ait à le savoir.</p>
+ *
+ * <h2>⚠️ SEULEMENT GET et HEAD, et c'est la partie qui compte</h2>
+ *
+ * <p>Un statut 0 ne dit pas si la requête est arrivée. Elle a pu être traitée
+ * et c'est la <b>réponse</b> qui s'est perdue. Rejouer un {@code POST} dans ce
+ * cas créerait une seconde commande, un second paiement, un second
+ * remboursement — un défaut bien pire que celui qu'on répare, et invisible
+ * jusqu'à ce qu'un client soit débité deux fois.</p>
+ *
+ * <p>Une lecture, elle, peut se rejouer sans conséquence. C'est toute la
+ * différence, et c'est la seule raison pour laquelle ce réessai est
+ * acceptable.</p>
+ *
+ * <p>⚠️ Un seul essai supplémentaire. Une connexion morte échoue en quelques
+ * millisecondes ; une coupure réseau, elle, échouera autant de fois qu'on
+ * insistera. Boucler transformerait une panne en attente muette.</p>
+ */
+function reessayerSiConnexionMorte(requete: HttpRequest<unknown>) {
+  const rejouable = requete.method === 'GET' || requete.method === 'HEAD';
+
+  return retry<HttpEvent<unknown>>({
+    count: 1,
+    delay: (erreur: unknown) => {
+      if (rejouable && erreur instanceof HttpErrorResponse && erreur.status === 0) {
+        // Un court délai : le temps que la connexion morte soit écartée du
+        // pool. Immédiat, le navigateur peut reprendre la même.
+        return timer(300);
+      }
+      return throwError(() => erreur);
+    },
+  });
 }
 
 /**
