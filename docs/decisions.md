@@ -1936,3 +1936,108 @@ administrateurs avaient perdu tous leurs droits.
 en-tête : c'est le seul chemin qui exerce la déduction. Il vérifie aussi qu'un
 `ADMIN` reste tenu à l'écart du module SÉCURITÉ — la séparation des pouvoirs ne
 devait pas se perdre dans le calcul.
+
+---
+
+## D-36 — Deux applications sur trois ne pouvaient pas se connecter
+
+**Le symptôme, côté mobile.** Le bouton « Se connecter » tournait
+indéfiniment. Aucun message.
+
+**Ce qu'on a trouvé.** Cinq désaccords empilés entre ce que le mobile lisait et
+ce que le serveur envoie :
+
+| Le client cherchait | Le serveur envoie |
+|---|---|
+| `jetonAcces` | **`jeton`** |
+| `utilisateurId`, `nom`, `email` à la racine | **`utilisateur : { id, nom, email }`** |
+| un cookie nommé `rafraichissement` | **`garah_refresh_boutique`** |
+| *(rien)* | l'en-tête `X-Garah-Client`, **exigé** sur `/rafraichir` |
+
+Les trois premiers rendaient toute authentification impossible : le jeton
+valait `null`, chaque appel partait sans autorisation, le cookie n'était jamais
+capturé. Le quatrième faisait répondre **403** au rafraîchissement, que
+`FiltreOrigineCsrf` garde par cet en-tête.
+
+**Le cinquième explique l'absence de message.** Lire le compte à la racine
+donnait `null`, et le cast `as num` levait une `TypeError`. Elle n'est **pas**
+une `ErreurApi` : l'écran ne rattrapait que celle-là, l'exception s'échappait,
+et l'indicateur d'envoi restait armé. Le bouton tournait pour toujours.
+
+> ⚠️ **Ce défaut-là était dans onze écrans**, pas seulement la connexion. Tous
+> armaient un indicateur, tous ne rattrapaient qu'`ErreurApi`, aucun n'avait de
+> filet. Seize blocs ont été ajoutés, chacun **dérivé de la branche d'erreur
+> déjà écrite dans son fichier** — mêmes variables, même remise à zéro.
+
+**Et la boutique portait le même désaccord, aux mêmes noms.** Elle déclarait
+`jetonAcces` et `utilisateurId`. `poserJeton(undefined)`, puis un utilisateur
+dont tous les champs valaient `undefined` — mais l'objet n'étant pas `null`,
+`connecte()` répondait **vrai**. L'application se croyait connectée, affichait
+un nom vide, et tous ses appels partaient sans autorisation.
+
+**Pourquoi rien ne l'avait vu.** Le back-office, lui, lit juste. C'est
+l'application dont on se sert tous les jours : elle marchait, donc « la
+connexion marchait ». Et aucune des deux autres ne vérifie quoi que ce soit à
+l'exécution — en TypeScript, `post<T>` est une promesse faite au compilateur ;
+en Dart, lire une clé absente rend `null`. **Le désaccord ne se manifeste que
+devant l'utilisateur.**
+
+**Ce qui est posé.** Un test de contrat par client, avec des fixtures
+**recopiées d'un appel réel** ; et un test côté serveur qui fige les noms là où
+ils se décident — y compris l'**absence** des anciens, sans quoi un serveur
+qui enverrait les deux ferait passer les tests sans rien réparer.
+
+---
+
+## D-37 — Une base de recette : on cesse de travailler sur la production
+
+`ng serve` visait Azure, donc Neon, donc les **vraies données**. C'était assumé
+et documenté : cela exerçait pour de bon le CORS, les cookies inter-sites et
+les URL signées. La contrepartie a fini par se voir — deux lignes du journal
+d'audit de production portent des gestes faits pendant un développement.
+
+Le commentaire qui vivait dans `environment.development.ts` disait : *« le jour
+où l'application aura de vrais clients, il faudra une base de recette et cette
+ligne devra changer »*. C'est ce jour.
+
+> ⚠️ **Le fichier de développement ne servait à rien.** Il existait, portait le
+> bon nom, le bon commentaire — et n'était **jamais chargé** : aucun
+> `fileReplacements` ne le déclarait. Le back-office tournait donc en
+> développement avec `environment.ts`, c'est-à-dire `production: true` et
+> l'adresse d'Azure. Le piège est complet : on modifie le bon fichier, et rien
+> ne change.
+
+Mesuré des deux côtés sur le paquet réellement servi : `localhost:8080` en
+développement, Azure en production.
+
+**Ce que la recette ne vérifie plus.** En local, navigateur et API partagent
+`localhost` : le CORS inter-sites, le cookie `SameSite=None; Secure` et les URL
+de médias signées cessent d'être exercés. Ce sont **exactement les trois qui
+échouent silencieusement** en production. Un passage sur l'environnement
+déployé reste obligatoire avant de livrer.
+
+---
+
+## D-38 — Un responsable ne touche plus à un administrateur
+
+Créer un compte `ADMIN` exigeait déjà `ADMIN_CREER`. Mais **modifier**,
+**activer**, **désactiver**, réaffecter des profils et surtout **imposer un mot
+de passe** ne regardaient que les droits `RESPONSABLE_*`.
+
+> ⚠️ Le plus grave est le mot de passe : un responsable pouvait réinitialiser
+> celui d'un administrateur, puis se connecter à sa place. Ce n'est pas une
+> gêne, c'est une **prise de compte**.
+
+`ADMIN_MODIFIER`, `ADMIN_ACTIVER` et `ADMIN_DESACTIVER` existaient au
+référentiel depuis l'origine, dans le module `SECURITE`. Ils n'étaient vérifiés
+**nulle part** — déclarés, jamais appliqués.
+
+`@PreAuthorize` ne reçoit que l'identifiant : `GardeEquipe` lit la base pour
+savoir ce qu'il désigne. Une requête de plus sur des gestes rares.
+
+> ⚠️ Le test d'architecture a attrapé la première version : elle chargeait
+> l'entité depuis la couche web. La garde demande maintenant un **booléen**.
+
+Le miroir côté boutique est fermé aussi : son garde n'exigeait que « connecté »
+— une session d'administration ouvrait « mes commandes ». La session porte
+maintenant le **type** du compte, qu'elle ne portait même pas.
