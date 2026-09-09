@@ -82,6 +82,28 @@ spring:
 #    répond correctement, et le NAVIGATEUR jette la réponse. Pas d'erreur
 #    serveur, pas de trace, un écran vide.
 
+# -----------------------------------------------------------------------------
+# ⚠️ CE QUI N EST PAS LOCAL, MEME EN RECETTE
+# -----------------------------------------------------------------------------
+# La base l'est. Deux services partages ne le sont PAS, parce qu'ils viennent
+# de `.env` et qu'aucun equivalent local n'existe :
+#
+#   GARAH_S3_*      les medias partent dans le bucket de PRODUCTION.
+#                   Televerser une photo depuis la recette y depose un vrai
+#                   fichier. Verifie : un essai de 70 octets s'y est retrouve,
+#                   et a fallu l'effacer a la main.
+#
+#   GARAH_MAIL_*    les courriels partent POUR DE BON. Une inscription de
+#                   recette envoie un vrai message a l'adresse saisie.
+#
+# ⚠️ Consequence pratique : ne pas utiliser d'adresses reelles en recette, et
+#    supprimer les medias d'essai apres usage. La suppression passe par
+#    DELETE /api/produits/{id}/medias/{mediaId}, qui efface aussi l'objet.
+#
+# Le jour ou cela genera : un depot de fichiers sur disque et un serveur SMTP
+# de capture (type MailHog), tous deux choisis par ce profil. Ce n'est pas
+# fait — le dire vaut mieux que le laisser decouvrir.
+
 logging:
   level:
     # De quoi voir passer les requêtes quand un écran ne montre pas ce qu'on
