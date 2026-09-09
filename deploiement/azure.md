@@ -88,6 +88,32 @@ alors un bogue dans un code qui n'en a pas.
 
 600 s laisse de la marge sans masquer un vrai blocage.
 
+### ⚠️ Après CHAQUE mise en ligne, l'API est muette quelques minutes
+
+`Always On` empêche l'application de s'endormir **à l'inactivité**. Il
+n'empêche pas le redémarrage qui suit un déploiement : le conteneur est
+remplacé, et il faut le retélécharger, le lancer, laisser Spring démarrer et
+Flyway vérifier les migrations.
+
+Mesuré le 9 septembre 2026, sur le déploiement de `6023ebb` :
+
+| Requête après le déploiement | Temps    |
+|------------------------------|----------|
+| la première                  | **38 s** |
+| la deuxième                  | 0,7 s    |
+| la troisième                 | 0,8 s    |
+
+Et pendant la fenêtre qui précède, l'API ne répond pas du tout.
+
+**Le symptôme trompe.** Dans le back-office, *tous* les écrans affichent en
+même temps « Le service ne répond pas ». On croit à une régression de la
+dernière fonctionnalité livrée — alors que c'est justement sa mise en ligne
+qui coupe l'API, et que la fonctionnalité, elle, n'a rien.
+
+Le test : ouvrir **un autre** écran. S'il échoue aussi, ce n'est pas l'écran,
+c'est la liaison. Et si un déploiement vient de passer, il n'y a rien à
+corriger — il faut attendre et recharger.
+
 ### Sonde de santé
 
 **Surveillance → Health check** → `/api/sante`
