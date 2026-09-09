@@ -74,11 +74,14 @@ public class ServicePaiementMobile {
     private final PaiementRepository paiements;
     private final CommandeRepository commandes;
     private final ClientCampay campay;
+    private final com.garah.api.commun.audit.JournalParcours parcours;
 
     public ServicePaiementMobile(ServicePaiement paiementsMetier,
                                  PaiementRepository paiements,
                                  CommandeRepository commandes,
-                                 ClientCampay campay) {
+                                 ClientCampay campay,
+                                 com.garah.api.commun.audit.JournalParcours parcours) {
+        this.parcours = parcours;
         this.paiementsMetier = paiementsMetier;
         this.paiements = paiements;
         this.commandes = commandes;
@@ -140,6 +143,12 @@ public class ServicePaiementMobile {
 
         // Transaction courte n°2 : on note la référence de l'opérateur.
         paiementsMetier.enregistrerAupresOperateur(paiement.getId(), collecte.reference());
+
+        // ⚠️ On trace la DEMANDE, pas l'encaissement. Le paiement mobile est
+        //    asynchrone : à cet instant le client n'a encore rien payé, il a
+        //    reçu un code à composer. Écrire « PAIEMENT » comme s'il était
+        //    abouti ferait mentir le parcours sur ce qui compte le plus.
+        parcours.paiement(commandeId, moyen.name(), null);
 
         return new DemandePaiement(paiement.getId(), collecte.reference(),
                 collecte.codeUssd(), collecte.operateur(), StatutPaiement.EN_ATTENTE.name());

@@ -32,12 +32,15 @@ public class ServicePanier {
     private static final int QUANTITE_MAX_PAR_LIGNE = 1000;
 
     private final PanierRepository paniers;
+    private final com.garah.api.commun.audit.JournalParcours parcours;
     private final VarianteRepository variantes;
     private final ServiceTarification tarification;
     private final ServiceStock stock;
 
-    public ServicePanier(PanierRepository paniers, VarianteRepository variantes,
+    public ServicePanier(com.garah.api.commun.audit.JournalParcours parcours,
+                         PanierRepository paniers, VarianteRepository variantes,
                          ServiceTarification tarification, ServiceStock stock) {
+        this.parcours = parcours;
         this.paniers = paniers;
         this.variantes = variantes;
         this.tarification = tarification;
@@ -72,6 +75,12 @@ public class ServicePanier {
         }
 
         panierActif(clientId).ajouter(varianteId, quantite);
+
+        // ⚠️ Après les deux refus ci-dessus : on journalise ce qui est ARRIVE
+        //    au panier, pas ce qui a été tenté. Un journal de parcours qui
+        //    contient les échecs ne raconte plus le parcours.
+        parcours.ajoutAuPanier(varianteId, info.designation(), quantite);
+
         return contenu(clientId);
     }
 

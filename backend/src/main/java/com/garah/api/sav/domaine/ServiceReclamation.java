@@ -40,9 +40,12 @@ public class ServiceReclamation {
     private final CommandeRepository commandes;
 
     private final JournalActions journal;
+    private final com.garah.api.commun.audit.JournalParcours parcours;
 
     public ServiceReclamation(ReclamationRepository reclamations, ServiceClient clients,
-                              CommandeRepository commandes, JournalActions journal) {
+                              CommandeRepository commandes, JournalActions journal,
+                              com.garah.api.commun.audit.JournalParcours parcours) {
+        this.parcours = parcours;
         this.reclamations = reclamations;
         this.clients = clients;
         this.commandes = commandes;
@@ -56,8 +59,14 @@ public class ServiceReclamation {
                     "Une réclamation doit indiquer un motif.");
         }
 
-        return reclamations.save(new Reclamation(
+        Reclamation reclamation = reclamations.save(new Reclamation(
                 genererNumero(), clientId, commandeId, motif, description));
+
+        // Le geste appartient au parcours du client, pas au journal des
+        // actions internes : c'est LUI qui ouvre, pas la maison.
+        parcours.reclamation(reclamation.getId(), motif);
+
+        return reclamation;
     }
 
     /**

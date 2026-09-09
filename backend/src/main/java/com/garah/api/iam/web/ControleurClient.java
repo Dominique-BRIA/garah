@@ -46,8 +46,11 @@ import org.springframework.web.bind.annotation.*;
 public class ControleurClient {
 
     private final ServiceClient clients;
+    private final com.garah.api.surveillance.domaine.ServiceActiviteClient parcours;
 
-    public ControleurClient(ServiceClient clients) {
+    public ControleurClient(ServiceClient clients,
+                            com.garah.api.surveillance.domaine.ServiceActiviteClient parcours) {
+        this.parcours = parcours;
         this.clients = clients;
     }
 
@@ -74,6 +77,35 @@ public class ControleurClient {
     @PreAuthorize("hasAuthority('CLIENT_CONSULTER')")
     public FicheClient fiche(@PathVariable Long id) {
         return clients.fiche(id);
+    }
+
+    /**
+     * Le parcours d'un client : ce qu'il a fait, du plus récent au plus ancien.
+     *
+     * <h2>🎯 Le droit existait, il ne gardait rien</h2>
+     *
+     * <p>{@code CLIENT_CONSULTER_HISTORIQUE} figure au référentiel depuis
+     * l'origine et n'était vérifié <b>nulle part</b> — faute de route à
+     * garder : la table {@code activite_client}, déclarée en V12, n'avait ni
+     * entité ni écriture. Les deux manques se répondaient.</p>
+     *
+     * <h2>⚠️ Ce n'est pas le journal des actions internes</h2>
+     *
+     * <p>Celui-ci répond à « qu'a fait CE CLIENT ? » — il a mis ceci au
+     * panier, commandé, annulé. L'autre répond à « qui, chez nous, a touché à
+     * cette donnée ? ». Les confondre ferait disparaître les quelques gestes
+     * internes d'une journée sous le trafic de la boutique.</p>
+     */
+    @GetMapping("/{id}/parcours")
+    @PreAuthorize("hasAuthority('CLIENT_CONSULTER_HISTORIQUE')")
+    public org.springframework.data.domain.Page<
+            com.garah.api.surveillance.domaine.VueActiviteClient> parcours(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int taille) {
+
+        return parcours.parcoursDe(id,
+                org.springframework.data.domain.PageRequest.of(page, Math.min(taille, 200)));
     }
 
     /**

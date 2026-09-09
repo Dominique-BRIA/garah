@@ -6,6 +6,7 @@ import com.garah.api.catalogue.infra.VarianteRepository;
 import com.garah.api.commerce.infra.CommandeRepository;
 import com.garah.api.commerce.infra.PanierRepository;
 import com.garah.api.commun.audit.JournalActions;
+import com.garah.api.commun.audit.JournalParcours;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -85,12 +86,24 @@ public class ServiceCommande {
      */
     private final JournalActions journal;
 
+    /**
+     * ⚠️ Le journal du PARCOURS, qui n'est pas celui des actions internes.
+     *
+     * <p>Passer commande est le geste d'un client : il n'a rien à faire dans
+     * le journal d'audit, qui répond à « qui, chez nous, a touché à cette
+     * donnée ». Voir {@code activite_client}, declarée en V12 et restee vide
+     * trois versions durant.</p>
+     */
+    private final JournalParcours parcours;
+
     public ServiceCommande(CommandeRepository commandes, PanierRepository paniers,
                            VarianteRepository variantes, ServiceTarification tarification,
                            ServiceCommission commissions, ServiceStock stock,
                            LieuRepository lieux, ServiceVerificationEmail verification,
-                           ServiceClient clients, JournalActions journal) {
+                           ServiceClient clients, JournalActions journal,
+                           JournalParcours parcours) {
         this.journal = journal;
+        this.parcours = parcours;
         this.commandes = commandes;
         this.paniers = paniers;
         this.variantes = variantes;
@@ -156,6 +169,12 @@ public class ServiceCommande {
         commande.setMontantFrais(pointRetrait.getFraisAcheminement());
         commande.recalculer();
         panier.convertir();
+
+        // ⚠️ Après `convertir()` : le geste n'est vrai qu'une fois le panier
+        //    devenu commande. Le tracer plus tôt journaliserait des commandes
+        //    que la réservation de stock peut encore faire échouer.
+        parcours.commande(commande.getId(), commande.getNumero(),
+                commande.getMontantTotal());
 
         return DetailCommande.de(commande);
     }
@@ -270,6 +289,13 @@ public class ServiceCommande {
         journal.enregistrer("COMMANDE_ANNULER", "commande", commandeId,
                 JournalActions.cliche("statut", ancien),
                 JournalActions.cliche("statut", StatutCommande.ANNULEE, "motif", motif));
+
+        // ⚠️ UN SEUL appel pour les deux publics. Cette méthode sert aussi bien
+        //    l'annulation par le client que celle du back-office ; c'est
+        //    l'écouteur qui écarte les acteurs internes. Poser un « si c'est un
+        //    client » ici dupliquerait une règle qui vit déjà ailleurs, et les
+        //    deux finiraient par diverger.
+        parcours.annulation(commandeId, commande.getNumero(), motif);
 
         return DetailCommande.de(commande);
     }
