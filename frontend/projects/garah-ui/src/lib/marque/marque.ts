@@ -1,37 +1,47 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
+import { MARQUE_COMPLETE, MARQUE_EPAISSIE } from './traces';
+
 /**
- * La marque GARAH : la calebasse, réduite à deux formes.
+ * La marque GARAH : le téléphone qui devient chariot.
  *
  * <pre>
  * &lt;gu-marque /&gt;                        la marque, immobile
  * &lt;gu-marque taille="4rem" /&gt;          dans un en-tête
- * &lt;gu-marque animee="entree" /&gt;        elle se trace et se remplit, une fois
+ * &lt;gu-marque animee="entree" /&gt;        elle apparaît, une fois
  * &lt;gu-marque animee="boucle" /&gt;        elle respire — pour une attente
  * &lt;gu-marque mono /&gt;                   la couleur du texte, pas celle de la marque
  * </pre>
  *
  * <h2>Ce que la forme raconte</h2>
  *
- * <p>Les deux visuels de marque montrent une <b>calebasse</b> qui porte une
- * voiture, une paire de baskets et un pagne — ce que le commerce rapporte.
- * L'idée est bonne, mais elle vit dans deux photographies de 1408 × 768 :
- * inexploitable en favicon, inexploitable dans une barre latérale.</p>
+ * <p>Un <b>seul ruban</b> : le flanc droit du téléphone descend, tourne, et
+ * devient le bord haut du panier. On achète depuis son téléphone, et la
+ * marchandise part. Les deux formes ne sont pas voisines — l'une devient
+ * l'autre.</p>
  *
- * <p>Ici la calebasse est ramenée à sa panse pleine et à l'anse qui la
- * referme, en laissant une ouverture à droite. On y lit un récipient d'abord,
- * un <b>G</b> ensuite — et c'est le bon ordre : la marque doit dire le métier
- * avant de dire le nom, puisque le nom est déjà écrit à côté.</p>
+ * <h2>⚠️ Le tracé n'est PAS écrit ici</h2>
  *
- * <p>{@link Logo} reste la <b>bannière</b> photographique, pour une vitrine où
- * une photo de produits a un rôle à jouer. Ceci est la <b>marque</b>, pour
- * tout le reste : onglet, barre latérale, tampon, en-tête d'e-mail.</p>
+ * <p>Il vient de {@code ./traces.ts}, engendré par
+ * {@code marque/engendrer-marque.mjs} qui relève le contour du fichier livré
+ * par le graphiste. Recopier une forme à la main la fait dériver de quelques
+ * pour cent — et l'on se retrouve avec deux marques sans savoir laquelle fait
+ * foi. C'est arrivé, et c'est pour cela que le relevé existe.</p>
+ *
+ * <h2>⚠️ DEUX TRACÉS, choisis par la taille</h2>
+ *
+ * <p>Sous 44 px, les dix trous du panier font des carrés d'un pixel : ils se
+ * remplissent d'anticrénelage et le dessin devient une tache. Le composant
+ * bascule alors sur le tracé <b>épaissi</b> — qui n'est pas un autre dessin,
+ * mais le même, relevé après dilatation du masque.</p>
+ *
+ * <p>C'est la barre latérale qui l'exige : elle affiche la marque à 26 px.</p>
  *
  * <h2>Sur la couleur</h2>
  *
- * <p>Un aplat, pas un dégradé, et il vient de {@code var(--marque)} — la seule
- * constante de {@code _jetons.scss}. L'emblème garde donc sa couleur sur les
- * trois frontends et dans les deux thèmes, pendant que {@code --primary} varie
+ * <p>Un aplat, et il vient de {@code var(--marque)} — la seule constante de
+ * {@code _jetons.scss}. L'emblème garde donc sa couleur sur les trois
+ * frontends et dans les deux thèmes, pendant que {@code --primary} varie
  * d'une application à l'autre.</p>
  *
  * <p>⚠️ <b>La couleur est posée en CSS, jamais en attribut.</b> Une variable
@@ -52,30 +62,14 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
   },
   template: `
     <svg
-      viewBox="0 0 48 48"
+      [attr.viewBox]="trace().boite"
       [class]="classes()"
       [attr.aria-hidden]="etiquette() ? null : 'true'"
       [attr.role]="etiquette() ? 'img' : null"
       [attr.aria-label]="etiquette() || null"
       focusable="false"
     >
-      <!-- Le niveau de remplissage. Immobile hors animation : le rectangle
-           couvre alors toute la panse, et le découpage ne se voit pas. -->
-      <clipPath [attr.id]="idNiveau">
-        <rect class="niveau" x="8" y="24" width="34" height="18" />
-      </clipPath>
-
-      <!-- L'anse. Bout franc et non arrondi : un bout rond dépasserait sous la
-           ligne du bord, à gauche, et ferait une verrue que personne ne sait
-           nommer mais que tout le monde voit. -->
-      <path class="anse" d="M10 25A15 15 0 0 1 37.29 16.4" />
-
-      <!-- La panse. -->
-      <path
-        class="panse"
-        d="M10 25A15 15 0 0 0 40 25Z"
-        [attr.clip-path]="'url(#' + idNiveau + ')'"
-      />
+      <path class="dessin" fill-rule="evenodd" [attr.d]="trace().trace" />
     </svg>
   `,
   styles: [
@@ -91,16 +85,10 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
         width: 100%;
         height: 100%;
         display: block;
+        overflow: visible;
       }
 
-      .anse {
-        fill: none;
-        stroke: var(--marque);
-        stroke-width: 5;
-        stroke-linecap: butt;
-      }
-
-      .panse {
+      .dessin {
         fill: var(--marque);
       }
 
@@ -108,80 +96,63 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
          du texte qui l'entoure. C'est la version qui compte à long terme —
          une marque qui ne survit pas à l'aplat ne survit ni au tampon, ni à
          la broderie. */
-      svg.mono .anse {
-        stroke: currentColor;
-      }
-
-      svg.mono .panse {
+      svg.mono .dessin {
         fill: currentColor;
       }
 
-      /* ── L'entrée : l'anse se trace, puis la panse se remplit ──────────────
-         Les deux se chevauchent volontairement (0,34 s < 0,62 s) : enchaînées
-         bout à bout, on verrait deux gestes ; superposées, on en voit un. */
-      svg.entree .anse {
-        /* 38 = la longueur de l'arc : 145° d'un cercle de rayon 15.
-           Une valeur trop courte laisse un bout non tracé à la fin. */
-        stroke-dasharray: 38;
-        animation: gu-marque-tracer 0.62s cubic-bezier(0.65, 0, 0.35, 1) both;
+      /* ── L'entrée : la marque monte et se pose ────────────────────────────
+         ⚠️ Elle ne se TRACE pas. L'ancienne calebasse était faite de deux
+            traits qu'on pouvait dessiner l'un après l'autre ; ce dessin-ci
+            est une surface pleine percée de trous, et un stroke-dasharray
+            n'a aucun sens dessus. Une animation qui ment sur la nature de
+            la forme se remarque même sans qu'on sache pourquoi. */
+      svg.entree {
+        animation: gu-marque-entrer 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
       }
 
-      svg.entree .niveau {
-        animation: gu-marque-remplir 0.68s 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
-      }
-
-      @keyframes gu-marque-tracer {
+      @keyframes gu-marque-entrer {
         from {
-          stroke-dashoffset: 38;
+          opacity: 0;
+          transform: translateY(14%) scale(0.88);
         }
         to {
-          stroke-dashoffset: 0;
-        }
-      }
-
-      @keyframes gu-marque-remplir {
-        from {
-          transform: translateY(17px);
-        }
-        to {
+          opacity: 1;
           transform: none;
         }
       }
 
-      /* ── La boucle : elle se remplit et se vide, pour dire une attente ─────
-         Le niveau monte, tient un instant en haut, puis redescend. Le palier
-         est ce qui distingue une respiration d'un va-et-vient mécanique. */
-      svg.boucle .niveau {
+      /* ── La boucle : elle respire, pour dire une attente ──────────────────
+         Le palier en haut est ce qui distingue une respiration d'un
+         va-et-vient mécanique. */
+      svg.boucle {
         animation: gu-marque-respirer 2s ease-in-out infinite;
+        transform-origin: center;
       }
 
       @keyframes gu-marque-respirer {
         0% {
-          transform: translateY(17px);
+          opacity: 0.55;
+          transform: scale(0.94);
         }
         45%,
         60% {
+          opacity: 1;
           transform: none;
         }
         100% {
-          transform: translateY(17px);
+          opacity: 0.55;
+          transform: scale(0.94);
         }
       }
 
       /* ⚠️ Le réglage système « réduire les animations » n'est pas un confort :
          pour une partie des utilisateurs, le mouvement déclenche des nausées.
-         La marque doit alors apparaître ENTIÈRE, pas figée à mi-remplissage. */
+         La marque doit alors apparaître ENTIÈRE, pas figée à mi-course. */
       @media (prefers-reduced-motion: reduce) {
-        svg .anse,
-        svg .niveau {
+        svg.entree,
+        svg.boucle {
           animation: none;
-        }
-
-        svg .anse {
-          stroke-dashoffset: 0;
-        }
-
-        svg .niveau {
+          opacity: 1;
           transform: none;
         }
       }
@@ -189,21 +160,6 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
   ],
 })
 export class Marque {
-  /**
-   * Un identifiant de découpe par instance.
-   *
-   * <p>⚠️ Deux marques sur la même page partageraient sinon le même
-   * {@code id}. Le second l'emporterait, et la première pointerait vers une
-   * découpe qui n'est plus la sienne — un bogue qui ne se voit QUE lorsqu'on
-   * affiche deux marques de tailles différentes, donc jamais pendant qu'on
-   * l'écrit.</p>
-   *
-   * <p>L'encapsulation d'Angular ne protège pas d'un doublon : elle réécrit
-   * les sélecteurs CSS, pas les identifiants d'un document SVG.</p>
-   */
-  private static suivant = 0;
-  protected readonly idNiveau = `gu-marque-niveau-${++Marque.suivant}`;
-
   /** La taille du carré. La marque est dessinée sur une grille carrée. */
   readonly taille = input('2.5rem');
 
@@ -221,9 +177,44 @@ export class Marque {
    */
   readonly etiquette = input<string | null>(null);
 
+  /**
+   * Le tracé qui convient à cette taille.
+   *
+   * <p>⚠️ Le seuil est à 44 px, et il est mesuré sur la taille DEMANDÉE, pas
+   * sur la taille rendue. Un conteneur qui rétrécirait la marque en dessous
+   * la ferait empâter sans que le composant le sache — c'est le prix d'un
+   * choix fait à la construction plutôt qu'à l'affichage, et c'est le bon
+   * compromis : observer la taille réelle coûterait un ResizeObserver par
+   * marque, sur un dessin qui ne bouge jamais.</p>
+   */
+  protected readonly trace = computed(() =>
+    enPixels(this.taille()) < 44 ? MARQUE_EPAISSIE : MARQUE_COMPLETE,
+  );
+
   protected readonly classes = computed(() =>
     this.mono() ? `${this.animee()} mono` : this.animee(),
   );
+}
+
+/**
+ * Une taille CSS en pixels, approximativement.
+ *
+ * <p>Assez juste pour choisir entre deux tracés. Une valeur exotique — un
+ * pourcentage, un {@code calc()} — retombe sur le tracé épaissi : c'est le
+ * plus sûr des deux, il reste lisible partout.</p>
+ */
+function enPixels(taille: string): number {
+  const valeur = Number.parseFloat(taille);
+  if (Number.isNaN(valeur)) {
+    return 0;
+  }
+  if (taille.includes('rem') || taille.includes('em')) {
+    return valeur * 16;
+  }
+  if (taille.includes('px')) {
+    return valeur;
+  }
+  return 0;
 }
 
 /** `<gu-marque mono />` doit valoir vrai, comme un attribut HTML natif. */

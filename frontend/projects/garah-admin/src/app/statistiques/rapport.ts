@@ -1,4 +1,4 @@
-import { montantLisible, tauxLisible } from 'garah-ui';
+import { MARQUE_BLEU, MARQUE_COMPLETE, montantLisible, tauxLisible } from 'garah-ui';
 
 // ⚠️ `import type` et non `import` : TypeScript l'efface à la compilation.
 // Les classes de `docx` restent chargées au clic, dans versWord() ; seuls
@@ -120,8 +120,8 @@ const SANS_DONNEES = 'Aucune donnée sur cette période.';
 // L'en-tête de marque
 // -----------------------------------------------------------------------------
 
-/** Le vert de la marque, en composantes — jsPDF ne lit pas les couleurs CSS. */
-const MARQUE: [number, number, number] = [18, 165, 148];
+/** Le bleu de la marque, en composantes — jsPDF ne lit pas les couleurs CSS. */
+const MARQUE: [number, number, number] = [49, 174, 243];
 
 /**
  * Le côté de la marque tramée, en pixels.
@@ -134,16 +134,17 @@ const COTE = 256;
 /**
  * La marque GARAH, dessinée pour un document.
  *
- * <p>Les deux mêmes tracés que {@code <gu-marque>} : l'anse, puis la panse.
- * On les recopie plutôt que d'aller lire le composant, et c'est délibéré —
- * la version de l'écran tient sa couleur de {@code var(--marque)}, une
- * variable CSS qui n'existe pas dans un PDF.</p>
+ * <p>🎯 Le tracé vient de la <b>librairie</b>, il n'est plus recopié ici.</p>
  *
- * <p>⚠️ La couleur est donc écrite ici <b>en clair</b>. Si la marque change
- * de vert, deux fichiers changent ensemble : {@code _jetons.scss} et
- * celui-ci. C'est l'un des rares endroits où une couleur est dupliquée, et
- * il l'est parce qu'aucun format de document ne sait lire une feuille de
- * style.</p>
+ * <p>⚠️ Il l'était, et la copie a survécu au changement de marque : les
+ * documents sont sortis avec l'ancienne calebasse verte pendant que tous les
+ * écrans portaient déjà le nouveau logo. Personne ne l'aurait vu sans ouvrir
+ * un PDF.</p>
+ *
+ * <p>La couleur, en revanche, est écrite <b>en clair</b> : la version de
+ * l'écran tient la sienne de {@code var(--marque)}, une variable CSS
+ * qu'aucun format de document ne sait lire. {@code MARQUE_BLEU} vient donc
+ * lui aussi de la librairie, engendré depuis le fichier du graphiste.</p>
  *
  * <p>⚠️ {@code width} et {@code height} sont écrits DANS le SVG, en plus du
  * {@code viewBox}. Un SVG sans dimension propre n'a pas de taille
@@ -151,9 +152,9 @@ const COTE = 256;
  * une taille arbitraire, ou pas du tout. Les poser sur l'élément
  * {@code <img>} ne suffit pas.</p>
  */
-const MARQUE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="${COTE}" height="${COTE}">
-  <path d="M10 25A15 15 0 0 1 37.29 16.4" fill="none" stroke="#12a594" stroke-width="5" stroke-linecap="butt"/>
-  <path d="M10 25A15 15 0 0 0 40 25Z" fill="#12a594"/>
+const MARQUE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARQUE_COMPLETE.boite.slice(4)}"
+     width="${COTE}" height="${COTE}">
+  <path fill="${MARQUE_BLEU}" fill-rule="evenodd" d="${MARQUE_COMPLETE.trace}"/>
 </svg>`;
 
 /** La marque en PNG, une seule fois pour toute la session. */

@@ -211,6 +211,58 @@ for (const [rel, contenu] of Object.entries(svgs)) {
 console.log('SVG :', Object.keys(svgs).length, 'fichiers');
 
 // =============================================================================
+//  LES TRACÉS POUR LA LIBRAIRIE
+// =============================================================================
+//  🎯 Le composant <gu-marque> ne recopie pas le dessin : il le REÇOIT.
+//
+//  Même raison que pour tout le reste — une forme recopiée à la main dérive.
+//  Ce fichier est engendré ; le composant, lui, reste écrit à la main et
+//  documenté. C'est le partage que fait déjà `icones/traces.ts`.
+// =============================================================================
+const CIBLE_TS = path.resolve(ICI, '../frontend/projects/garah-ui/src/lib/marque/traces.ts');
+
+if (fs.existsSync(path.dirname(CIBLE_TS))) {
+  fs.writeFileSync(CIBLE_TS,
+`/*
+ * ⚠️ FICHIER ENGENDRÉ — ne pas modifier.
+ *
+ * Produit par \`marque/engendrer-marque.mjs\`, lui-même nourri du relevé de
+ * \`marque/source/logo-original.png\`. Toute retouche ici sera écrasée à la
+ * prochaine exécution.
+ *
+ * Deux paliers, et c'est délibéré : sous 44 px, les trous du panier se
+ * remplissent d'anticrénelage et le dessin devient une tache. Le second
+ * tracé n'est pas un autre dessin — c'est le MÊME, relevé après dilatation
+ * du masque : le trait grossit, les proportions ne bougent pas.
+ */
+
+export interface TraceMarque {
+  /** Le repère de coordonnées du tracé. */
+  readonly boite: string;
+  readonly trace: string;
+}
+
+/** Le dessin complet. À partir de 44 px. */
+export const MARQUE_COMPLETE: TraceMarque = {
+  boite: '0 0 ${COMPLET.l} ${COMPLET.h}',
+  trace:
+    '${COMPLET.d}',
+};
+
+/** Le dessin épaissi. En dessous de 44 px. */
+export const MARQUE_EPAISSIE: TraceMarque = {
+  boite: '0 0 ${PETIT.l} ${PETIT.h}',
+  trace:
+    '${PETIT.d}',
+};
+
+/** Le bleu de la marque, relevé sur le fichier d'origine. */
+export const MARQUE_BLEU = '${BLEU}';
+`);
+  console.log('TS  : garah-ui/src/lib/marque/traces.ts');
+}
+
+// =============================================================================
 //  RASTERISATION
 // =============================================================================
 

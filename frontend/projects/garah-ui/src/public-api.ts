@@ -41,6 +41,10 @@ export * from './lib/icones/icone';
 export * from './lib/icones/traces';
 
 // --- La marque ---
+// Les tracés sont exportés, et pas seulement le composant : les documents
+// PDF et Word ont besoin de la forme sans passer par le DOM. Sans cela, ils
+// en gardaient une copie — et la copie a survécu au changement de marque.
+export * from './lib/marque/traces';
 export * from './lib/marque/marque';
 export * from './lib/marque/logo';
 export * from './lib/marque/avatar';

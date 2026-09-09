@@ -49,7 +49,11 @@
   //
   //    Ne pas la redéfinir dans styles.scss. Le jour où la charte change,
   //    elle change ICI, une fois, pour les trois frontends.
-  --marque: #12a594;
+  //
+  //    ⚠️ Cette valeur n'est pas choisie : elle est RELEVÉE sur le fichier du
+  //       graphiste par `marque/vectoriser.mjs`. Le vert #12a594 de la
+  //       calebasse a vécu ici jusqu'au 09/09/2026.
+  --marque: #31aef3;
 
   // --- Rayons ---------------------------------------------------------------
   --radius-sm: 8px;
