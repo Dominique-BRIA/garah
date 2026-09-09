@@ -212,7 +212,20 @@ function preparer(
     url: absolue(requete.url, config.baseUrl),
     withCredentials: true,
     setHeaders: {
-      'X-Garah-Client': '1',
+      // 🎯 « admin », et non « 1 » : cette valeur NOMME le public, et le
+      //    serveur en déduit quel cookie de session lire et poser.
+      //
+      //    Un nom de cookie unique voulait dire une session par navigateur,
+      //    partagée avec la boutique : se connecter en client d'un côté
+      //    remplaçait la session d'administration de l'autre, sans un mot
+      //    (D-33). Deux noms, deux sessions qui coexistent.
+      //
+      // ⚠️ La PRÉSENCE de cet en-tête reste la protection CSRF : elle force un
+      //    préflight que seules nos origines passent. Sa VALEUR, elle, ne
+      //    protège rien — n'importe qui peut prétendre être le back-office, et
+      //    cela ne fait que choisir un tiroir. Le jeton qui s'y trouve reste
+      //    engendré et vérifié par le serveur.
+      'X-Garah-Client': 'admin',
       ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
     },
   });

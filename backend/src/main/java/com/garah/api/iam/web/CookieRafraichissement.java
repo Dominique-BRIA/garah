@@ -1,5 +1,6 @@
 package com.garah.api.iam.web;
 
+import com.garah.api.commun.web.EnteteClient;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -33,8 +34,34 @@ import java.util.Optional;
 @Component
 public class CookieRafraichissement {
 
-    /** Le nom du cookie. Préfixé pour ne jamais entrer en collision. */
-    public static final String NOM = "garah_refresh";
+    /**
+     * ⚠️ <b>UN NOM PAR PUBLIC, et c'est ce qui sépare les deux sessions.</b>
+     *
+     * <p>Le navigateur range un cookie sous la clé
+     * <i>(domaine, chemin, nom)</i>. Un nom unique voulait donc dire <b>une
+     * session par navigateur</b>, partagée entre la boutique et le
+     * back-office : se connecter en client d'un côté remplaçait la session
+     * d'administration de l'autre, sans un mot (D-33).</p>
+     *
+     * <p>Deux noms, deux rangements, deux sessions qui coexistent.</p>
+     *
+     * <p>⚠️ Ce n'est <b>pas</b> une frontière de sécurité. Le public est
+     * déclaré par un en-tête que le navigateur envoie : n'importe qui peut
+     * prétendre être le back-office. Cela ne donne rien — le jeton rangé là
+     * reste opaque, engendré par le serveur, rattaché à une famille et vérifié
+     * en base. Se tromper de tiroir n'ouvre aucune porte. Ce que ces deux noms
+     * empêchent, c'est un <b>écrasement accidentel</b>, pas une intrusion.</p>
+     */
+    private static final String NOM_BACK_OFFICE = "garah_refresh_admin";
+
+    /**
+     * Le nom pour tout le reste : boutique, mobile, et ce qui viendra.
+     *
+     * <p>🎯 C'est le back-office qui se déclare, et personne d'autre. Une
+     * application qui ignore cette convention ne peut donc pas atterrir dans
+     * sa session par accident — le sens du choix est d'isoler la sensible.</p>
+     */
+    private static final String NOM_BOUTIQUE = "garah_refresh_boutique";
 
     /**
      * ⚠️ <b>Le chemin restreint est une protection, pas un détail.</b>
@@ -90,8 +117,18 @@ public class CookieRafraichissement {
      * structurelle plutôt que dépendante d'un jeton. C'est une raison de plus
      * de prendre un vrai domaine tôt.</p>
      */
-    public String poser(String jeton, long dureeSecondes) {
-        return construire(jeton, Duration.ofSeconds(dureeSecondes)).toString();
+    public String poser(HttpServletRequest requete, String jeton, long dureeSecondes) {
+        return construire(nomPour(requete), jeton, Duration.ofSeconds(dureeSecondes)).toString();
+    }
+
+    /**
+     * Le nom du cookie pour l'appelant.
+     *
+     * <p>Le back-office se déclare par l'en-tête client ; tout le reste tombe
+     * sur le nom de la boutique.</p>
+     */
+    private static String nomPour(HttpServletRequest requete) {
+        return EnteteClient.estLeBackOffice(requete) ? NOM_BACK_OFFICE : NOM_BOUTIQUE;
     }
 
     /**
@@ -103,17 +140,25 @@ public class CookieRafraichissement {
      * en place. L'utilisateur croirait s'être déconnecté sans l'être — d'où le
      * passage par la même méthode de construction.</p>
      */
-    public String effacer() {
-        return construire("", Duration.ZERO).toString();
+    public String effacer(HttpServletRequest requete) {
+        return construire(nomPour(requete), "", Duration.ZERO).toString();
     }
 
-    /** Lit le cookie dans la requête entrante. */
+    /**
+     * Lit le cookie de l'appelant — <b>le sien seulement</b>.
+     *
+     * <p>⚠️ Un navigateur peut porter les deux à la fois. Chercher « le
+     * premier cookie de rafraîchissement trouvé » rendrait la session de
+     * l'autre public, et on retomberait exactement sur le défaut qu'on
+     * répare.</p>
+     */
     public Optional<String> lire(HttpServletRequest requete) {
         if (requete.getCookies() == null) {
             return Optional.empty();
         }
+        String nom = nomPour(requete);
         return Arrays.stream(requete.getCookies())
-                .filter(c -> NOM.equals(c.getName()))
+                .filter(c -> nom.equals(c.getName()))
                 .map(jakarta.servlet.http.Cookie::getValue)
                 .filter(v -> v != null && !v.isBlank())
                 .findFirst();
@@ -124,8 +169,8 @@ public class CookieRafraichissement {
         return HttpHeaders.SET_COOKIE;
     }
 
-    private ResponseCookie construire(String valeur, Duration duree) {
-        ResponseCookie.ResponseCookieBuilder cookie = ResponseCookie.from(NOM, valeur)
+    private ResponseCookie construire(String nom, String valeur, Duration duree) {
+        ResponseCookie.ResponseCookieBuilder cookie = ResponseCookie.from(nom, valeur)
                 // Hors de portée de tout JavaScript : c'est la raison d'être
                 // de ce choix face à localStorage.
                 .httpOnly(true)

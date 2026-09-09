@@ -89,7 +89,7 @@ public class ControleurAuthentification {
                 demande.email(), demande.motDePasse(), demande.nom(),
                 demande.prenom(), demande.telephone(), demande.langue(), ip);
 
-        return avecCookie(HttpStatus.CREATED, sessions.ouvrirSession(connexion, ip));
+        return avecCookie(requete, HttpStatus.CREATED, sessions.ouvrirSession(connexion, ip));
     }
 
     @PostMapping("/connexion")
@@ -99,7 +99,7 @@ public class ControleurAuthentification {
 
         var connexion = authentification.connecter(demande.email(), demande.motDePasse(), ip);
 
-        return avecCookie(HttpStatus.OK, sessions.ouvrirSession(connexion, ip));
+        return avecCookie(requete, HttpStatus.OK, sessions.ouvrirSession(connexion, ip));
     }
 
     /**
@@ -128,7 +128,7 @@ public class ControleurAuthentification {
         String presente = cookie.lire(requete).orElse(null);
         String ip = AdresseClient.de(requete);
 
-        return avecCookie(HttpStatus.OK, sessions.rafraichir(presente, ip));
+        return avecCookie(requete, HttpStatus.OK, sessions.rafraichir(presente, ip));
     }
 
     /**
@@ -148,7 +148,7 @@ public class ControleurAuthentification {
         cookie.lire(requete).ifPresent(sessions::fermerSession);
 
         return ResponseEntity.noContent()
-                .header(CookieRafraichissement.enTete(), cookie.effacer())
+                .header(CookieRafraichissement.enTete(), cookie.effacer(requete))
                 .build();
     }
 
@@ -176,11 +176,12 @@ public class ControleurAuthentification {
      * symptôme serait une déconnexion au bout de 15 minutes, uniquement sur ce
      * chemin-là.</p>
      */
-    private ResponseEntity<ReponseConnexion> avecCookie(HttpStatus statut,
+    private ResponseEntity<ReponseConnexion> avecCookie(HttpServletRequest requete,
+                                                        HttpStatus statut,
                                                         ServiceRafraichissement.Couple couple) {
         return ResponseEntity.status(statut)
                 .header(CookieRafraichissement.enTete(),
-                        cookie.poser(couple.jetonRafraichissement(),
+                        cookie.poser(requete, couple.jetonRafraichissement(),
                                 couple.dureeRafraichissementSecondes()))
                 .body(ReponseConnexion.de(couple.connexion(),
                         urlPhotoDe(couple.connexion().photoCle())));

@@ -1,5 +1,6 @@
 package com.garah.api.config;
 
+import com.garah.api.commun.web.EnteteClient;
 import com.garah.api.commun.erreur.ReponseErreur;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -71,12 +72,19 @@ public class FiltreOrigineCsrf extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(FiltreOrigineCsrf.class);
 
     /**
-     * L'en-tête que le frontend doit poser. Sa valeur est ignorée.
+     * L'en-tête que le frontend doit poser. <b>Ici, sa valeur est ignorée.</b>
      *
-     * <p>En Angular : {@code headers: {'X-Garah-Client': '1'}}, une fois pour
-     * toutes dans un intercepteur HTTP.</p>
+     * <p>Seule sa présence compte : elle force un préflight CORS que seules
+     * nos origines passent.</p>
+     *
+     * <p>⚠️ Sa <b>valeur</b>, elle, sert ailleurs — elle nomme le public et
+     * décide du cookie de session ({@link EnteteClient}). Le nom est déclaré
+     * là-bas, dans {@code commun}, et non ici : {@code config} dépend déjà
+     * d'{@code iam}, et c'est {@code iam} qui a besoin de lire cette valeur.
+     * Le déclarer dans ce filtre aurait obligé {@code iam} à dépendre de
+     * {@code config} — un cycle, que le test d'architecture refuse.</p>
      */
-    public static final String ENTETE = "X-Garah-Client";
+    public static final String ENTETE = EnteteClient.NOM;
 
     /**
      * Les deux seules routes concernées : celles qui s'authentifient par cookie.

@@ -1756,9 +1756,49 @@ formulaire de connexion sans savoir pourquoi.
 > bout. Son modèle de session ne porte même pas le type de compte : le
 > corriger demande de l'y ajouter.
 
-> ⚠️ **Reste à décider — une session, ou deux ?** Aujourd'hui, un même
-> navigateur ne peut pas être connecté aux deux applications à la fois. C'est
-> défendable — un humain, une session — mais cela gêne quiconque travaille sur
-> les deux. L'alternative est un cookie par public, choisi d'après l'en-tête
-> `X-Garah-Client` que toute requête porte déjà. Elle coûte une déconnexion
-> unique de tout le monde, le jour où le nom du cookie change.
+### Tranché : deux sessions — et c'est le cookie, pas le JWT
+
+La question posée était « cookie ou JWT ? ». **Le cookie, et le JWT n'y était
+pour rien.**
+
+Le jeton d'accès vit **en mémoire**, dans le tas JavaScript de chaque
+application. Deux origines, deux mémoires : il était **déjà** distinct. Le
+séparer davantage n'aurait rien changé.
+
+Ce que le navigateur partage, c'est le **cookie**, rangé sous la clé
+*(domaine, chemin, nom)*. Un seul nom, un seul rangement, une seule session.
+Toute la séparation tient donc dans le nom :
+
+```
+garah_refresh_admin      le back-office
+garah_refresh_boutique   tout le reste
+```
+
+**Ce qui n'a pas eu à changer.** `ouvrirSession` crée une **famille de jetons
+neuve à chaque connexion** : deux sessions simultanées étaient déjà supportées
+par le modèle de rotation. Seul le rangement côté navigateur les empêchait de
+coexister.
+
+**Qui se déclare.** Le back-office envoie `X-Garah-Client: admin` ; tout le
+reste — boutique, mobile, ce qui viendra — retombe sur le nom par défaut. C'est
+**l'application sensible qui s'isole**, et une application qui ignore la
+convention ne peut donc pas atterrir dans sa session par accident. La boutique
+n'a eu aucune ligne à changer.
+
+**⚠️ Ce n'est pas une frontière de sécurité.** La valeur vient du navigateur :
+n'importe qui peut prétendre être le back-office. Cela ne donne rien — elle ne
+choisit qu'un **tiroir**. Le jeton qui s'y trouve reste opaque, engendré par le
+serveur, rattaché à une famille et vérifié en base à chaque usage. Se tromper
+de tiroir n'a jamais ouvert une porte. Ce que ces deux noms empêchent, c'est un
+**écrasement accidentel**, pas une intrusion.
+
+**⚠️ La lecture doit chercher SON nom, pas « un jeton ».** Un navigateur porte
+les deux cookies à la fois. Chercher le premier trouvé aurait rendu la session
+de l'autre public — et on serait retombé exactement sur le défaut réparé.
+`SessionsSepareesTest` le tient.
+
+**Ce qu'on perd.** Le jour du déploiement, tout le monde est déconnecté une
+fois : les cookies s'appelaient `garah_refresh`, et plus personne ne porte ce
+nom-là. Aucun code de compatibilité n'a été écrit pour l'éviter — il aurait
+recréé le partage le temps de la migration, pour épargner quelques secondes
+d'inconfort.
