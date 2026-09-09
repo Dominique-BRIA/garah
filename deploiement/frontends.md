@@ -184,6 +184,37 @@ Pour chacune des deux applications :
 
 ## 4. ⚠️ SANS CETTE ÉTAPE, RIEN NE MARCHERA
 
+### Où en est-on vraiment, aujourd'hui
+
+| Application | Adresse | État |
+|---|---|---|
+| Boutique | `https://garah.vercel.app` | ✅ déployée, origine acceptée |
+| Back-office | *(aucune)* | ❌ **jamais déployé** |
+
+> ⚠️ **L'adresse de la boutique n'était écrite nulle part.** Elle a été
+> retrouvée en essayant des origines contre l'API déployée jusqu'à ce qu'un
+> préflight passe. Un projet dont personne ne sait où il est déployé est un
+> projet qu'on ne sait pas dépanner.
+
+> ⚠️ **Le back-office n'a pas d'adresse.** Son workflow Azure est désactivé
+> (`vars.AZURE_SWA_ADMIN_ACTIVE` n'est pas posée, donc le job est *skipped* à
+> chaque exécution), et aucun projet Vercel ne répond sous un nom plausible.
+> Le `vercel.json` de ce dépôt est prêt ; il manque le projet.
+
+### Vérifier, plutôt que d'espérer
+
+L'oubli de cette étape échoue **en silence** : l'API répond correctement et le
+navigateur jette la réponse. Pas d'erreur serveur, pas de trace, une page vide.
+
+```bash
+node outils/verifier-origines.mjs
+node outils/verifier-origines.mjs https://mon-nouveau-domaine.vercel.app
+```
+
+Le script envoie le préflight qu'enverrait le navigateur et vérifie la présence
+de `Access-Control-Allow-Origin` — un `200` sans cet en-tête ne sert à rien.
+
+
 Chaque nouveau domaine doit être ajouté à **`GARAH_CORS_ORIGINS`**, dans les
 réglages de l'App Service `garah-api` :
 
