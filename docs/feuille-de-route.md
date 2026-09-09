@@ -245,7 +245,7 @@ compte et les discussions.
 | Exceptions de permission (ADD/REMOVE) | `poserException()` existe, **aucune route**. Le piège de l'exception orpheline (ch. 01 §4.4) n'est toujours pas tranché. |
 | Affectation marchand ↔ responsable | Table `gestion_marchand`, aucun service. |
 | Notifications | ✅ Module livré (V29), routes et appareils. |
-| Messagerie interne | API et WebSocket livrés (V30) — **aucun écran ne les consomme**. |
+| Messagerie interne | ✅ Écran livré (D-41). ⚠️ Il **interroge** toutes les 20 s ; la diffusion WebSocket du serveur reste inutilisée, faute de client STOMP. |
 | Appareils connus | Table `appareil_connu`, aucune route. |
 | Téléversement logo et photo | Colonnes prêtes depuis V23. |
 | `GARAH_MAIL_*` sur Azure | ✅ **Configurées** — vérifié par `GET /api/sante` : `courrielConfigure: true`. ⚠️ Ce point était annoncé comme manquant, et il ne l'est pas. Il l'était d'autant moins qu'il aurait été **bloquant** : commander exige une adresse confirmée (403 `ADRESSE_NON_CONFIRMEE`), contrairement à ce qui était écrit ici. |
@@ -253,8 +253,8 @@ compte et les discussions.
 | `GARAH_FIREBASE_CREDENTIALS` | À poser **avec une clé renouvelée** — l'ancienne est compromise. |
 | Azure Static Web Apps | Jamais créé : le workflow est *skipped* à chaque exécution. |
 | Base de recette | ✅ Faite (D-37). |
-| `activite_client` | Table déclarée en V12, **ni entité ni écriture**. Le parcours client n'est mesuré que par `vue_produit`. |
-| Tests frontend | Boutique : 4 (premiers du dépôt). Back-office : **aucun**. |
+| `activite_client` | ✅ Écrite et relue (D-40). Panier, commande, annulation, paiement, réclamation. |
+| Tests frontend | Boutique : 4, back-office : 5, mobile : 26. Tous les premiers de leur dépôt. |
 
 ---
 

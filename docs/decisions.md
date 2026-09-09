@@ -2072,3 +2072,91 @@ qui vieillit sans que personne s'en avise.
 possibilité du serveur pour le cas rare, traitée depuis le back-office. Les
 faire apparaître chez le client réinstallerait le marchandage qu'on vient d'en
 retirer.
+
+---
+
+## D-40 — `activite_client` était déclarée depuis V12 et vide depuis V12
+
+Huit types, deux index, une contrainte — et **ni entité ni écriture** pendant
+trois versions majeures. Une table vide ne se plaint pas : elle se lit comme
+« aucun client n'a rien fait », ce qui est indiscernable de « personne n'écrit
+ici ».
+
+`EcouteurAudit` écartait d'ailleurs explicitement les acteurs clients depuis le
+début, en disant que *« le parcours d'un client est une autre question, qui a
+son propre journal »*. Ce journal-là.
+
+**Ce qui est tracé, et où.**
+
+| Geste | Où | Note |
+|---|---|---|
+| `AJOUT_PANIER` | `ServicePanier` | ce qui est **arrivé** au panier, pas ce qui a été tenté |
+| `COMMANDE` | `ServiceCommande` | **après** `convertir()` : le geste n'est vrai qu'une fois le panier devenu commande |
+| `ANNULATION` | `ServiceCommande` | un seul appel pour les deux publics, l'écouteur filtre |
+| `PAIEMENT` | `ServicePaiementMobile` | la **demande**, pas l'encaissement |
+| `RECLAMATION` | `ServiceReclamation` | c'est le client qui ouvre, pas la maison |
+
+> ⚠️ **`VUE_PRODUIT`, `CONNEXION` et `DECONNEXION` restent inutilisés**, et
+> c'est écrit dans l'énumération. Les vues ont déjà `vue_produit` ; les faits
+> d'authentification ont déjà `evenement_securite`. Les recopier ici noierait
+> le parcours sous le trafic de la vitrine — précisément ce que la séparation
+> des trois journaux évitait.
+
+> ⚠️ **Un événement, pas un appel direct.** Les gestes viennent de quatre
+> domaines. Si chacun appelait la surveillance, le test d'architecture
+> refuserait le cycle qui en naîtrait tôt ou tard.
+
+**Deux défauts trouvés en écrivant les tests.**
+
+Le premier était dans ma propre implémentation : elle rattrapait l'erreur **à
+l'intérieur** de la méthode transactionnelle. Cela ne sert à rien — la
+transaction est déjà marquée « à annuler », et Spring lève un
+`UnexpectedRollback` au **commit**, donc après le `catch`. Une commande aurait
+échoué à cause d'une ligne de journal, pour une raison qu'on n'aurait jamais
+reliée au journal. Le rattrapage vit maintenant dans l'écouteur, hors
+transaction — comme `EcouteurAudit` le faisait déjà.
+
+Le second : le parcours se lisait **à l'envers une fois sur deux**. Deux gestes
+posés dans la même milliseconde portent le même `date_heure`, et PostgreSQL rend
+alors l'ordre qu'il veut. Le test passait seul et échouait dans la suite
+complète. L'identifiant départage désormais.
+
+**La lecture** : `GET /api/clients/{id}/parcours`, gardée par
+`CLIENT_CONSULTER_HISTORIQUE` — un droit du référentiel d'origine qui ne gardait
+**rien**, faute de route à garder. Les deux manques se répondaient.
+
+---
+
+## D-41 — La messagerie interne avait tout, sauf un écran
+
+Les routes, les blocages et jusqu'à la diffusion WebSocket étaient livrés en
+V30. **Rien ne les appelait** : une fonctionnalité entière, testée côté
+serveur, que personne ne pouvait utiliser.
+
+**L'écran** : deux colonnes, les fils à gauche, le fil ouvert à droite. Ceux
+qui portent des non-lus remontent en tête — on ouvre cet écran pour savoir
+**qui attend**, pas qui a parlé en dernier.
+
+> ⚠️ **Il interroge, il n'écoute pas encore.** Le serveur pousse déjà chaque
+> message vers son destinataire. Le consommer demande un client STOMP, donc une
+> dépendance à télécharger — et la connexion de ce poste se compte. On
+> interroge toutes les vingt secondes ; `rafraichir()` est l'unique endroit à
+> remplacer le jour où la bibliothèque arrivera.
+>
+> Le rappel de fond n'affiche **ni chargement ni erreur** : un écran qui
+> clignote toutes les vingt secondes, ou qui affiche une erreur réseau pendant
+> qu'on écrit, est pire que pas de rafraîchissement du tout.
+
+**Un défaut trouvé en éprouvant l'écran.** `message_interne.expediteur_id`
+référence `responsable`. Un `ADMIN` ou un `SUPER_ADMIN` n'a pas de ligne dans
+cette table : la clé étrangère refusait, et l'erreur se lisait *« cette
+opération renvoie à un élément qui n'existe pas, ou qui a été supprimé
+entre-temps »*.
+
+> ⚠️ Le message était faux dans les **deux moitiés** de sa phrase : rien n'avait
+> été supprimé, et l'élément n'a jamais existé. On aurait cherché une donnée
+> disparue là où il fallait lire « ce compte n'est pas concerné par cette
+> fonctionnalité ».
+
+Le contrôle est désormais explicite des deux côtés : on ne peut ni écrire
+depuis un compte d'administration, ni écrire **à** un tel compte.
