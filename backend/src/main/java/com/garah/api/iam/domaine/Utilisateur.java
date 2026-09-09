@@ -157,6 +157,28 @@ public class Utilisateur {
     public Long getId() { return id; }
     public TypeUtilisateur getType() { return type; }
     public String getNom() { return nom; }
+
+    /**
+     * Le nom tel qu'on l'ecrit a l'ecran : prenom puis nom.
+     *
+     * <h2>🎯 Pourquoi ca ne peut pas rester au bon vouloir de l'appelant</h2>
+     *
+     * <p>La meme personne s'affichait avec DEUX avatars differents. La barre
+     * laterale recevait {@code getNom()} — « BRIA » — et le tableau de l'equipe
+     * composait « Lionel BRIA ». Or l'avatar engendre prend le nom pour
+     * GRAINE : deux chaines differentes donnent deux visages differents.</p>
+     *
+     * <p>⚠️ Une graine d'avatar doit etre STABLE. Composer le nom au cas par
+     * cas garantissait le contraire — il suffit qu'un ecran joigne les deux
+     * champs et qu'un autre non.</p>
+     *
+     * <p>La regle est celle qu'appliquait deja le front : le prenom devant
+     * quand il existe, le nom seul sinon. {@code prenom} est nullable en
+     * base — un compte d'amorcage ou un marchand n'en a pas toujours un.</p>
+     */
+    public String nomComplet() {
+        return prenom == null || prenom.isBlank() ? nom : prenom + " " + nom;
+    }
     public String getPrenom() { return prenom; }
     public String getEmail() { return email; }
     public String getTelephone() { return telephone; }

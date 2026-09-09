@@ -266,7 +266,9 @@ public class ServiceRafraichissement {
                 accesJetons.creer(utilisateur, droits),
                 accesJetons.dureeEnSecondes(),
                 utilisateur.getId(), utilisateur.getType(),
-                utilisateur.getNom(), utilisateur.getLangue(),
+                // ⚠️ Le nom COMPLET, comme a la connexion. Sinon l avatar
+                //    CHANGERAIT au renouvellement du jeton.
+                utilisateur.nomComplet(), utilisateur.getLangue(),
                 // Relue à chaque rafraîchissement, comme les permissions : une
                 // photo changée sur un onglet apparaît sur les autres au
                 // renouvellement suivant, sans reconnexion.

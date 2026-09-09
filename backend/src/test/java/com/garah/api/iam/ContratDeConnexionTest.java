@@ -71,6 +71,9 @@ class ContratDeConnexionTest {
         transactions.executeWithoutResult(s -> {
             Utilisateur u = utilisateurs.save(new Utilisateur(
                     TypeUtilisateur.RESPONSABLE, "Ateba", EMAIL, encodeur.encode(MOT_DE_PASSE)));
+            // Un prenom : sans lui, nom et nom complet se confondent et la
+            // regle ci-dessous ne verifierait rien.
+            u.setPrenom("Awa");
             u.marquerEmailVerifie();
             responsables.save(new Responsable(u, "RESP-CONTRAT-1"));
         });
@@ -109,6 +112,12 @@ class ContratDeConnexionTest {
                 // se déclarait connectée.
                 .andExpect(jsonPath("$.utilisateur.id").isNumber())
                 .andExpect(jsonPath("$.utilisateur.nom").isNotEmpty())
+
+                // ⚠️ LE NOM COMPLET, PRENOM COMPRIS — et pas seulement le nom.
+                //    Ce champ sert de GRAINE a l avatar engendre. Rendre
+                //    « Ateba » ici quand le tableau de l equipe compose
+                //    « Awa Ateba » donnait DEUX visages a la meme personne.
+                .andExpect(jsonPath("$.utilisateur.nom").value("Awa Ateba"))
                 .andExpect(jsonPath("$.utilisateur.type").isNotEmpty())
                 .andExpect(jsonPath("$.utilisateurId").doesNotExist())
 

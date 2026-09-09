@@ -122,7 +122,11 @@ public class ServiceAuthentification {
                 jetons.dureeEnSecondes(),
                 utilisateur.getId(),
                 utilisateur.getType(),
-                utilisateur.getNom(),
+                // ⚠️ Le nom COMPLET : il sert de graine a l avatar engendre.
+                //    getNom() seul donnait « BRIA » ici et « Lionel BRIA »
+                //    dans le tableau de l equipe — donc deux visages pour
+                //    la meme personne.
+                utilisateur.nomComplet(),
                 utilisateur.getLangue(),
                 utilisateur.getPhotoCle(),
                 droits);
