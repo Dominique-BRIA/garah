@@ -209,37 +209,51 @@ Aucun backend à écrire, tout existe.
 
 ---
 
-## Lot 10 — L'application client
+## Lot 10 — L'application client ✅ *fait, et livrée deux fois*
 
-> Rien n'existe. `frontend/projects/` ne contient que `garah-admin` et
-> `garah-ui`. C'est **le plus gros morceau restant**, probablement plus que les
-> lots 1 à 9 réunis.
+> ⚠️ **Cette section annonçait « rien n'existe »** alors que **deux**
+> applications client tournaient. Un document de pilotage faux est pire
+> qu'absent : il fait chercher du travail déjà fait, et rate celui qui reste.
 
-| Écran | Intention |
+| Application | Où | État |
+|---|---|---|
+| Boutique web | `garah-client/web` | Angular, déployée sur Vercel |
+| Mobile | `garah-client/mobile` | Flutter, non déployée |
+
+Les deux couvrent la vitrine, la fiche produit avec ses déclinaisons, le
+panier, la commande, le paiement, le suivi, les réclamations et retours, le
+compte et les discussions.
+
+> ⚠️ **Aucune des deux ne pouvait se connecter** jusqu'à D-36 : toutes deux
+> lisaient une réponse de connexion qui n'existe pas. Elles compilaient, se
+> déployaient, et échouaient devant l'utilisateur. Chaque client porte
+> maintenant un test de contrat, et le serveur fige les noms.
+
+**Ce qui reste sur le mobile**
+
+| Manque | Note |
 |---|---|
-| Vitrine et catégories | Le catalogue public, produits publiés seulement. |
-| Fiche produit | **Sélecteurs de déclinaison** (lot 3) et grille de prix par quantité. |
-| Panier | |
-| Tunnel de commande | Adresse, **point de récupération**, récapitulatif. |
-| Paiement MTN MoMo / Orange Money | Asynchrone : l'écran doit attendre sans mentir. |
-| Mes commandes, suivi de colis | |
-| Réclamations et retours | |
-| Conversation et négociation | |
-| Compte : inscription, vérification e-mail | Un client n'a **aucune permission** : son accès repose sur la propriété de ses données. |
+| Déploiement | Aucun `.apk` publié, aucun magasin. |
+| Propositions de prix | Volontairement absentes : le prix est ferme (D-39). |
 
 ---
 
 ## Lot 11 — Finitions
 
-| Fonctionnalité | Intention |
+| Fonctionnalité | État |
 |---|---|
-| Exceptions de permission (ADD/REMOVE) | `poserException()` existe, aucune route. **Le piège de l'exception orpheline (ch. 01 §4.4) n'est toujours pas tranché.** |
+| Exceptions de permission (ADD/REMOVE) | `poserException()` existe, **aucune route**. Le piège de l'exception orpheline (ch. 01 §4.4) n'est toujours pas tranché. |
 | Affectation marchand ↔ responsable | Table `gestion_marchand`, aucun service. |
-| Notifications | Table `notification`, aucune route. |
+| Notifications | ✅ Module livré (V29), routes et appareils. |
+| Messagerie interne | API et WebSocket livrés (V30) — **aucun écran ne les consomme**. |
 | Appareils connus | Table `appareil_connu`, aucune route. |
-| Téléversement logo et photo de profil | Colonnes prêtes depuis V23. |
-| Variables Render `GARAH_MAIL_*` | Sans elles, la vérification d'adresse ne part pas. |
-| Base de recette | Aujourd'hui `ng serve` vise la **production**. |
+| Téléversement logo et photo | Colonnes prêtes depuis V23. |
+| `GARAH_MAIL_*` sur Azure | Sans elles, la vérification d'adresse ne part pas. **Ne bloque rien** : aucune route n'exige un e-mail vérifié. |
+| `GARAH_FIREBASE_CREDENTIALS` | À poser **avec une clé renouvelée** — l'ancienne est compromise. |
+| Azure Static Web Apps | Jamais créé : le workflow est *skipped* à chaque exécution. |
+| Base de recette | ✅ Faite (D-37). |
+| `activite_client` | Table déclarée en V12, **ni entité ni écriture**. Le parcours client n'est mesuré que par `vue_produit`. |
+| Tests frontend | Boutique : 4 (premiers du dépôt). Back-office : **aucun**. |
 
 ---
 
