@@ -1802,3 +1802,68 @@ fois : les cookies s'appelaient `garah_refresh`, et plus personne ne porte ce
 nom-là. Aucun code de compatibilité n'a été écrit pour l'éviter — il aurait
 recréé le partage le temps de la migration, pour épargner quelques secondes
 d'inconfort.
+
+---
+
+## D-34 — Le jeton énumère 197 droits, et cela dépassait l'en-tête HTTP
+
+**Le symptôme.** Le journal des actions se charge. On choisit un filtre —
+« Membre modifier » — et l'écran répond « Le service ne répond pas ». Revenir à
+« tous les gestes » échoue aussi. Seul un rechargement de page rend la main.
+
+Le serveur, lui, répondait parfaitement.
+
+**La mesure.** Un super-administrateur reçoit **toutes** les permissions
+actives :
+
+| Ce qu'il porte              | Taille           |
+|-----------------------------|------------------|
+| permissions dans le jeton   | **197**          |
+| jeton                       | **6 915 octets** |
+| en-tête `Authorization`     | 6 922 octets     |
+| limite Tomcat par défaut    | 8 192 octets     |
+
+Ajoutez ce que le navigateur envoie de son côté — `Host`, `User-Agent`,
+`Accept*`, `Origin`, `Referer`, `Sec-Fetch-*` — et l'on tourne autour de
+7,6 Ko. **On était sur la limite.** Les vingt-cinq caractères de
+`&action=MEMBRE_MODIFIER` suffisaient à la franchir.
+
+Vérifié en poussant un `Authorization` de taille croissante contre l'API
+déployée : `401` jusqu'à 6 907 octets, `400` à partir de 7 207.
+
+**Pourquoi c'était introuvable.** Tomcat répond `400` avec **sa propre page
+d'erreur**, produite **avant la chaîne de filtres** — donc **sans en-tête
+CORS**. Le navigateur jette une réponse sans autorisation d'origine et rend au
+code un **statut 0** : « la réponse n'est jamais arrivée ».
+
+Or le préflight `OPTIONS`, lui, passait en `200` — il ne porte aucun jeton.
+Dans l'onglet Réseau, on voyait donc un préflight vert suivi d'un `GET` rouge,
+ce qui ressemble à tout sauf à un problème de taille.
+
+Trois faux coupables ont été poursuivis avant celui-là : le redémarrage du
+conteneur après déploiement, une connexion *keep-alive* morte, un état de
+session bloqué. Le seul indice exploitable était la ligne rouge de la console
+du navigateur — `Code d'état : 400`. **Aucun raisonnement depuis le serveur ne
+pouvait y mener : vu de lui, tout allait bien.**
+
+**Ce qui est fait.** `server.max-http-request-header-size: 16KB`, et un test
+qui mesure le pire cas et échoue au-delà de 12 Ko.
+
+> ⚠️ **C'est un pansement, et il faut le dire.** Les droits d'un
+> super-administrateur sont **engendrés** à partir de son type — « toutes les
+> permissions actives » — et non une donnée le concernant. Les transporter,
+> c'est violer la règle du projet : *ce qui est engendré n'est jamais saisi*.
+>
+> Le coût est réel et croissant : **7 Ko sur chaque appel**, depuis une
+> connexion mobile camerounaise, pour une information que le serveur peut
+> recalculer. Et le compteur monte à chaque fonctionnalité ajoutée — 197
+> aujourd'hui, la limite de 16 Ko sera atteinte vers 450.
+>
+> **La correction.** Ne pas émettre le claim `permissions` pour `SUPER_ADMIN`
+> et `ADMIN` ; le convertisseur de `ConfigurationSecurite` les déduit du claim
+> `type` déjà présent. Le catalogue doit alors être tenu en mémoire, avec une
+> invalidation quand l'écran du référentiel le modifie — c'est la seule
+> difficulté réelle.
+>
+> Le frontend n'y perdrait rien : il lit les permissions dans le **corps** de
+> la réponse de connexion, pas dans le jeton.

@@ -142,6 +142,43 @@ server:
   port: ${PORT:8080}
 
   # ---------------------------------------------------------------------------
+  # La taille des en-tetes de requete
+  # ---------------------------------------------------------------------------
+  # 🎯 Le defaut de Tomcat est de 8 Ko. Nos jetons le frolent :
+  #
+  #     un super-administrateur porte 197 permissions
+  #     -> jeton de 6 915 octets, en-tete Authorization de 6 922
+  #
+  # Ajoutez ce que le navigateur envoie de son cote — Host, User-Agent,
+  # Accept*, Origin, Referer, Sec-Fetch-* — et l'on tourne autour de 7,6 Ko.
+  # On EST sur la limite.
+  #
+  # ⚠️ CE QUE CELA DONNAIT, ET POURQUOI C ETAIT INTROUVABLE.
+  #
+  #    Le journal des actions se chargeait. On choisissait un filtre, l'URL
+  #    grandissait de vingt-cinq caracteres — « &action=MEMBRE_MODIFIER » — et
+  #    la requete basculait au-dessus de la limite. Tomcat repondait 400 avec
+  #    SA page d'erreur, produite AVANT la chaine de filtres : donc SANS
+  #    en-tete CORS.
+  #
+  #    Le navigateur voyait alors une reponse sans autorisation d'origine, la
+  #    jetait, et rendait a Angular un statut 0 — « la reponse n'est jamais
+  #    arrivee ». L'ecran disait « Le service ne repond pas » pendant que le
+  #    service repondait parfaitement, et que le preflight OPTIONS, lui,
+  #    passait en 200 (il ne porte aucun jeton).
+  #
+  #    Trois faux coupables ont ete poursuivis avant celui-la. Le seul indice
+  #    exploitable etait dans la console du navigateur.
+  #
+  # ⚠️ CECI EST UN PANSEMENT. La vraie correction est de ne plus enumerer 197
+  #    codes dans le jeton d'un super-administrateur : ses droits sont
+  #    ENGENDRES a partir de son type, ils ne sont pas une donnee le
+  #    concernant. Les transporter, c'est 7 Ko sur CHAQUE appel, depuis une
+  #    connexion mobile camerounaise — et un compteur qui monte a chaque
+  #    fonctionnalite ajoutee. Voir D-34.
+  max-http-request-header-size: 16KB
+
+  # ---------------------------------------------------------------------------
   # Tomcat, taille d'une instance gratuite
   # ---------------------------------------------------------------------------
   # Le defaut est de 200 threads de traitement. Sur une instance a UN cœur et
