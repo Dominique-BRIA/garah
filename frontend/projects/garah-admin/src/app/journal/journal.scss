@@ -24,41 +24,92 @@
 
 .chevron--ouvert { transform: rotate(90deg); }
 
-// --- Les cliches -------------------------------------------------------------
+// --- Les filtres -------------------------------------------------------------
+//
+// ⚠️ `.gu-champ` fait 100 % de large — c'est le bon défaut dans un formulaire,
+//    où chaque champ occupe sa ligne. Dans une barre d'outils, il faisait
+//    tomber les deux listes l'une SOUS l'autre, et la barre perdait sa forme.
+.barre-outils .gu-champ {
+  width: auto;
+  min-width: 13rem;
+}
+
+// --- Ce qui a changé ---------------------------------------------------------
+//
+// 🎯 REMPLACE DEUX BLOCS DE JSON CÔTE À CÔTE.
+//
+//    Ils affichaient l'objet entier, accolades comprises, deux fois. Trouver
+//    le champ qui avait bougé demandait de lire les deux ligne à ligne — et
+//    pour quelqu'un qui n'écrit pas de logiciel, il n'y avait rien à lire.
 .details td {
   background: var(--surface-douce);
   padding: 0.9rem 1rem;
 }
 
-.cliches {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 0.9rem;
+.diff {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
 }
 
-.cliche__titre {
-  margin: 0 0 0.35rem;
-  font-size: 0.72rem;
+.diff th {
+  padding: 0 0.75rem 0.5rem;
+  text-align: left;
+  font-size: 0.68rem;
   font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
   color: var(--texte-attenue);
 }
 
-.cliche pre {
-  margin: 0;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid var(--verre-bordure);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  font-family: var(--police-mono);
-  font-size: 0.78rem;
-  line-height: 1.5;
+.diff td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  border-top: 1px solid var(--verre-bordure);
+}
 
-  // Un cliche peut etre long : il defile DANS son cadre, jamais en poussant
-  // la page entiere de cote.
-  overflow-x: auto;
-  white-space: pre;
+.diff__champ {
+  font-weight: 600;
+  color: var(--texte);
+  white-space: nowrap;
+}
+
+// L'ancienne valeur est BARRÉE et atténuée : on lit le sens du changement
+// sans avoir à comparer les deux colonnes.
+.diff__avant {
+  color: var(--texte-attenue);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+// Sauf quand il n'y avait rien avant : barrer un tiret ne veut rien dire.
+.diff__avant--vide { text-decoration: none; }
+
+.diff__apres {
+  color: var(--texte);
+  font-weight: 600;
+  // Le liseré porte la couleur de la marque : c'est la valeur qui vaut
+  // aujourd'hui, et c'est elle qu'on cherche.
+  box-shadow: inset 2px 0 0 var(--marque);
+  padding-left: 0.85rem;
+}
+
+// Une valeur retirée n'est pas une valeur : ni gras, ni liseré.
+.diff__apres--vide {
+  color: var(--texte-attenue);
+  font-weight: 400;
+  box-shadow: none;
+  padding-left: 0.75rem;
+}
+
+// ⚠️ Un geste enregistré SANS aucun changement de valeur se produit. Le
+//    signaler vaut mieux qu'un tableau vide, qui passerait pour une panne.
+.rien {
+  margin: 0;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+  color: var(--texte-attenue);
+  line-height: 1.5;
 }
 
 // Un libelle qui n existe que pour les lecteurs d ecran : les listes sont

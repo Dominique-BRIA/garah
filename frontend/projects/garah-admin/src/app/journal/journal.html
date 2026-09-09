@@ -6,6 +6,16 @@
       @else { {{ total() }} action(s) enregistrée(s) }
     </p>
   </div>
+
+  <!-- ⚠️ Actualiser est dans la PREMIÈRE bande, jamais dans la barre
+       d'outils : recharger porte sur l'écran entier, pas sur le filtre.
+       C'est la règle écrite en tête de .barre-outils. -->
+  <div class="actions">
+    <button type="button" class="gu-btn gu-btn--secondaire"
+            (click)="charger()" [disabled]="chargement()">
+      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
+    </button>
+  </div>
 </header>
 
 <div class="barre-outils">
@@ -38,10 +48,6 @@
         Effacer
       </button>
     }
-    <button type="button" class="gu-btn gu-btn--secondaire"
-            (click)="charger()" [disabled]="chargement()">
-      <gu-icone nom="arrows-rotate" [tourne]="chargement()" /> Actualiser
-    </button>
   </div>
 </div>
 
@@ -116,16 +122,58 @@
           @if (ouverte() === l.id && aDesDetails(l)) {
             <tr class="details">
               <td colspan="5">
-                <div class="cliches">
-                  <div class="cliche">
-                    <p class="cliche__titre">Avant</p>
-                    <pre>{{ lisible(l.ancienneValeur) }}</pre>
-                  </div>
-                  <div class="cliche">
-                    <p class="cliche__titre">Après</p>
-                    <pre>{{ lisible(l.nouvelleValeur) }}</pre>
-                  </div>
-                </div>
+                <!-- ==========================================================
+                     CE QUI A CHANGÉ
+                     ==========================================================
+                     🎯 Deux blocs de JSON côte à côte, identiques à un champ
+                        près, ne disent rien. Il fallait les lire ligne à ligne
+                        pour trouver la différence — et pour quelqu'un qui
+                        n'écrit pas de logiciel, accolades comprises, il n'y
+                        avait rien à lire du tout.
+
+                        Un journal d'audit sert dans les moments tendus : un
+                        litige, un écart de caisse, un soupçon. Le moment où
+                        l'on peut le moins se permettre de déchiffrer.
+
+                     ⚠️ Seuls les champs qui DIFFÈRENT sont rendus. Quand rien
+                        ne diffère, on le dit : c'est une information, et elle
+                        se produit — une modification enregistrée alors que
+                        rien n'a bougé.
+                     -->
+                @if (sansChangement(l)) {
+                  <p class="rien">
+                    Aucun champ n’a changé : le geste a été enregistré, mais
+                    les valeurs sont restées les mêmes.
+                  </p>
+                } @else {
+                  <table class="diff">
+                    <thead>
+                      <tr>
+                        <th>Ce qui a changé</th>
+                        <th>Avant</th>
+                        <th>Après</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (c of changements(l); track c.champ) {
+                        <tr>
+                          <td class="diff__champ">{{ c.champ }}</td>
+                          <!-- L'avant est barré et atténué, l'après souligné
+                               de la couleur de la marque : on voit le sens du
+                               changement sans lire les deux colonnes. -->
+                          <td class="diff__avant"
+                              [class.diff__avant--vide]="c.nature === 'ajoute'">
+                            {{ c.avant }}
+                          </td>
+                          <td class="diff__apres"
+                              [class.diff__apres--vide]="c.nature === 'retire'">
+                            {{ c.apres }}
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
               </td>
             </tr>
           }
