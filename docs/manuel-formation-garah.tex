@@ -16,12 +16,41 @@
 
 \documentclass[11pt,a4paper]{report}
 
+% =============================================================================
+%  ⚠️  SI OVERLEAF DIT « YOUR COMPILE TIMED OUT » : LISEZ CECI.
+% =============================================================================
+%
+%  Le plan gratuit d'Overleaf limite le temps de compilation. Les vingt
+%  illustrations TikZ de ce manuel sont ce qui coûte le plus.
+%
+%  Passez la ligne ci-dessous à \illustrationsfalse : les figures sont alors
+%  remplacées par des cadres, LEURS LÉGENDES RESTENT — elles décrivent ce que
+%  la figure montrait — et le document compile en quelques secondes.
+%
+%  Vous obtenez un PDF complet, utilisable, où il ne manque que les dessins.
+%  Remettez \illustrationstrue dès que vous compilez ailleurs : en local, sur
+%  un plan payant, ou dans une chaîne d'intégration.
+%
+% =============================================================================
+\newif\ifillustrations
+\illustrationstrue          % <-- \illustrationsfalse si le temps manque
+
+\usepackage{comment}
+\ifillustrations
+  \includecomment{illustration}
+\else
+  \excludecomment{illustration}
+\fi
+
+
 % --- Langue et encodage ------------------------------------------------------
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[french]{babel}
 \usepackage{lmodern}
-\usepackage{microtype}
+% ⚠️ `microtype` retirée : elle affine la typographie, mais elle coûte du
+%    temps de compilation — et le plan gratuit d'Overleaf en manque.
+%    La remettre si le document compile chez vous avec de la marge.
 
 % --- Mise en page ------------------------------------------------------------
 \usepackage[a4paper,margin=2.4cm,headheight=15pt]{geometry}
@@ -37,12 +66,17 @@
 \usepackage{xcolor}
 
 % --- Encadrés ----------------------------------------------------------------
-\usepackage[most]{tcolorbox}
-\tcbuselibrary{breakable,skins}
+% ⚠️ `breakable` SEULE, et non `most` : cette dernière charge une douzaine
+%    de bibliothèques (raster, theorems, magazine…) dont aucune ne sert ici,
+%    et chacune coûte du temps de compilation.
+\usepackage[breakable]{tcolorbox}
 
 % --- Dessins -----------------------------------------------------------------
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc,fit,backgrounds,shadows.blur}
+% Seules celles qui servent réellement : `positioning` pour les `right=of`,
+% `arrows.meta` pour les pointes Stealth, `calc` pour la coordonnée calculée
+% du cycle de commande.
+\usetikzlibrary{positioning,arrows.meta,calc}
 
 % --- Liens (toujours en dernier) --------------------------------------------
 \usepackage[hidelinks,bookmarks=true]{hyperref}
@@ -96,79 +130,75 @@
 % =============================================================================
 
 % --- Les pastilles numérotées ① ② ③ utilisées sur les illustrations ---------
-\newcommand{\num}[1]{%
-  \tikz[baseline=(n.base)]{
-    \node[circle,fill=garahPrimaire,text=white,inner sep=1.2pt,
-          font=\scriptsize\bfseries,minimum size=12pt] (n) {#1};}%
+\newcommand{\pastille}[2]{%
+  {\setlength{\fboxsep}{1.7pt}%
+   \colorbox{#1}{\color{white}\bfseries\scriptsize #2}}%
 }
-\newcommand{\numAlt}[1]{%
-  \tikz[baseline=(n.base)]{
-    \node[circle,fill=garahAlerte,text=white,inner sep=1.2pt,
-          font=\scriptsize\bfseries,minimum size=12pt] (n) {#1};}%
-}
+\newcommand{\num}[1]{\pastille{garahPrimaire}{#1}}
+\newcommand{\numAlt}[1]{\pastille{garahAlerte}{#1}}
 
 % --- Case à cocher pour les checklists --------------------------------------
 \newcommand{\case}{$\square$~}
 
 % --- Encadrés ---------------------------------------------------------------
 \newtcolorbox{objectif}{
-  breakable, enhanced, colback=garahMarque!6, colframe=garahMarque,
+  breakable, colback=garahMarque!6, colframe=garahMarque,
   boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
   title={\bfseries Objectif de ce tutoriel}, fonttitle=\bfseries\small,
   coltitle=white, colbacktitle=garahMarque
 }
 
 \newtcolorbox{avant}{
-  breakable, enhanced, colback=garahFond, colframe=garahBordure,
+  breakable, colback=garahFond, colframe=garahBordure,
   boxrule=0.8pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
   title={\bfseries Avant de commencer}, fonttitle=\bfseries\small,
   coltitle=garahEncre, colbacktitle=garahBordure!60
 }
 
 \newtcolorbox{attention}{
-  breakable, enhanced, colback=garahDanger!6, colframe=garahDanger,
+  breakable, colback=garahDanger!6, colframe=garahDanger,
   boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
   title={\bfseries \ding{55}~Attention}, fonttitle=\bfseries\small,
   coltitle=white, colbacktitle=garahDanger
 }
 
 \newtcolorbox{astuce}{
-  breakable, enhanced, colback=garahSucces!7, colframe=garahSucces,
+  breakable, colback=garahSucces!7, colframe=garahSucces,
   boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
   title={\bfseries \ding{43}~Astuce}, fonttitle=\bfseries\small,
   coltitle=white, colbacktitle=garahSucces
 }
 
 \newtcolorbox{retenir}{
-  breakable, enhanced, colback=garahAccent!6, colframe=garahAccent,
+  breakable, colback=garahAccent!6, colframe=garahAccent,
   boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
   title={\bfseries \ding{45}~À retenir}, fonttitle=\bfseries\small,
   coltitle=white, colbacktitle=garahAccent
 }
 
 \newtcolorbox{resultat}{
-  breakable, enhanced, colback=garahSucces!5, colframe=garahSucces!70,
+  breakable, colback=garahSucces!5, colframe=garahSucces!70,
   boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
   title={\bfseries \ding{51}~Résultat attendu}, fonttitle=\bfseries\small,
   coltitle=white, colbacktitle=garahSucces!70
 }
 
 \newtcolorbox{exercice}{
-  breakable, enhanced, colback=garahAlerte!7, colframe=garahAlerte,
+  breakable, colback=garahAlerte!7, colframe=garahAlerte,
   boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
   title={\bfseries Exercice pratique}, fonttitle=\bfseries\small,
   coltitle=white, colbacktitle=garahAlerte
 }
 
 \newtcolorbox{roleBox}{
-  breakable, enhanced, colback=garahPrimaire!5, colframe=garahPrimaire,
+  breakable, colback=garahPrimaire!5, colframe=garahPrimaire,
   boxrule=1pt, arc=4pt, left=11pt, right=11pt, top=9pt, bottom=9pt,
   title={\bfseries Votre rôle dans la plateforme}, fonttitle=\bfseries,
   coltitle=white, colbacktitle=garahPrimaire
 }
 
 \newtcolorbox{checklist}{
-  breakable, enhanced, colback=white, colframe=garahEncre,
+  breakable, colback=white, colframe=garahEncre,
   boxrule=1pt, arc=3pt, left=11pt, right=11pt, top=9pt, bottom=9pt,
   title={\bfseries Checklist de maîtrise}, fonttitle=\bfseries,
   coltitle=white, colbacktitle=garahEncre
@@ -197,6 +227,13 @@
 
 % --- La légende d'une illustration pédagogique ------------------------------
 \newcommand{\legendeIllus}[2]{%
+  % Sans les dessins, la légende resterait suspendue dans le vide : on pose un
+  % cadre à la place, pour que le renvoi « figure X » garde un objet.
+  \ifillustrations\else
+    \captureAInserer[2.6cm]{Figure~#1 --- illustration désactivée
+      (voir l'interrupteur en tête de fichier). La légende ci-dessous décrit
+      ce que la figure montre.}%
+  \fi
   \vspace{2pt}
   \begin{center}
   \begin{minipage}{0.93\linewidth}
@@ -398,6 +435,7 @@ retrait}.
 
 \subsection{Le voyage d'une commande, en une image}
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   node distance=0pt,
@@ -426,6 +464,7 @@ retrait}.
 \node[acteur,below=2mm of e] {Client + point};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{1.1}{Le parcours complet d'une commande. La ligne du bas indique
 qui agit à chaque étape.}
 
@@ -434,6 +473,7 @@ qui agit à chaque étape.}
 La plateforme connaît exactement \textbf{quatre types de comptes}. Ils ne se
 choisissent pas : ils sont attribués.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   boite/.style={rectangle,rounded corners=4pt,line width=1pt,
@@ -459,6 +499,7 @@ choisissent pas : ils sont attribués.
    \scriptsize Back-office\\ + journal et sécurité};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{1.2}{Les quatre acteurs et l'interface de chacun.}
 
 \begin{retenir}
@@ -611,6 +652,7 @@ Sur la boutique, cliquez sur \textbf{« S'inscrire »} en haut à droite. Dans
 l'application Android, ouvrez l'onglet \textbf{Compte}, puis
 \textbf{« Créer un compte »}.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   % La barre du site
@@ -628,6 +670,7 @@ l'application Android, ouvrez l'onglet \textbf{Compte}, puis
   \node at (150,7) {\num{1}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.1}{La barre du site. \num{1} le bouton « S'inscrire ».}
 
 \etape{Remplir le formulaire}
@@ -698,6 +741,7 @@ la recherche, et le catalogue complet.
 Sur l'accueil, les catégories sont présentées sous forme de puces. Touchez-en
 une : le catalogue s'ouvre \textbf{déjà filtré}.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   \node[font=\scriptsize\bfseries,text=garahAttenue,anchor=west] at (0,26) {CATÉGORIES};
@@ -711,6 +755,7 @@ une : le catalogue s'ouvre \textbf{déjà filtré}.
   \draw[-{Stealth[length=2mm]},garahPrimaire,line width=0.8pt] (38,12) -- (36,14);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.2}{Les puces de catégories sur l'accueil. \num{1} un clic filtre
 directement le catalogue.}
 
@@ -747,6 +792,7 @@ Comprendre les prix par palier, les déclinaisons, et le sous-total.
 Le prix baisse par tranches de quantité. La grille est affichée
 \textbf{avant} le bouton d'achat, et le palier qui s'applique est mis en avant.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   \node[font=\scriptsize\bfseries,text=garahAttenue,anchor=west] at (0,32) {PRIX PAR QUANTITÉ};
@@ -774,6 +820,7 @@ Le prix baisse par tranches de quantité. La grille est affichée
   \node at (122,19) {\num{2}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.3}{La grille des paliers. \num{1} le palier qui s'applique à la
 quantité choisie, encadré. \num{2} les paliers suivants, atteignables en
 commandant davantage. La phrase du bas indique ce qu'il manque pour descendre
@@ -858,6 +905,7 @@ connexion s'ouvre d'abord, et votre panier est repris automatiquement après.
 C'est ici que les \textbf{frais d'acheminement} apparaissent : ils dépendent du
 point choisi. Le moins cher est proposé par défaut.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   \draw[draw=garahBordure,fill=white,rounded corners=3pt,line width=0.8pt]
@@ -878,6 +926,7 @@ point choisi. Le moins cher est proposé par défaut.
   \node at (132,6) {\num{2}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.4}{L'écran de commande. \num{1} le point de récupération choisi.
 \num{2} le total, qui ne se complète qu'une fois le point sélectionné.}
 
@@ -920,6 +969,7 @@ marchandise sera disponible au point de récupération.
 Une commande passe par des états successifs. Voici lesquels, et ce qu'ils
 veulent dire pour vous :
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   node distance=4mm,
@@ -946,6 +996,7 @@ veulent dire pour vous :
 \draw[f] (b) -- ($(b)+(0,-8mm)$) -- (x);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.5}{Le cycle de vie d'une commande. Une commande non payée peut
 être annulée par le client ou par le délai ; une commande payée ne peut l'être
 que par un administrateur, avec remboursement.}
@@ -989,6 +1040,7 @@ pouvez donc le transmettre à la personne qui viendra retirer à votre place.
 
 Entrez le numéro. L'état du colis s'affiche.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   node distance=5mm,
@@ -1009,6 +1061,7 @@ Entrez le numéro. L'état du colis s'affiche.
 \draw[f] (b) -- (e);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.6}{Les états d'un colis. « Bloqué » signale un incident en
 cours de route : contactez le service client.}
 
@@ -1074,6 +1127,7 @@ n'arrivera qu'une fois la conversation prise en charge.
 Écrivez dans le champ du bas. \textbf{Les messages arrivent en direct}, dans
 les deux sens : vous n'avez pas à recharger la page.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   % Bulle client (droite)
@@ -1096,6 +1150,7 @@ les deux sens : vous n'avez pas à recharger la page.
   \node at (126,4) {\num{3}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.7}{Une conversation. \num{1} vos messages, à droite. \num{2} les
 réponses du conseiller, à gauche. \num{3} le champ de saisie.}
 
@@ -1109,6 +1164,7 @@ Une proposition \textbf{expire}. Passé sa date, elle devient « Expirée » et 
 peut plus être acceptée — il faut en redemander une. Ne la laissez pas dormir.
 \end{attention}
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   node distance=6mm,
@@ -1126,6 +1182,7 @@ peut plus être acceptée — il faut en redemander une. Ne la laissez pas dormi
 \draw[f] (a) -- (d);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.8}{Les issues d'une proposition de prix.}
 
 % -----------------------------------------------------------------------------
@@ -1135,6 +1192,7 @@ peut plus être acceptée — il faut en redemander une. Ne la laissez pas dormi
 
 Un retour concerne \textbf{une marchandise qui revient}. Il suit ce circuit :
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   node distance=5mm,
@@ -1152,6 +1210,7 @@ Un retour concerne \textbf{une marchandise qui revient}. Il suit ce circuit :
 \draw[f] (a) -- (e);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{2.9}{Le circuit d'un retour. Chaque étape est décidée par
 l'équipe ; vous suivez l'avancement depuis « Mes retours ».}
 
@@ -1303,6 +1362,7 @@ Le menu de gauche est rangé dans \textbf{l'ordre de la vie d'une vente}, en
 sept groupes. Ce n'est pas une liste alphabétique : on cherche d'abord la bonne
 \emph{question}, puis l'écran dedans.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   \draw[fill=garahSurfaceNuit,draw=garahAccent!35,line width=0.8pt,rounded corners=3pt]
@@ -1349,6 +1409,7 @@ sept groupes. Ce n'est pas une liste alphabétique : on cherche d'abord la bonne
   \node at (146,85) {\num{5}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{3.1}{Le menu du back-office, rangé par question.
 \num{1} où en est-on ? \num{2} ce qu'on vend. \num{3} ce qui se vend.
 \num{4} ce qui part. \num{5} l'après-vente, les gens, et la trace.
@@ -1374,6 +1435,7 @@ déconnexion. C'est aussi par là qu'on accède à son profil.
 
 C'est le cœur du travail quotidien. Une conversation passe par trois états :
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   node distance=16mm,
@@ -1396,6 +1458,7 @@ C'est le cœur du travail quotidien. Une conversation passe par trois états :
   {plus de réponse\\ possible};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{3.2}{Le cycle d'une conversation.}
 
 \subsection{Tutoriel : prendre en charge une conversation}
@@ -1418,6 +1481,7 @@ Menu \textbf{Après-vente $\rightarrow$ Service client}.
 Les onglets en haut filtrent la liste. \textbf{« En attente »} montre les
 dossiers que personne n'a encore pris.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   % Onglets
@@ -1452,6 +1516,7 @@ dossiers que personne n'a encore pris.
   \node at (16.5,11) {\num{2}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{3.3}{La file du service client. \num{1} l'onglet « En attente ».
 \num{2} le compteur de messages non lus — il ne compte que les messages
 \emph{du client}, jamais vos propres réponses. \num{3} le bouton « Prendre ».}
@@ -1598,6 +1663,7 @@ La commande passe à \textbf{Retirée} et le colis à \textbf{Remis}.
 
 Une expédition suit ce cycle :
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   node distance=4mm,
@@ -1616,6 +1682,7 @@ Une expédition suit ce cycle :
 \draw[f] (c) -- (x);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{3.4}{Le cycle d'une expédition. « Bloquée » signale un incident :
 il doit être traité, sinon le client attend sans savoir.}
 
@@ -1670,6 +1737,7 @@ trou : \emph{aucun prix n'existe pour cette quantité}. La boutique refuse alors
 la vente et affiche « Prix non fixé pour cette quantité ».
 \end{attention}
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   % Bon
@@ -1691,6 +1759,7 @@ la vente et affiche « Prix non fixé pour cette quantité ».
   \node[font=\tiny,text=garahDanger,anchor=west] at (100,9) {À partir de 11 : plus aucun prix.};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{3.5}{À gauche, une grille dont le dernier palier est ouvert :
 toute quantité a un prix. À droite, une grille fermée à 10 : au-delà, la vente
 est impossible.}
@@ -1893,6 +1962,7 @@ attribuez les profils, vous gérez les marchands et vous suivez l'argent dû.
 
 C'est le concept le plus important de votre rôle. Il tient en une chaîne :
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   b/.style={rectangle,rounded corners=4pt,line width=1pt,
@@ -1909,6 +1979,7 @@ C'est le concept le plus important de votre rôle. Il tient en une chaîne :
 \draw[f] (b) -- (c);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{4.1}{La chaîne des droits, telle qu'elle est rappelée en haut de
 l'écran « Équipe ».}
 
@@ -1934,6 +2005,7 @@ Créer un compte interne et le rendre opérationnel.
 
 Menu \textbf{Les gens $\rightarrow$ Équipe}.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   % Entête
@@ -1963,6 +2035,7 @@ Menu \textbf{Les gens $\rightarrow$ Équipe}.
   \node at (99,10) {\num{3}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{4.2}{L'écran Équipe. \num{1} créer un compte. \num{2} gérer les
 profils et leurs droits. \num{3} les profils attribués à ce compte — c'est
 là que se lisent ses accès réels.}
@@ -2172,6 +2245,7 @@ chose.
 Cliquez sur une ligne. Un tableau montre \textbf{uniquement les champs qui ont
 changé} : l'ancienne valeur barrée, la nouvelle mise en avant.
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[x=1mm,y=1mm]
   \draw[fill=garahSurfaceNuit,draw=garahAccent!30,rounded corners=3pt] (0,0) rectangle (150,40);
@@ -2197,6 +2271,7 @@ changé} : l'ancienne valeur barrée, la nouvelle mise en avant.
   \node at (156,13) {\num{2}};
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{5.1}{Le détail d'une action. \num{1} l'ancienne valeur, barrée et
 atténuée. \num{2} la nouvelle, portée par un liseré. Seuls les champs
 \emph{modifiés} sont affichés.}
@@ -2237,6 +2312,7 @@ exactement ce qui a changé.
 Ce chapitre rassemble les problèmes qui touchent \textbf{tous les acteurs}. La
 méthode est toujours la même :
 
+\begin{illustration}
 \begin{center}
 \begin{tikzpicture}[
   b/.style={rectangle,rounded corners=3pt,draw=garahMarque,fill=garahMarque!8,
@@ -2251,6 +2327,7 @@ méthode est toujours la même :
 \draw[f] (a) -- (b); \draw[f] (b) -- (c); \draw[f] (c) -- (d);
 \end{tikzpicture}
 \end{center}
+\end{illustration}
 \legendeIllus{6.1}{La méthode de dépannage. Ne sautez pas la vérification :
 c'est elle qui distingue une vraie panne d'un malentendu.}
 
