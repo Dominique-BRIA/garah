@@ -49,9 +49,18 @@ export interface BilanPeriode {
   readonly jours: number;
   readonly vues: number;
   readonly vuesUniques: number;
+  /** Les commandes PAYÉES, au jour de leur paiement. */
   readonly commandes: number;
+  /** Les commandes annulées, au jour de leur annulation. */
+  readonly commandesAnnulees: number;
   readonly quantiteVendue: number;
+  /**
+   * L'argent réellement ENCAISSÉ, frais d'acheminement compris.
+   * ⚠️ Plus la somme des commandes créées : impayées et annulées la gonflaient.
+   */
   readonly chiffreAffaires: number;
+  /** L'argent rendu, compté à part — jamais soustrait en silence. */
+  readonly montantRembourse: number;
   readonly retours: number;
   readonly meilleurs: readonly LigneBilan[];
   readonly parJour: readonly PointJour[];

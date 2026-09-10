@@ -71,6 +71,7 @@ class ServiceStatistiquesTest {
 
     @AfterEach
     void nettoyer() {
+        jdbc.update("DELETE FROM journee_resumee WHERE jour >= CURRENT_DATE - 120");
         jdbc.update("DELETE FROM statistique_produit_jour WHERE produit_id IN (SELECT p.id FROM produit p JOIN marchand m ON m.id = p.marchand_id WHERE m.code = ?)", CODE_MARCHAND);
         jdbc.update("DELETE FROM vue_produit WHERE produit_id IN (SELECT p.id FROM produit p JOIN marchand m ON m.id = p.marchand_id WHERE m.code = ?)", CODE_MARCHAND);
         jdbc.update("DELETE FROM favori WHERE produit_id IN (SELECT p.id FROM produit p JOIN marchand m ON m.id = p.marchand_id WHERE m.code = ?)", CODE_MARCHAND);
@@ -89,6 +90,10 @@ class ServiceStatistiquesTest {
                     (produit_id, jour, vues, vues_uniques, quantite_vendue, chiffre_affaires)
                 VALUES (?, ?, ?, ?, ?, 0)
                 """, produitId, java.sql.Date.valueOf(jour), vues, vues, quantiteVendue);
+        // La journee est notee comme resumee, comme le fait le vrai resume :
+        // c'est elle que le bilan compte, pas les lignes par produit.
+        jdbc.update("INSERT INTO journee_resumee (jour) VALUES (?) ON CONFLICT (jour) DO NOTHING",
+                java.sql.Date.valueOf(jour));
     }
 
     // -------------------------------------------------------------------------
@@ -322,5 +327,54 @@ class ServiceStatistiquesTest {
         // Aucune exception : une statistique perdue est regrettable, une fiche
         // produit en erreur est un client perdu.
         assertThat(stats.vuesTotales(produitA)).isZero();
+    }
+
+    @Test
+    @DisplayName("⚠️ une journée calme est résumée, et comptée comme telle")
+    void uneJourneeCalmeEstResumee() {
+        // 🎯 LE DEFAUT QUE CE TEST FERME.
+        //
+        //    Une journee sans visite ni vente ne laissait aucune ligne. L'ecran,
+        //    qui comptait les jours a partir d'elles, affirmait « ces jours-la
+        //    n'ont pas ete resumes » pour des jours simplement calmes.
+        LocalDate calme = LocalDate.now().minusDays(50);
+        jdbc.update("DELETE FROM journee_resumee WHERE jour = ?", java.sql.Date.valueOf(calme));
+
+        stats.agregerLeJour(calme);
+
+        BilanPeriode bilan = stats.bilan(calme, calme, 10);
+        assertThat(bilan.jours()).as("la journee est comptee comme resumee").isEqualTo(1);
+        assertThat(bilan.parJour()).singleElement()
+                .satisfies(j -> assertThat(j.vues()).isZero());
+    }
+
+    @Test
+    @DisplayName("le rattrapage résume toutes les nuits manquées, une seule fois")
+    void rattrapageDesNuitsManquees() {
+        LocalDate du = LocalDate.now().minusDays(40);
+        LocalDate au = LocalDate.now().minusDays(30);
+        jdbc.update("DELETE FROM journee_resumee WHERE jour BETWEEN ? AND ?",
+                java.sql.Date.valueOf(du), java.sql.Date.valueOf(au));
+
+        assertThat(stats.rattraper(du, au)).isEqualTo(11);
+        assertThat(stats.bilan(du, au, 10).jours()).isEqualTo(11);
+
+        // Rejoue : rien de plus. Seules les journees JAMAIS resumees le sont.
+        assertThat(stats.rattraper(du, au)).isZero();
+    }
+
+    @Test
+    @DisplayName("⚠️ le rattrapage ne touche ni aujourd'hui, ni ce qui dépasse la rétention des vues")
+    void rattrapageBorne() {
+        // Au-dela de 90 jours, le detail des vues est purge : resumer ces jours
+        // afficherait zero visite la ou il y en a eu. Et aujourd'hui n'est pas fini.
+        LocalDate trop = LocalDate.now().minusDays(100);
+        assertThat(stats.rattraper(trop, trop.plusDays(5))).isZero();
+
+        LocalDate aujourdhui = LocalDate.now(java.time.ZoneId.of("Africa/Douala"));
+        jdbc.update("DELETE FROM journee_resumee WHERE jour = ?", java.sql.Date.valueOf(aujourdhui));
+        stats.rattraper(aujourdhui, aujourdhui);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM journee_resumee WHERE jour = ?",
+                Long.class, java.sql.Date.valueOf(aujourdhui))).isZero();
     }
 }

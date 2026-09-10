@@ -125,15 +125,18 @@
         <p class="manque__titre">
           {{ journeesManquantes() }} journée(s) sans données sur cette période
         </p>
+        <!-- ⚠️ Cette phrase est VRAIE depuis que chaque journée résumée est
+             notée, même vide. Avant, une journée calme passait pour une nuit
+             manquée : l'écran l'affirmait sans pouvoir le savoir. -->
         <p class="manque__texte">
-          Ce n’est pas une baisse d’activité : ces jours-là n’ont pas été
-          résumés. Les chiffres ci-dessous les ignorent.
+          Ces nuits-là, le résumé n’a pas été fait — le serveur était sans
+          doute arrêté. Les chiffres ci-dessous ignorent ces jours.
         </p>
         @if (session.peut('STATISTIQUE_GENERALE_CONSULTER')) {
           <button type="button" class="gu-btn gu-btn--secondaire petit"
                   (click)="rattraper()" [disabled]="action() !== null">
             @if (action() === 'agregation') { <gu-icone nom="circle-notch" tourne /> }
-            Rattraper la journée d’hier
+            Rattraper les journées manquantes
           </button>
         }
       </div>
@@ -152,8 +155,16 @@
         <p class="chiffre__label">Chiffre d’affaires</p>
         <span class="pastille pastille--petite"><gu-icone nom="money-bill-wave" /></span>
       </div>
+      <!-- L'argent ENCAISSÉ, pas la somme des commandes créées : impayées et
+           annulées la gonflaient. Les annulées se disent à côté, jamais
+           mêlées. -->
       <p class="chiffre__valeur">{{ montant(b.chiffreAffaires) }}</p>
-      <p class="chiffre__aide">{{ b.commandes }} commande(s)</p>
+      <p class="chiffre__aide">
+        {{ b.commandes }} commande(s) payée(s)@if (b.commandesAnnulees > 0) { · {{ b.commandesAnnulees }} annulée(s)}
+      </p>
+      @if (b.montantRembourse > 0) {
+        <p class="chiffre__aide">{{ montant(b.montantRembourse) }} remboursé(s)</p>
+      }
     </div>
 
     <div class="gu-carte chiffre teinte--indigo">
@@ -237,7 +248,9 @@
               <th class="droite">Vues</th>
               <th class="droite">Commandes</th>
               <th class="droite">Conversion</th>
-              <th class="droite">Chiffre d’affaires</th>
+              <!-- Les articles seuls : les frais d'acheminement sont portés
+                   par la commande, pas par un produit. -->
+              <th class="droite">Montant vendu</th>
             </tr>
           </thead>
           <tbody>

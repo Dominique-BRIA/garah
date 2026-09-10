@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.Duration;
 import java.time.Instant;
@@ -163,7 +164,8 @@ public class ServiceStatistiques {
      */
     @Transactional
     public int agregerLeJour(LocalDate jour) {
-        return jdbc.update("""
+        Date d = Date.valueOf(jour);
+        int produits = jdbc.update("""
                 INSERT INTO statistique_produit_jour
                     (produit_id, jour, vues, vues_uniques, ajouts_panier,
                      commandes, quantite_vendue, chiffre_affaires, retours)
@@ -192,8 +194,8 @@ public class ServiceStatistiques {
                                SUM(lc.montant_ligne)          AS montant
                           FROM ligne_commande lc
                           JOIN variante va ON va.id = lc.variante_id
-                          JOIN commande cm ON cm.id = lc.commande_id
-                         WHERE cm.date_creation >= ?::date AND cm.date_creation < ?::date + 1
+                          JOIN (%s) payee ON payee.commande_id = lc.commande_id
+                         WHERE payee.payee_le >= ?::date AND payee.payee_le < ?::date + 1
                          GROUP BY va.produit_id
                   ) c ON c.produit_id = p.id
                   LEFT JOIN (
@@ -214,10 +216,109 @@ public class ServiceStatistiques {
                        quantite_vendue  = EXCLUDED.quantite_vendue,
                        chiffre_affaires = EXCLUDED.chiffre_affaires,
                        retours          = EXCLUDED.retours
-                """,
-                Date.valueOf(jour), Date.valueOf(jour), Date.valueOf(jour),
-                Date.valueOf(jour), Date.valueOf(jour),
-                Date.valueOf(jour), Date.valueOf(jour));
+                """.formatted(COMMANDES_PAYEES), d, d, d, d, d, d, d);
+
+        // 🎯 LA JOURNEE EST NOTEE, MEME VIDE.
+        //
+        //    Les lignes ci-dessus n'existent que pour les produits qui ont
+        //    bouge. Une journee sans visite ni vente n'en laissait AUCUNE — et
+        //    l'ecran, qui comptait les jours a partir d'elles, annoncait « ces
+        //    jours-la n'ont pas ete resumes » pour des jours simplement calmes.
+        //    Il ne pouvait pas distinguer une nuit manquee d'une journee vide.
+        //
+        //    L'argent se lit ICI, a la journee : l'encaisse comprend les frais
+        //    d'acheminement, que les lignes par produit ne portent pas.
+        jdbc.update("""
+                INSERT INTO journee_resumee
+                    (jour, date_resume, montant_encaisse, montant_rembourse,
+                     commandes_payees, commandes_annulees)
+                SELECT ?::date, now(),
+                       COALESCE((SELECT SUM(montant) FROM paiement
+                                  WHERE type = 'ENCAISSEMENT' AND statut = 'CONFIRME'
+                                    AND date_confirmation >= ?::date
+                                    AND date_confirmation < ?::date + 1), 0),
+                       COALESCE((SELECT SUM(montant) FROM paiement
+                                  WHERE type = 'REMBOURSEMENT' AND statut = 'CONFIRME'
+                                    AND date_confirmation >= ?::date
+                                    AND date_confirmation < ?::date + 1), 0),
+                       (SELECT count(*) FROM (%s) payee
+                         WHERE payee.payee_le >= ?::date AND payee.payee_le < ?::date + 1),
+                       (SELECT count(*) FROM commande
+                         WHERE date_annulation >= ?::date AND date_annulation < ?::date + 1)
+                ON CONFLICT (jour) DO UPDATE SET
+                       date_resume        = now(),
+                       montant_encaisse   = EXCLUDED.montant_encaisse,
+                       montant_rembourse  = EXCLUDED.montant_rembourse,
+                       commandes_payees   = EXCLUDED.commandes_payees,
+                       commandes_annulees = EXCLUDED.commandes_annulees
+                """.formatted(COMMANDES_PAYEES), d, d, d, d, d, d, d, d, d);
+
+        return produits;
+    }
+
+    /**
+     * Les commandes PAYÉES, et le jour où elles l'ont été.
+     *
+     * <h2>🎯 Une vente, c'est de l'argent encaissé — pas une commande créée</h2>
+     *
+     * <p>Le résumé comptait toute commande <b>créée</b> dans la journée, quel
+     * que soit son statut : impayées, annulées et expirées gonflaient le
+     * chiffre d'affaires. Et une commande créée lundi, payée mercredi, était
+     * vendue lundi.</p>
+     *
+     * <p>Une commande est payée quand elle a quitté l'attente de paiement ; son
+     * jour est celui du DERNIER encaissement confirmé — celui qui l'a soldée.
+     * Une commande payée puis annulée reste vendue ce jour-là : l'argent est
+     * entré. Son remboursement se compte à part, le jour où il sort.</p>
+     */
+    private static final String COMMANDES_PAYEES = """
+            SELECT pa.commande_id, max(pa.date_confirmation) AS payee_le
+              FROM paiement pa
+              JOIN commande cm ON cm.id = pa.commande_id
+             WHERE pa.type = 'ENCAISSEMENT' AND pa.statut = 'CONFIRME'
+               AND cm.statut <> 'EN_ATTENTE_PAIEMENT'
+             GROUP BY pa.commande_id
+            """;
+
+    /**
+     * Résume les journées de la période qui ne l'ont jamais été.
+     *
+     * <h2>🎯 Rattraper TOUTES les nuits manquées, pas seulement hier</h2>
+     *
+     * <p>Le bouton ne relançait que la veille. Une semaine de serveur endormi
+     * laissait six jours que rien ne permettait de récupérer — alors que les
+     * commandes, les paiements et les retours, eux, sont toujours là.</p>
+     *
+     * <p>⚠️ <b>Jamais au-delà de la rétention du détail des vues.</b> Passé ce
+     * délai, le détail est purgé : une journée jamais résumée afficherait zéro
+     * visite là où il y en a eu. On ne rattrape que ce qu'on peut encore
+     * compter juste. Jamais aujourd'hui non plus : la journée n'est pas
+     * finie.</p>
+     *
+     * @return le nombre de journées résumées
+     */
+    @Transactional
+    public int rattraper(LocalDate du, LocalDate au) {
+        LocalDate aujourdhui = LocalDate.now(java.time.ZoneId.of("Africa/Douala"));
+        LocalDate plusAncien = aujourdhui.minusDays(RETENTION_DETAIL.toDays() - 2);
+        LocalDate debut = du.isBefore(plusAncien) ? plusAncien : du;
+        LocalDate fin = au.isBefore(aujourdhui) ? au : aujourdhui.minusDays(1);
+        if (debut.isAfter(fin)) {
+            return 0;
+        }
+
+        java.util.Set<LocalDate> dejaResumees = new java.util.HashSet<>(jdbc.queryForList(
+                "SELECT jour FROM journee_resumee WHERE jour BETWEEN ? AND ?",
+                LocalDate.class, debut, fin));
+
+        int resumees = 0;
+        for (LocalDate jour = debut; !jour.isAfter(fin); jour = jour.plusDays(1)) {
+            if (!dejaResumees.contains(jour)) {
+                agregerLeJour(jour);
+                resumees++;
+            }
+        }
+        return resumees;
     }
 
     /**
@@ -318,22 +419,38 @@ public class ServiceStatistiques {
                     "La date de début doit précéder la date de fin.");
         }
 
-        BilanPeriode totaux = jdbc.queryForObject("""
-                SELECT COALESCE(COUNT(DISTINCT jour), 0)   AS jours,
-                       COALESCE(SUM(vues), 0)              AS vues,
-                       COALESCE(SUM(vues_uniques), 0)      AS vues_uniques,
-                       COALESCE(SUM(commandes), 0)         AS commandes,
-                       COALESCE(SUM(quantite_vendue), 0)   AS quantite,
-                       COALESCE(SUM(chiffre_affaires), 0)  AS montant,
-                       COALESCE(SUM(retours), 0)           AS retours
+        // L'ARGENT et les JOURS se lisent sur les journees resumees : c'est la
+        // seule table qui sait qu'une journee a ete resumee, meme vide, et la
+        // seule qui porte l'encaisse, frais d'acheminement compris.
+        record Argent(int jours, long payees, long annulees,
+                      BigDecimal encaisse, BigDecimal rembourse) {
+        }
+        Argent argent = jdbc.queryForObject("""
+                SELECT count(*)                              AS jours,
+                       COALESCE(SUM(commandes_payees), 0)   AS payees,
+                       COALESCE(SUM(commandes_annulees), 0) AS annulees,
+                       COALESCE(SUM(montant_encaisse), 0)   AS encaisse,
+                       COALESCE(SUM(montant_rembourse), 0)  AS rembourse
+                  FROM journee_resumee
+                 WHERE jour BETWEEN ? AND ?
+                """,
+                (rs, i) -> new Argent(rs.getInt("jours"), rs.getLong("payees"),
+                        rs.getLong("annulees"), rs.getBigDecimal("encaisse"),
+                        rs.getBigDecimal("rembourse")),
+                du, au);
+
+        record Activite(long vues, long vuesUniques, long quantite, long retours) {
+        }
+        Activite activite = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(vues), 0)            AS vues,
+                       COALESCE(SUM(vues_uniques), 0)    AS vues_uniques,
+                       COALESCE(SUM(quantite_vendue), 0) AS quantite,
+                       COALESCE(SUM(retours), 0)         AS retours
                   FROM statistique_produit_jour
                  WHERE jour BETWEEN ? AND ?
                 """,
-                (rs, i) -> new BilanPeriode(du, au,
-                        rs.getInt("jours"), rs.getLong("vues"), rs.getLong("vues_uniques"),
-                        rs.getLong("commandes"), rs.getLong("quantite"),
-                        rs.getBigDecimal("montant"), rs.getLong("retours"),
-                        List.of(), List.of()),
+                (rs, i) -> new Activite(rs.getLong("vues"), rs.getLong("vues_uniques"),
+                        rs.getLong("quantite"), rs.getLong("retours")),
                 du, au);
 
         List<BilanPeriode.LigneBilan> meilleurs = jdbc.query("""
@@ -365,15 +482,18 @@ public class ServiceStatistiques {
                 },
                 du, au, limite);
 
+        // Une barre par journee RESUMEE, meme a zero : une journee calme se
+        // voit comme une barre basse, pas comme un trou qu'on prendrait pour
+        // une panne.
         List<BilanPeriode.PointJour> courbe = jdbc.query("""
-                SELECT jour,
-                       SUM(vues)             AS vues,
-                       SUM(commandes)        AS commandes,
-                       SUM(chiffre_affaires) AS montant
-                  FROM statistique_produit_jour
-                 WHERE jour BETWEEN ? AND ?
-                 GROUP BY jour
-                 ORDER BY jour ASC
+                SELECT j.jour,
+                       COALESCE((SELECT SUM(s.vues) FROM statistique_produit_jour s
+                                  WHERE s.jour = j.jour), 0) AS vues,
+                       j.commandes_payees                     AS commandes,
+                       j.montant_encaisse                     AS montant
+                  FROM journee_resumee j
+                 WHERE j.jour BETWEEN ? AND ?
+                 ORDER BY j.jour ASC
                 """,
                 (rs, i) -> new BilanPeriode.PointJour(
                         rs.getObject("jour", LocalDate.class),
@@ -381,8 +501,9 @@ public class ServiceStatistiques {
                         rs.getBigDecimal("montant")),
                 du, au);
 
-        return new BilanPeriode(du, au, totaux.jours(), totaux.vues(), totaux.vuesUniques(),
-                totaux.commandes(), totaux.quantiteVendue(), totaux.chiffreAffaires(),
-                totaux.retours(), meilleurs, courbe);
+        return new BilanPeriode(du, au, argent.jours(), activite.vues(), activite.vuesUniques(),
+                argent.payees(), argent.annulees(), activite.quantite(),
+                argent.encaisse(), argent.rembourse(), activite.retours(),
+                meilleurs, courbe);
     }
 }

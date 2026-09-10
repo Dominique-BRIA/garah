@@ -39,6 +39,7 @@ class ServicePaiementTest {
     @Autowired ServicePanier panier;
     @Autowired ServiceCommande commandes;
     @Autowired ServicePaiement paiements;
+    @Autowired com.garah.api.mesure.domaine.ServiceStatistiques stats;
     @Autowired ServiceCatalogue catalogue;
     @Autowired ServiceTarification tarification;
     @Autowired ServiceStock stock;
@@ -266,5 +267,38 @@ class ServicePaiementTest {
         paiements.confirmer(paiement.getId(), "VIR-REF-0001");
 
         assertThat(paiements.resteAPayer(commande.id())).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    @DisplayName("⚠️ le chiffre d'affaires est l'argent encaissé, au jour du paiement")
+    void chiffreDAffairesEncaisse() {
+        // 🎯 LE DEFAUT QUE CE TEST FERME.
+        //
+        //    Le resume additionnait toute commande CREEE dans la journee :
+        //    impayees, annulees et expirees gonflaient le chiffre d'affaires.
+        java.time.LocalDate jour = java.time.LocalDate.now();
+        stats.agregerLeJour(jour);
+        var avant = stats.bilan(jour, jour, 10);
+
+        // ⚠️ Une commande CREEE maintenant — apres la mesure — et jamais payee.
+        //    Celle de la preparation ne suffisait pas : nee AVANT la premiere
+        //    mesure, elle etait deja dans le « avant », et l'ancien calcul, qui
+        //    comptait les commandes creees, passait ce test sans broncher.
+        panier.ajouter(clientId, varianteId, 1);
+        commandes.passer(clientId, pointRetraitId, "fr");
+        stats.agregerLeJour(jour);
+        assertThat(stats.bilan(jour, jour, 10).chiffreAffaires())
+                .as("une commande impayee n'est pas une vente")
+                .isEqualByComparingTo(avant.chiffreAffaires());
+
+        Paiement paiement = paiements.initier(commande.id(), MoyenPaiement.MTN_MOMO);
+        paiements.confirmer(paiement.getId(), "STAT-REF-0001");
+        stats.agregerLeJour(jour);
+        var apres = stats.bilan(jour, jour, 10);
+
+        // 3 x 10 000 + 2 000 de frais : l'encaisse comprend l'acheminement.
+        assertThat(apres.chiffreAffaires().subtract(avant.chiffreAffaires()))
+                .isEqualByComparingTo("32000.00");
+        assertThat(apres.commandes() - avant.commandes()).isEqualTo(1);
     }
 }

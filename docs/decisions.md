@@ -2359,3 +2359,50 @@ contenait une faille, rendue dangereuse par D-44 :
 > les droits `NEGOCIATION_CREER_PROPOSITION` et `NEGOCIATION_ACCEPTER`. Ils
 > existent au référentiel, mais aucune route ne les vérifie : tout compte de
 > l'équipe peut aujourd'hui accorder une remise, dans la limite du tarif.
+
+---
+
+## D-47 — Les statistiques disent ce qu'elles savent, et comptent l'argent encaissé
+
+**Le premier défaut.** Le résumé de nuit n'écrivait une ligne que pour les
+produits qui avaient bougé dans la journée. Une journée sans visite ni vente
+ne laissait **aucune trace**. L'écran, qui comptait les jours à partir de ces
+lignes, affichait :
+
+> « 29 journée(s) sans données — ces jours-là n'ont pas été résumés. »
+
+Il ne pouvait pas le savoir : une nuit où la tâche n'a pas tourné et une
+journée simplement calme donnaient la même absence de ligne.
+
+**La règle.** Chaque journée résumée est notée dans `journee_resumee`, **même
+vide**. « Jours couverts », l'avertissement et la courbe s'appuient sur elle.
+L'avertissement ne signale plus que les vraies nuits manquées, et la courbe
+montre une barre basse pour une journée calme au lieu d'un trou.
+
+**Le rattrapage couvre toute la période affichée**, et plus seulement la
+veille : une semaine de serveur arrêté laissait six jours irrécupérables. Il
+ne résume que les journées qui ne l'ont jamais été, jamais le jour en cours,
+et jamais au-delà de 88 jours : le détail des visites est purgé à 90, et une
+journée résumée trop tard afficherait zéro visite là où il y en a eu.
+
+**Le second défaut.** Le chiffre d'affaires additionnait toute commande
+**créée** dans la journée, quel que soit son statut. Les commandes impayées,
+annulées ou expirées le gonflaient, et une commande créée lundi mais payée
+mercredi comptait lundi.
+
+**La règle.**
+
+| Indicateur | Ce qu'il compte |
+|---|---|
+| Chiffre d'affaires | L'argent réellement **encaissé** ce jour-là, frais d'acheminement compris |
+| Commandes | Les commandes **payées**, au jour du paiement qui les a soldées |
+| Annulées | Les commandes annulées, au jour de leur annulation (`commande.date_annulation`) |
+| Remboursé | L'argent rendu, au jour où il sort — affiché à part, jamais soustrait en silence |
+
+Une commande payée puis annulée reste vendue le jour de son paiement :
+l'argent est entré. Son remboursement se compte le jour où il sort.
+
+> ⚠️ Le classement par produit reste en **montant des articles** : les frais
+> d'acheminement appartiennent à la commande, pas à un produit. Le total de
+> ce classement ne vaut donc pas le chiffre d'affaires, et l'écran le nomme
+> « Montant vendu » pour qu'on ne les compare pas.

@@ -85,6 +85,17 @@ public class Commande {
     @Column(name = "date_modification")
     private Instant dateModification;
 
+    /**
+     * Quand la commande a été annulée — par le client, par l'administration,
+     * ou faute de paiement dans le délai.
+     *
+     * <p>🎯 Les statistiques comptent les annulations au JOUR où elles ont eu
+     * lieu. {@code date_modification} ne le dit pas : elle bouge à chaque
+     * écriture, et une commande annulée puis retouchée changerait de jour.</p>
+     */
+    @Column(name = "date_annulation")
+    private Instant dateAnnulation;
+
     @OneToMany(mappedBy = "commande", fetch = FetchType.LAZY,
                cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LigneCommande> lignes = new ArrayList<>();
@@ -130,6 +141,12 @@ public class Commande {
 
     void changerStatut(StatutCommande nouveau) {
         this.statut = nouveau;
+        // Le FAIT, noté au moment où il a lieu. Une seule fois : une commande
+        // annulée l'est depuis le premier instant, pas depuis la dernière
+        // écriture.
+        if (nouveau == StatutCommande.ANNULEE && dateAnnulation == null) {
+            this.dateAnnulation = Instant.now();
+        }
     }
 
     public Long getId() { return id; }
@@ -146,6 +163,7 @@ public class Commande {
     public BigDecimal getMontantTva() { return montantTva; }
     public String getDevise() { return devise; }
     public Instant getDateCreation() { return dateCreation; }
+    public Instant getDateAnnulation() { return dateAnnulation; }
     public List<LigneCommande> getLignes() { return lignes; }
 
     public void setMontantFrais(BigDecimal frais) { this.montantFrais = frais; }

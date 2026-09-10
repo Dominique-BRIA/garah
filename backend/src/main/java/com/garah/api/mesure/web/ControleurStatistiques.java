@@ -142,18 +142,23 @@ public class ControleurStatistiques {
     }
 
     /**
-     * Relance l'agrégation d'une journée, à la main.
+     * Résume, à la main, les journées de la période qui ne l'ont jamais été.
      *
      * <p>Le traitement tourne chaque nuit (D-15). Cette route sert au
-     * <b>rattrapage</b> : instance redémarrée pendant la nuit, journée oubliée
-     * après une panne. Le service est idempotent par (produit, jour) — rejouer
-     * la même date écrase proprement, et c'est bien pour cela qu'on peut
-     * l'exposer sans danger.</p>
+     * <b>rattrapage</b> : serveur endormi ou redémarré pendant la nuit.</p>
+     *
+     * <p>⚠️ Elle rattrapait UNE journée, la veille : une semaine de nuits
+     * manquées laissait six jours irrécupérables. Elle couvre désormais toute
+     * la période affichée — dans la limite de ce qu'on peut encore compter
+     * juste (le détail des vues est purgé à 90 jours).</p>
      */
-    @PostMapping("/statistiques/agregation/{jour}")
+    @PostMapping("/statistiques/rattrapage")
     @PreAuthorize("hasAuthority('STATISTIQUE_GENERALE_CONSULTER')")
-    public Map<String, Integer> agreger(@PathVariable String jour) {
-        return Map.of("lignes", statistiques.agregerLeJour(java.time.LocalDate.parse(jour)));
+    public Map<String, Integer> rattraper(
+            @org.springframework.web.bind.annotation.RequestParam String du,
+            @org.springframework.web.bind.annotation.RequestParam String au) {
+        return Map.of("journees", statistiques.rattraper(
+                java.time.LocalDate.parse(du), java.time.LocalDate.parse(au)));
     }
 
     public record DemandeVue(

@@ -32,9 +32,20 @@ public record BilanPeriode(
         int jours,
         long vues,
         long vuesUniques,
+        /** Les commandes PAYÉES sur la période, au jour de leur paiement. */
         long commandes,
+        /** Les commandes annulées sur la période, au jour de leur annulation. */
+        long commandesAnnulees,
         long quantiteVendue,
+        /**
+         * L'argent réellement ENCAISSÉ, frais d'acheminement compris.
+         *
+         * <p>⚠️ Ce n'est plus la somme des commandes créées : impayées,
+         * annulées et expirées la gonflaient.</p>
+         */
         BigDecimal chiffreAffaires,
+        /** L'argent rendu, au jour où il est sorti. Jamais soustrait en silence. */
+        BigDecimal montantRembourse,
         long retours,
         List<LigneBilan> meilleurs,
         List<PointJour> parJour) {

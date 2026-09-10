@@ -50,6 +50,7 @@ class ServiceCommandeTest {
 
     @Autowired ServicePanier panier;
     @Autowired ServiceCommande commandes;
+    @Autowired com.garah.api.mesure.domaine.ServiceStatistiques stats;
     @Autowired com.garah.api.serviceclient.domaine.ServiceConversation discussions;
     @Autowired com.garah.api.serviceclient.domaine.ServiceNegociation negociation;
     @Autowired ServiceCatalogue catalogue;
@@ -456,6 +457,27 @@ class ServiceCommandeTest {
             assertThat(l.prixUnitaire()).isEqualByComparingTo("15000.00");
             assertThat(l.prixNegocie()).isFalse();
         });
+    }
+
+    @Test
+    @DisplayName("une annulation se compte au jour où elle a lieu, jamais comme une vente")
+    void annulationCompteeAPart() {
+        java.time.LocalDate jour = java.time.LocalDate.now();
+        stats.agregerLeJour(jour);
+        var avant = stats.bilan(jour, jour, 10);
+
+        panier.ajouter(clientId, varianteId, 1);
+        Long id = commandes.passer(clientId, pointRetraitId, "fr").id();
+        commandes.annuler(id, "Test");
+
+        // Le FAIT est note au moment ou il a lieu.
+        assertThat(depotCommandes.findById(id).orElseThrow().getDateAnnulation()).isNotNull();
+
+        stats.agregerLeJour(jour);
+        var apres = stats.bilan(jour, jour, 10);
+        assertThat(apres.commandesAnnulees() - avant.commandesAnnulees()).isEqualTo(1);
+        assertThat(apres.chiffreAffaires()).isEqualByComparingTo(avant.chiffreAffaires());
+        assertThat(apres.commandes()).isEqualTo(avant.commandes());
     }
 
     @Test

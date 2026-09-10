@@ -123,12 +123,13 @@ export class Statistiques {
   }
 
   /**
-   * Relance l'agrégation d'hier.
+   * Résume les journées manquantes de la période affichée.
    *
    * <p>Le traitement tourne chaque nuit. Ce bouton sert au <b>rattrapage</b> :
-   * instance redémarrée pendant la nuit, journée oubliée après une panne.
-   * L'opération est idempotente — rejouer la même date recalcule au lieu de
-   * dupliquer, et c'est bien pour ça qu'on peut l'exposer.</p>
+   * serveur arrêté pendant la nuit. Il ne relançait que la veille — une
+   * semaine de nuits manquées en laissait six. Le serveur ne résume que les
+   * journées qui ne l'ont jamais été, et seulement dans la limite de ce qu'il
+   * peut encore compter juste.</p>
    */
   protected rattraper(): void {
     if (this.action()) {
@@ -137,10 +138,13 @@ export class Statistiques {
     this.action.set('agregation');
     this.erreur.set(null);
 
-    const hier = new Date();
-    hier.setDate(hier.getDate() - 1);
+    const b = this.bilan();
+    if (!b) {
+      this.action.set(null);
+      return;
+    }
 
-    this.http.post(`/api/statistiques/agregation/${iso(hier)}`, null).subscribe({
+    this.http.post(`/api/statistiques/rattrapage?du=${b.du}&au=${b.au}`, null).subscribe({
       next: () => {
         this.action.set(null);
         this.charger();
@@ -187,8 +191,10 @@ export class Statistiques {
             { titre: 'Valeur', type: 'texte' },
           ],
           lignes: [
-            ['Chiffre d’affaires', this.montant(b.chiffreAffaires)],
-            ['Commandes', String(b.commandes)],
+            ['Chiffre d’affaires (encaissé)', this.montant(b.chiffreAffaires)],
+            ['Commandes payées', String(b.commandes)],
+            ['Commandes annulées', String(b.commandesAnnulees)],
+            ['Remboursé', this.montant(b.montantRembourse)],
             ['Articles vendus', String(b.quantiteVendue)],
             ['Retours', String(b.retours)],
             ['Fiches consultées', String(b.vues)],
@@ -201,8 +207,8 @@ export class Statistiques {
           colonnes: [
             { titre: 'Jour', type: 'date' },
             { titre: 'Vues', type: 'nombre' },
-            { titre: 'Commandes', type: 'nombre' },
-            { titre: 'Chiffre d’affaires', type: 'montant' },
+            { titre: 'Commandes payées', type: 'nombre' },
+            { titre: 'Encaissé', type: 'montant' },
           ],
           // De vraies dates et de vrais nombres, pas leur écriture : dans un
           // tableur, c'est ce qui permet de trier, de totaliser et de tracer.
@@ -221,7 +227,7 @@ export class Statistiques {
             { titre: 'Commandes', type: 'nombre' },
             { titre: 'Quantité vendue', type: 'nombre' },
             { titre: 'Conversion', type: 'taux' },
-            { titre: 'Chiffre d’affaires', type: 'montant' },
+            { titre: 'Montant vendu', type: 'montant' },
           ],
           lignes: b.meilleurs.map((l) => [
             l.nom,
