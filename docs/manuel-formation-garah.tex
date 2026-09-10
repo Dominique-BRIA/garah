@@ -1,0 +1,2621 @@
+% =============================================================================
+%  GARAH — MANUEL DE FORMATION UTILISATEUR
+% =============================================================================
+%
+%  Compilation : pdfLaTeX (Overleaf : Menu > Compiler > pdfLaTeX).
+%  Deux passes sont nécessaires pour la table des matières et les renvois.
+%
+%  ⚠️ AUCUNE IMAGE EXTERNE N'EST REQUISE POUR COMPILER.
+%     Toutes les illustrations de ce manuel sont dessinées en TikZ. Elles sont
+%     présentées comme des ILLUSTRATIONS PÉDAGOGIQUES : elles reproduisent
+%     fidèlement la disposition des écrans réels, mais ce ne sont pas des
+%     captures. Les emplacements où une vraie capture apporterait davantage
+%     sont signalés par un cadre « CAPTURE À INSÉRER ».
+%
+% =============================================================================
+
+\documentclass[11pt,a4paper]{report}
+
+% --- Langue et encodage ------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- Mise en page ------------------------------------------------------------
+\usepackage[a4paper,margin=2.4cm,headheight=15pt]{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{amssymb}
+\usepackage{pifont}
+\usepackage{graphicx}
+\usepackage{xcolor}
+
+% --- Encadrés ----------------------------------------------------------------
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{breakable,skins}
+
+% --- Dessins -----------------------------------------------------------------
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc,fit,backgrounds,shadows.blur}
+
+% --- Liens (toujours en dernier) --------------------------------------------
+\usepackage[hidelinks,bookmarks=true]{hyperref}
+\hypersetup{
+  pdftitle={GARAH — Manuel de formation utilisateur},
+  pdfsubject={Formation pratique à la plateforme GARAH},
+  pdfkeywords={GARAH, formation, manuel, commerce, Douala, Bangui}
+}
+
+% =============================================================================
+%  LA CHARTE GRAPHIQUE DE GARAH
+%  Les valeurs viennent de charte/jetons.json — elles ne sont pas inventées.
+% =============================================================================
+\definecolor{garahMarque}{HTML}{31AEF3}   % le bleu de la marque
+\definecolor{garahPrimaire}{HTML}{6366F1} % l'indigo des actions
+\definecolor{garahAccent}{HTML}{AA3BFF}   % le violet du back-office
+\definecolor{garahSlogan}{HTML}{047857}   % le vert du slogan
+\definecolor{garahSucces}{HTML}{10B981}
+\definecolor{garahAlerte}{HTML}{F59E0B}
+\definecolor{garahDanger}{HTML}{EF4444}
+\definecolor{garahEncre}{HTML}{0F172A}
+\definecolor{garahAttenue}{HTML}{64748B}
+\definecolor{garahFond}{HTML}{F8FAFC}
+\definecolor{garahBordure}{HTML}{CBD5E1}
+\definecolor{garahNuit}{HTML}{0C0C14}
+\definecolor{garahSurfaceNuit}{HTML}{12121E}
+
+% =============================================================================
+%  TITRES
+% =============================================================================
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{garahEncre}}
+  {\vspace*{-1.2cm}\normalsize\color{garahMarque}\MakeUppercase{\chaptertitlename}\ \thechapter}
+  {8pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{0pt}{28pt}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{garahEncre}}{\thesection}{0.8em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{garahPrimaire}}{\thesubsection}{0.7em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\footnotesize\color{garahAttenue}GARAH — Manuel de formation}
+\fancyhead[R]{\footnotesize\color{garahAttenue}\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% =============================================================================
+%  OUTILS PÉDAGOGIQUES
+% =============================================================================
+
+% --- Les pastilles numérotées ① ② ③ utilisées sur les illustrations ---------
+\newcommand{\num}[1]{%
+  \tikz[baseline=(n.base)]{
+    \node[circle,fill=garahPrimaire,text=white,inner sep=1.2pt,
+          font=\scriptsize\bfseries,minimum size=12pt] (n) {#1};}%
+}
+\newcommand{\numAlt}[1]{%
+  \tikz[baseline=(n.base)]{
+    \node[circle,fill=garahAlerte,text=white,inner sep=1.2pt,
+          font=\scriptsize\bfseries,minimum size=12pt] (n) {#1};}%
+}
+
+% --- Case à cocher pour les checklists --------------------------------------
+\newcommand{\case}{$\square$~}
+
+% --- Encadrés ---------------------------------------------------------------
+\newtcolorbox{objectif}{
+  breakable, enhanced, colback=garahMarque!6, colframe=garahMarque,
+  boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
+  title={\bfseries Objectif de ce tutoriel}, fonttitle=\bfseries\small,
+  coltitle=white, colbacktitle=garahMarque
+}
+
+\newtcolorbox{avant}{
+  breakable, enhanced, colback=garahFond, colframe=garahBordure,
+  boxrule=0.8pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
+  title={\bfseries Avant de commencer}, fonttitle=\bfseries\small,
+  coltitle=garahEncre, colbacktitle=garahBordure!60
+}
+
+\newtcolorbox{attention}{
+  breakable, enhanced, colback=garahDanger!6, colframe=garahDanger,
+  boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
+  title={\bfseries \ding{55}~Attention}, fonttitle=\bfseries\small,
+  coltitle=white, colbacktitle=garahDanger
+}
+
+\newtcolorbox{astuce}{
+  breakable, enhanced, colback=garahSucces!7, colframe=garahSucces,
+  boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
+  title={\bfseries \ding{43}~Astuce}, fonttitle=\bfseries\small,
+  coltitle=white, colbacktitle=garahSucces
+}
+
+\newtcolorbox{retenir}{
+  breakable, enhanced, colback=garahAccent!6, colframe=garahAccent,
+  boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
+  title={\bfseries \ding{45}~À retenir}, fonttitle=\bfseries\small,
+  coltitle=white, colbacktitle=garahAccent
+}
+
+\newtcolorbox{resultat}{
+  breakable, enhanced, colback=garahSucces!5, colframe=garahSucces!70,
+  boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
+  title={\bfseries \ding{51}~Résultat attendu}, fonttitle=\bfseries\small,
+  coltitle=white, colbacktitle=garahSucces!70
+}
+
+\newtcolorbox{exercice}{
+  breakable, enhanced, colback=garahAlerte!7, colframe=garahAlerte,
+  boxrule=0.9pt, arc=3pt, left=9pt, right=9pt, top=7pt, bottom=7pt,
+  title={\bfseries Exercice pratique}, fonttitle=\bfseries\small,
+  coltitle=white, colbacktitle=garahAlerte
+}
+
+\newtcolorbox{roleBox}{
+  breakable, enhanced, colback=garahPrimaire!5, colframe=garahPrimaire,
+  boxrule=1pt, arc=4pt, left=11pt, right=11pt, top=9pt, bottom=9pt,
+  title={\bfseries Votre rôle dans la plateforme}, fonttitle=\bfseries,
+  coltitle=white, colbacktitle=garahPrimaire
+}
+
+\newtcolorbox{checklist}{
+  breakable, enhanced, colback=white, colframe=garahEncre,
+  boxrule=1pt, arc=3pt, left=11pt, right=11pt, top=9pt, bottom=9pt,
+  title={\bfseries Checklist de maîtrise}, fonttitle=\bfseries,
+  coltitle=white, colbacktitle=garahEncre
+}
+
+% --- L'étape d'un tutoriel ---------------------------------------------------
+\newcounter{etape}[section]
+\newcommand{\etape}[1]{%
+  \stepcounter{etape}%
+  \vspace{9pt}%
+  \noindent{\color{garahPrimaire}\rule{3pt}{13pt}}\hspace{6pt}%
+  {\bfseries\large Étape \theetape\ --- #1}\par\vspace{4pt}%
+}
+
+% --- Le cadre « capture réelle à insérer » ----------------------------------
+\newcommand{\captureAInserer}[2][3.4cm]{%
+  \begin{center}
+  \begin{tcolorbox}[width=\linewidth,height=#1,
+    colback=garahFond,colframe=garahAttenue,boxrule=0.9pt,arc=4pt,
+    halign=center,valign=center]
+    {\small\bfseries\color{garahAttenue}CAPTURE D'ÉCRAN RÉELLE À INSÉRER}\\[4pt]
+    {\footnotesize\color{garahAttenue}#2}
+  \end{tcolorbox}
+  \end{center}
+}
+
+% --- La légende d'une illustration pédagogique ------------------------------
+\newcommand{\legendeIllus}[2]{%
+  \vspace{2pt}
+  \begin{center}
+  \begin{minipage}{0.93\linewidth}
+    \footnotesize\itshape
+    \textbf{Figure~#1 --- } #2
+    \par\vspace{2pt}
+    \textcolor{garahAttenue}{\scriptsize Illustration pédagogique : reproduction
+    fidèle de la disposition de l'écran, et non une capture.}
+  \end{minipage}
+  \end{center}
+  \vspace{6pt}
+}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+%  COUVERTURE
+% -----------------------------------------------------------------------------
+\begin{titlepage}
+\centering
+\vspace*{1.4cm}
+
+% ⚠️ `scale` est indispensable : sans lui, les coordonnées ci-dessous sont
+%    lues en centimètres et l'emblème ferait 12 cm de large — plus que la
+%    moitié de la page.
+\begin{tikzpicture}[scale=0.34]
+  % L'emblème : le chariot de la marque, simplifié.
+  \draw[garahMarque,line width=2.2pt,rounded corners=2pt]
+    (0,0) -- (0,10) -- (2,10);
+  \draw[garahMarque,line width=2.2pt] (2,10) -- (3.2,3.4);
+  \draw[garahMarque,line width=2.2pt,rounded corners=1.4pt]
+    (1.2,3.4) rectangle (12,7.2);
+  \filldraw[garahMarque] (3.4,2) circle (1);
+  \filldraw[garahMarque] (10,2) circle (1);
+\end{tikzpicture}
+
+\vspace{0.7cm}
+
+{\fontsize{52}{56}\selectfont\bfseries\color{garahEncre}%
+ G\textcolor{garahMarque}{AR}\textcolor{garahAccent}{AH}\par}
+
+\vspace{4pt}
+{\large\bfseries\color{garahSlogan}\MakeUppercase{Au-delà des frontières}\par}
+
+\vspace{2.2cm}
+
+{\Huge\bfseries\color{garahEncre}Manuel de formation\par}
+\vspace{6pt}
+{\Huge\bfseries\color{garahEncre}utilisateur\par}
+
+\vspace{0.9cm}
+\rule{0.55\linewidth}{1.4pt}
+\vspace{0.7cm}
+
+{\large\color{garahAttenue}
+ Apprendre à utiliser la plateforme, écran par écran\par}
+
+\vspace{2.4cm}
+
+\begin{tcolorbox}[width=0.86\linewidth,colback=garahFond,
+  colframe=garahBordure,arc=5pt,boxrule=1pt]
+\centering\small
+\textbf{Pour qui ?}\\[4pt]
+Les clients \textbullet{} les responsables \textbullet{} les administrateurs\\
+\textbf{et} les super administrateurs de GARAH
+\\[9pt]
+\textbf{Ce que vous saurez faire à la fin}\\[4pt]
+Vous connecter, naviguer, effectuer vos tâches quotidiennes,\\
+comprendre les résultats et vous dépanner seul.
+\end{tcolorbox}
+
+\vfill
+{\footnotesize\color{garahAttenue}
+ Corridor commercial Douala $\rightarrow$ Bangui\\
+ Document de formation --- à lire l'application ouverte devant soi\par}
+\end{titlepage}
+
+% -----------------------------------------------------------------------------
+\tableofcontents
+\clearpage
+
+% =============================================================================
+\chapter*{Objectifs de la formation}
+\addcontentsline{toc}{chapter}{Objectifs de la formation}
+\markboth{Objectifs}{Objectifs}
+% =============================================================================
+
+Ce manuel n'explique pas comment GARAH est construit. Il explique
+\textbf{comment s'en servir}.
+
+À la fin de votre chapitre, vous devez être capable, seul et sans aide :
+
+\begin{enumerate}[leftmargin=*,itemsep=4pt]
+  \item de \textbf{comprendre votre rôle} : ce que la plateforme attend de
+        vous, et ce qu'elle ne vous laissera pas faire ;
+  \item de \textbf{vous connecter} et de retrouver votre chemin ;
+  \item de \textbf{naviguer} dans les menus sans hésiter ;
+  \item d'\textbf{effectuer vos tâches} quotidiennes de bout en bout ;
+  \item de \textbf{comprendre ce que l'écran vous répond} ;
+  \item de \textbf{vous dépanner} quand quelque chose ne marche pas ;
+  \item de \textbf{devenir autonome}, c'est-à-dire de ne plus avoir besoin de
+        ce manuel.
+\end{enumerate}
+
+\begin{retenir}
+Ce manuel se lit \textbf{l'application ouverte devant soi}. Chaque tutoriel est
+fait pour être exécuté en même temps qu'il est lu. Le lire sans rien faire
+n'apprend presque rien.
+\end{retenir}
+
+% =============================================================================
+\chapter*{Comment utiliser ce manuel}
+\addcontentsline{toc}{chapter}{Comment utiliser ce manuel}
+\markboth{Mode d'emploi}{Mode d'emploi}
+% =============================================================================
+
+\section*{Trouvez d'abord votre chapitre}
+
+Vous n'avez pas besoin de tout lire. Repérez qui vous êtes :
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}l l l@{}}
+\toprule
+Vous êtes\dots & Vous utilisez\dots & Allez au chapitre \\
+\midrule
+Un client        & la boutique ou l'application  & \ref{ch:client} \\
+Un responsable   & le back-office               & \ref{ch:responsable} \\
+Un administrateur& le back-office               & \ref{ch:admin} \\
+Un super admin.  & le back-office               & \ref{ch:superadmin} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{Les repères visuels}
+
+Ce manuel utilise toujours les mêmes signes. Apprenez-les une fois :
+
+\begin{center}
+\begin{tabular}{@{}c p{0.78\linewidth}@{}}
+\toprule
+\num{1} & \textbf{Une pastille bleue numérotée} désigne, sur une illustration,
+          l'endroit exact où agir. Les numéros suivent l'ordre des étapes. \\[5pt]
+\numAlt{!} & \textbf{Une pastille orange} signale une zone à ne pas modifier,
+             ou une information à lire attentivement. \\[5pt]
+\ding{55} & \textbf{Attention} : ce qui suit peut casser quelque chose, faire
+            perdre des données, ou coûter de l'argent. \\[5pt]
+\ding{43} & \textbf{Astuce} : un raccourci ou une habitude qui fait gagner du
+            temps. \\[5pt]
+\ding{45} & \textbf{À retenir} : le point essentiel du passage. \\[5pt]
+\ding{51} & \textbf{Résultat attendu} : ce que vous devez voir à l'écran si
+            tout s'est bien passé. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{À propos des illustrations}
+
+\begin{attention}
+Les figures de ce manuel sont des \textbf{illustrations pédagogiques}. Elles
+reproduisent fidèlement la \emph{disposition} des écrans réels — l'ordre des
+menus, la place des boutons, les libellés — mais ce ne sont pas des captures
+d'écran.
+
+Là où une véritable capture apporterait davantage, un cadre en pointillés
+indique où l'insérer :
+
+\captureAInserer[6em]{Exemple d'emplacement réservé.}
+
+Un formateur qui prépare une session devrait remplacer ces cadres par les
+captures de son propre environnement.
+\end{attention}
+
+% =============================================================================
+\chapter{Découvrir GARAH}
+\label{ch:decouvrir}
+% =============================================================================
+
+\section{Ce que fait la plateforme}
+
+GARAH est une plateforme de commerce qui relie \textbf{Douala} (Cameroun) à
+\textbf{Bangui} (République centrafricaine).
+
+Le principe tient en une phrase :
+
+\begin{center}
+\begin{tcolorbox}[width=0.9\linewidth,colback=garahMarque!8,
+  colframe=garahMarque,arc=4pt,boxrule=1pt]
+\centering\large
+Un client commande en ligne, paie par Mobile Money,\\
+et \textbf{vient retirer sa marchandise} au point de récupération de son choix.
+\end{tcolorbox}
+\end{center}
+
+Il n'y a \textbf{pas de livraison à domicile}. La marchandise voyage jusqu'à un
+point de récupération, et le client s'y présente avec son \textbf{code de
+retrait}.
+
+\subsection{Le voyage d'une commande, en une image}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0pt,
+  etape/.style={rectangle,rounded corners=3pt,draw=garahMarque,
+                fill=garahMarque!8,line width=0.9pt,
+                minimum height=13mm,text width=24mm,align=center,
+                font=\footnotesize\bfseries},
+  fleche/.style={-{Stealth[length=3mm]},garahAttenue,line width=1pt},
+  acteur/.style={font=\scriptsize\itshape,text=garahAttenue}
+]
+\node[etape] (a) {Le client\\commande};
+\node[etape,right=9mm of a] (b) {Il paie\\Mobile Money};
+\node[etape,right=9mm of b] (c) {L'équipe\\prépare};
+\node[etape,right=9mm of c] (d) {Le colis\\voyage};
+\node[etape,right=9mm of d] (e) {Retrait\\avec le code};
+
+\draw[fleche] (a) -- (b);
+\draw[fleche] (b) -- (c);
+\draw[fleche] (c) -- (d);
+\draw[fleche] (d) -- (e);
+
+\node[acteur,below=2mm of a] {Client};
+\node[acteur,below=2mm of b] {Client};
+\node[acteur,below=2mm of c] {Responsable};
+\node[acteur,below=2mm of d] {Responsable};
+\node[acteur,below=2mm of e] {Client + point};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{1.1}{Le parcours complet d'une commande. La ligne du bas indique
+qui agit à chaque étape.}
+
+\section{Les quatre acteurs}
+
+La plateforme connaît exactement \textbf{quatre types de comptes}. Ils ne se
+choisissent pas : ils sont attribués.
+
+\begin{center}
+\begin{tikzpicture}[
+  boite/.style={rectangle,rounded corners=4pt,line width=1pt,
+                minimum height=26mm,text width=33mm,align=center,
+                font=\footnotesize},
+  titre/.style={font=\small\bfseries}
+]
+\node[boite,draw=garahMarque,fill=garahMarque!7] (cli) at (0,0)
+  {\textbf{\normalsize Client}\\[4pt]
+   Achète.\\[3pt]
+   \scriptsize Boutique web\\ ou application Android};
+\node[boite,draw=garahPrimaire,fill=garahPrimaire!7,right=6mm of cli] (res)
+  {\textbf{\normalsize Responsable}\\[4pt]
+   Fait le travail.\\[3pt]
+   \scriptsize Back-office\\ (droits limités à son profil)};
+\node[boite,draw=garahAccent,fill=garahAccent!7,right=6mm of res] (adm)
+  {\textbf{\normalsize Administrateur}\\[4pt]
+   Décide qui fait quoi.\\[3pt]
+   \scriptsize Back-office\\ (équipe, profils, finance)};
+\node[boite,draw=garahDanger,fill=garahDanger!7,right=6mm of adm] (sup)
+  {\textbf{\normalsize Super admin.}\\[4pt]
+   Surveille tout.\\[3pt]
+   \scriptsize Back-office\\ + journal et sécurité};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{1.2}{Les quatre acteurs et l'interface de chacun.}
+
+\begin{retenir}
+Un compte \textbf{n'a pas de droits en propre} : il en reçoit par ses
+\textbf{profils}. C'est la phrase affichée en haut de l'écran « Équipe » du
+back-office :
+
+\begin{center}
+\small\ttfamily
+ADMINISTRATEUR $\rightarrow$ PROFIL $\rightarrow$ RESPONSABLE\\
+\rmfamily\footnotesize
+décide qui fait quoi \quad un paquet de droits \quad fait le travail
+\end{center}
+\end{retenir}
+
+\section{Les trois applications}
+
+Une même plateforme, trois portes d'entrée :
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}p{3.4cm} p{4.6cm} p{6.2cm}@{}}
+\toprule
+Application & Pour qui & Ce qu'on y fait \\
+\midrule
+La boutique web
+  & Les clients, sur ordinateur ou téléphone
+  & Parcourir, commander, suivre, discuter \\[4pt]
+L'application Android
+  & Les clients, sur téléphone
+  & La même chose, en plus rapide et hors ligne pour le panier \\[4pt]
+Le back-office
+  & Responsables, administrateurs, super administrateurs
+  & Tout le travail interne \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{astuce}
+La boutique et l'application ne sont pas la même chose enveloppée deux fois.
+L'application garde votre panier même fermée, et ne redemande pas votre mot de
+passe à chaque ouverture.
+\end{astuce}
+
+\section{Vocabulaire essentiel}
+
+Ces mots reviennent partout. Apprenez-les maintenant, ils ne seront plus
+réexpliqués.
+
+\begin{longtable}{@{}>{\bfseries}p{3.6cm} p{11.2cm}@{}}
+\toprule
+Mot & Ce qu'il veut dire chez GARAH \\
+\midrule
+\endhead
+Déclinaison
+  & Une variante achetable d'un article : la même chaussure en blanc et en
+    noir sont deux déclinaisons. C'est la déclinaison qui a un stock et un
+    prix, pas l'article. \\[4pt]
+Palier de prix
+  & Le prix baisse par tranches de quantité : 1 à 6 pièces à un prix, 7 à 10 à
+    un autre, 11 et plus à un troisième. \\[4pt]
+Point de récupération
+  & Le lieu où le client vient chercher sa marchandise. Il choisit le sien au
+    moment de commander ; les frais d'acheminement en dépendent. \\[4pt]
+Code de retrait
+  & Le code unique remis au client. C'est le \textbf{seul} moyen de prouver que
+    la marchandise a été remise. \\[4pt]
+Expédition
+  & Le voyage d'un ou plusieurs colis sur un itinéraire. \\[4pt]
+Itinéraire
+  & Le chemin suivi par les colis, avec ses points de transit. \\[4pt]
+Conversation
+  & Un échange écrit entre un client et le service client. \\[4pt]
+Proposition de prix
+  & Un prix négocié, proposé dans une conversation. Elle a une date
+    d'expiration. \\[4pt]
+Profil
+  & Un paquet de droits que l'on attribue à un responsable. \\[4pt]
+Service
+  & Le regroupement métier d'un responsable, avec son chef. \\[4pt]
+Réclamation
+  & Un problème signalé par un client après la vente. \\[4pt]
+Retour
+  & Une demande de renvoi de marchandise. \\
+\bottomrule
+\end{longtable}
+
+\begin{attention}
+\textbf{Ne confondez pas réclamation et retour.} Une réclamation est un
+\emph{problème} qu'on signale. Un retour est une \emph{marchandise} qui revient.
+Les deux écrans sont différents et les deux circuits aussi.
+\end{attention}
+
+% =============================================================================
+\chapter{Formation du Client}
+\label{ch:client}
+% =============================================================================
+
+\begin{roleBox}
+\textbf{Qui vous êtes.} Vous achetez sur GARAH. Vous n'avez aucun droit
+particulier à demander : votre accès repose sur le fait que \emph{ce sont vos
+données}. Vous voyez vos commandes, vos discussions, vos retours — et ceux de
+personne d'autre.
+
+\medskip
+\textbf{Ce que vous pouvez faire}
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=3pt]
+  \item parcourir le catalogue \textbf{sans compte} et remplir votre panier ;
+  \item créer un compte et confirmer votre adresse e-mail ;
+  \item commander, choisir votre point de récupération, payer par Mobile Money ;
+  \item suivre un colis, \textbf{même sans compte}, avec son numéro de suivi ;
+  \item poser une question sur un article et négocier un prix ;
+  \item demander un retour ou déposer une réclamation ;
+  \item tenir une liste d'articles mis de côté.
+\end{itemize}
+
+\medskip
+\textbf{Ce que vous ne pouvez pas faire}
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=3pt]
+  \item voir le back-office, ni les commandes des autres clients ;
+  \item modifier un prix, un stock ou un statut de commande ;
+  \item annuler une commande déjà payée vous-même — cela passe par un
+        administrateur ;
+  \item prendre en charge votre propre conversation.
+\end{itemize}
+
+\medskip
+\textbf{Avec qui vous interagissez.} Le \textbf{responsable} du service client
+répond à vos questions. Le \textbf{point de récupération} vous remet la
+marchandise contre votre code.
+\end{roleBox}
+
+% -----------------------------------------------------------------------------
+\section{Module 1 — Créer son compte et se connecter}
+
+\subsection{Tutoriel : créer un compte}
+
+\begin{objectif}
+Vous allez créer votre compte client et confirmer votre adresse e-mail, sans
+quoi certaines actions vous seront refusées plus tard.
+\end{objectif}
+
+\begin{avant}
+Il vous faut une adresse e-mail à laquelle vous avez réellement accès, et un
+mot de passe d'au moins huit caractères.
+\end{avant}
+
+\etape{Ouvrir la page d'inscription}
+
+Sur la boutique, cliquez sur \textbf{« S'inscrire »} en haut à droite. Dans
+l'application Android, ouvrez l'onglet \textbf{Compte}, puis
+\textbf{« Créer un compte »}.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  % La barre du site
+  \draw[fill=white,draw=garahBordure,line width=0.8pt,rounded corners=2pt]
+    (0,0) rectangle (150,14);
+  \node[font=\scriptsize\bfseries,text=garahEncre] at (14,7) {GARAH};
+  \node[font=\tiny,text=garahSlogan] at (16,3.4) {AU-DELÀ DES FRONTIÈRES};
+  \node[font=\tiny,text=garahAttenue] at (44,7) {Accueil};
+  \node[font=\tiny,text=garahAttenue] at (58,7) {Catalogue};
+  \node[font=\tiny,text=garahAttenue] at (76,7) {Suivre un colis};
+  \draw[fill=garahPrimaire,draw=none,rounded corners=2pt] (104,3) rectangle (124,11);
+  \node[font=\tiny,text=white] at (114,7) {Se connecter};
+  \draw[fill=white,draw=garahBordure,rounded corners=2pt] (126,3) rectangle (146,11);
+  \node[font=\tiny,text=garahEncre] at (136,7) {S'inscrire};
+  \node at (150,7) {\num{1}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.1}{La barre du site. \num{1} le bouton « S'inscrire ».}
+
+\etape{Remplir le formulaire}
+
+Renseignez votre nom, votre prénom, votre adresse e-mail et votre mot de passe.
+
+\begin{astuce}
+Le \textbf{numéro de téléphone est facultatif} à l'inscription — mais
+renseignez-le tout de suite. Il sera pré-rempli au moment de payer, et vous
+n'aurez pas à le retaper. Le format est souple : \texttt{+237 6 99 00 00 00},
+\texttt{0699000000} ou \texttt{(237) 699-000-000} sont tous acceptés.
+\end{astuce}
+
+\etape{Confirmer votre adresse e-mail}
+
+Un message vous est envoyé. Ouvrez-le et cliquez sur le lien qu'il contient.
+
+\begin{attention}
+Tant que votre adresse n'est pas confirmée, la mention
+\textbf{« NON VÉRIFIÉE »} apparaît à côté de votre compte. Ne remettez pas
+cette étape à plus tard : certaines opérations la contrôlent, et vous
+découvririez le refus au pire moment.
+\end{attention}
+
+\begin{resultat}
+Vous êtes connecté. Votre nom apparaît en haut à droite de la boutique, ou dans
+l'onglet \textbf{Compte} de l'application.
+\end{resultat}
+
+\subsection{Que faire si ça ne fonctionne pas ?}
+
+\begin{longtable}{@{}p{3.7cm} p{3.7cm} p{6.8cm}@{}}
+\toprule
+\bfseries Problème & \bfseries Cause possible & \bfseries Solution \\
+\midrule
+\endhead
+« Ce numéro de téléphone n'est pas valide »
+  & Le champ contient des lettres, ou plus de 30 caractères
+  & N'utilisez que des chiffres, espaces, points, tirets, parenthèses et le
+    signe~+ \\[4pt]
+Le message de confirmation n'arrive pas
+  & L'adresse est mal saisie, ou le message est dans les indésirables
+  & Vérifiez le dossier « spam ». Si l'adresse est fausse, recréez un compte
+    avec la bonne \\[4pt]
+« Mauvais identifiants » à la connexion
+  & Mot de passe ou adresse incorrects
+  & Le message ne dit pas lequel des deux est faux, et c'est volontaire : le
+    préciser aiderait quelqu'un qui cherche à deviner \\[4pt]
+Vous êtes déconnecté sans avoir rien fait
+  & Votre session a expiré
+  & Reconnectez-vous. Sur l'application, la session est conservée plus
+    longtemps que sur le site \\
+\bottomrule
+\end{longtable}
+
+% -----------------------------------------------------------------------------
+\section{Module 2 — Trouver un article}
+
+\subsection{Tutoriel : parcourir le catalogue}
+
+\begin{objectif}
+Vous allez apprendre les trois façons de trouver un article : les catégories,
+la recherche, et le catalogue complet.
+\end{objectif}
+
+\etape{Utiliser les catégories}
+
+Sur l'accueil, les catégories sont présentées sous forme de puces. Touchez-en
+une : le catalogue s'ouvre \textbf{déjà filtré}.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  \node[font=\scriptsize\bfseries,text=garahAttenue,anchor=west] at (0,26) {CATÉGORIES};
+  \foreach \x/\t [count=\i] in {0/Chaussure, 26/Vetements, 55/Cheveux et beaute,
+                                92/Informatique, 120/Electromenager} {
+    \draw[draw=garahBordure,fill=white,rounded corners=4pt,line width=0.7pt]
+      (\x,14) rectangle (\x+24,22);
+    \node[font=\tiny,text=garahEncre] at (\x+12,18) {\t};
+  }
+  \node at (38,10) {\num{1}};
+  \draw[-{Stealth[length=2mm]},garahPrimaire,line width=0.8pt] (38,12) -- (36,14);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.2}{Les puces de catégories sur l'accueil. \num{1} un clic filtre
+directement le catalogue.}
+
+\etape{Reconnaître le filtre actif}
+
+Une fois dans le catalogue, le filtre est \textbf{visible} : une puce porte le
+nom de la catégorie, avec une croix pour l'enlever.
+
+\begin{attention}
+Si vous ne voyez que quelques articles, \textbf{regardez d'abord s'il y a une
+puce de filtre}. Un catalogue filtré ressemble à un catalogue vide.
+\end{attention}
+
+\etape{Chercher par mot}
+
+La barre de recherche porte sur \textbf{le nom de l'article, le vendeur et la
+catégorie}. Elle ne cherche pas dans les références ni dans les numéros de
+commande.
+
+\begin{astuce}
+La recherche attend que vous ayez fini de taper avant d'interroger le serveur.
+Ce n'est pas de la lenteur : c'est ce qui évite d'envoyer neuf requêtes pour le
+mot « chaussure », sur un forfait qui se compte.
+\end{astuce}
+
+\subsection{Tutoriel : lire une fiche article}
+
+\begin{objectif}
+Comprendre les prix par palier, les déclinaisons, et le sous-total.
+\end{objectif}
+
+\etape{Comprendre les paliers de prix}
+
+Le prix baisse par tranches de quantité. La grille est affichée
+\textbf{avant} le bouton d'achat, et le palier qui s'applique est mis en avant.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  \node[font=\scriptsize\bfseries,text=garahAttenue,anchor=west] at (0,32) {PRIX PAR QUANTITÉ};
+  % Palier actif
+  \draw[draw=garahPrimaire,fill=garahPrimaire!8,rounded corners=3pt,line width=1.1pt]
+    (0,10) rectangle (36,28);
+  \node[font=\tiny,text=garahAttenue] at (18,25) {1 -- 6};
+  \node[font=\scriptsize\bfseries,text=garahEncre] at (18,19) {2 000 FCFA};
+  \node[font=\tiny,text=garahAttenue] at (18,14) {la pièce};
+  % Autres paliers
+  \draw[draw=garahBordure,fill=white,rounded corners=3pt,line width=0.8pt]
+    (40,10) rectangle (76,28);
+  \node[font=\tiny,text=garahAttenue] at (58,25) {7 -- 10};
+  \node[font=\scriptsize\bfseries,text=garahEncre] at (58,19) {1 500 FCFA};
+  \node[font=\tiny,text=garahAttenue] at (58,14) {la pièce};
+  \draw[draw=garahBordure,fill=white,rounded corners=3pt,line width=0.8pt]
+    (80,10) rectangle (116,28);
+  \node[font=\tiny,text=garahAttenue] at (98,25) {11 et +};
+  \node[font=\scriptsize\bfseries,text=garahEncre] at (98,19) {1 000 FCFA};
+  \node[font=\tiny,text=garahAttenue] at (98,14) {la pièce};
+
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (0,5)
+    {Encore \textbf{6} et le prix passe à \textbf{1 500 FCFA}.};
+  \node at (-6,19) {\num{1}};
+  \node at (122,19) {\num{2}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.3}{La grille des paliers. \num{1} le palier qui s'applique à la
+quantité choisie, encadré. \num{2} les paliers suivants, atteignables en
+commandant davantage. La phrase du bas indique ce qu'il manque pour descendre
+d'un palier.}
+
+\etape{Choisir la déclinaison}
+
+Si l'article existe en plusieurs versions, choisissez la vôtre. Les
+déclinaisons \textbf{barrées sont épuisées} — elles restent visibles pour que
+vous sachiez qu'elles existent.
+
+\etape{Vérifier le sous-total}
+
+Le sous-total s'affiche sous la quantité.
+
+\begin{attention}
+Le sous-total affiché sur la fiche \textbf{n'est pas ce que vous paierez} : il
+ne contient pas les frais d'acheminement, qui dépendent du point de
+récupération — et vous ne l'avez pas encore choisi.
+
+Le montant définitif est \textbf{figé au moment de la commande}.
+\end{attention}
+
+\begin{astuce}
+Si le bouton « + » de la quantité cesse de répondre, lisez le message juste
+au-dessous. Deux raisons possibles, et elles n'appellent pas le même geste :
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item \textbf{le stock} est atteint — il n'y en a plus ;
+  \item \textbf{le prix n'est pas fixé} au-delà — écrivez au marchand avec le
+        bouton « Contacter ».
+\end{itemize}
+\end{astuce}
+
+\begin{resultat}
+Vous voyez le bon prix unitaire, la bonne quantité, et un sous-total cohérent.
+Si l'écran affiche « Prix non fixé pour cette quantité », le bouton d'ajout est
+désactivé : c'est normal, aucun prix n'existe pour cette quantité-là.
+\end{resultat}
+
+% -----------------------------------------------------------------------------
+\section{Module 3 — Commander et payer}
+
+\subsection{Tutoriel : passer une commande}
+
+\begin{objectif}
+De l'ajout au panier jusqu'au paiement confirmé.
+\end{objectif}
+
+\begin{avant}
+Votre panier contient au moins un article. Vous connaissez le numéro Mobile
+Money qui recevra la demande de validation.
+\end{avant}
+
+\etape{Ajouter au panier}
+
+Sur la fiche, choisissez la quantité puis touchez \textbf{« Ajouter au
+panier »}.
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item Sur \textbf{l'application}, un bandeau confirme l'ajout et propose
+        « Voir le panier ».
+  \item Sur \textbf{la boutique}, le bouton devient un lien « Voir le panier ».
+\end{itemize}
+
+\begin{astuce}
+Vous n'avez \textbf{pas besoin de compte} pour remplir votre panier. La
+connexion est demandée seulement au moment de commander.
+\end{astuce}
+
+\etape{Ouvrir le panier et vérifier}
+
+Contrôlez les quantités. Le sous-total est affiché, sans les frais
+d'acheminement.
+
+\etape{Passer commande}
+
+Touchez \textbf{« Passer commande »}. Si vous n'êtes pas connecté, l'écran de
+connexion s'ouvre d'abord, et votre panier est repris automatiquement après.
+
+\etape{Choisir le point de récupération}
+
+C'est ici que les \textbf{frais d'acheminement} apparaissent : ils dépendent du
+point choisi. Le moins cher est proposé par défaut.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  \draw[draw=garahBordure,fill=white,rounded corners=3pt,line width=0.8pt]
+    (0,0) rectangle (130,44);
+  \node[font=\scriptsize\bfseries,text=garahAttenue,anchor=west] at (5,39)
+    {POINT DE RÉCUPÉRATION};
+  \draw[draw=garahPrimaire,fill=garahPrimaire!7,rounded corners=3pt,line width=1pt]
+    (5,26) rectangle (125,35);
+  \filldraw[garahPrimaire] (10,30.5) circle (1.6);
+  \node[font=\tiny,text=garahEncre,anchor=west] at (14,30.5) {Point A — frais les moins élevés};
+  \draw[draw=garahBordure,fill=white,rounded corners=3pt,line width=0.7pt]
+    (5,14) rectangle (125,23);
+  \draw[garahAttenue,line width=0.7pt] (10,18.5) circle (1.6);
+  \node[font=\tiny,text=garahEncre,anchor=west] at (14,18.5) {Point B};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (5,8)
+    {Articles \quad Frais d'acheminement \quad \textbf{Total à payer}};
+  \node at (132,30.5) {\num{1}};
+  \node at (132,6) {\num{2}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.4}{L'écran de commande. \num{1} le point de récupération choisi.
+\num{2} le total, qui ne se complète qu'une fois le point sélectionné.}
+
+\etape{Payer par Mobile Money}
+
+Choisissez \textbf{MTN Mobile Money} ou \textbf{Orange Money}, vérifiez le
+numéro, puis lancez le paiement.
+
+\begin{attention}
+Le numéro est \textbf{pré-rempli depuis votre profil, mais modifiable}. C'est
+volontaire : on paie souvent avec un autre numéro que celui du compte — celui
+d'un proche, ou son second opérateur.
+
+Vérifiez-le avant de valider : c'est \emph{ce} numéro qui recevra la demande.
+\end{attention}
+
+\etape{Valider sur votre téléphone}
+
+Une demande de validation arrive sur le numéro indiqué. Acceptez-la.
+
+\begin{attention}
+L'écran \textbf{n'affiche pas « payé » tant que l'opérateur n'a pas confirmé}.
+Ce n'est pas de la lenteur : afficher « payé » trop tôt ferait repartir
+quelqu'un persuadé d'avoir réglé, et le litige coûterait plus cher que
+l'attente.
+
+Quand vous avez validé sur votre téléphone, appuyez sur le bouton qui redemande
+l'état. \textbf{L'écran ne se rafraîchit pas tout seul}, et c'est délibéré :
+interroger en boucle viderait votre batterie et votre forfait.
+\end{attention}
+
+\begin{resultat}
+Le message \textbf{« Paiement confirmé »} s'affiche. Votre commande est
+enregistrée, votre panier est vidé, et vous serez prévenu lorsque la
+marchandise sera disponible au point de récupération.
+\end{resultat}
+
+\subsection{Comprendre l'état de votre commande}
+
+Une commande passe par des états successifs. Voici lesquels, et ce qu'ils
+veulent dire pour vous :
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=4mm,
+  et/.style={rectangle,rounded corners=3pt,draw=garahMarque,fill=garahMarque!8,
+             line width=0.8pt,minimum height=9mm,text width=27mm,align=center,
+             font=\scriptsize\bfseries},
+  ko/.style={rectangle,rounded corners=3pt,draw=garahDanger,fill=garahDanger!8,
+             line width=0.8pt,minimum height=9mm,text width=27mm,align=center,
+             font=\scriptsize\bfseries},
+  f/.style={-{Stealth[length=2.6mm]},garahAttenue,line width=0.9pt}
+]
+\node[et] (a) {En attente\\de paiement};
+\node[et,right=of a] (b) {Payée};
+\node[et,right=of b] (c) {En préparation};
+\node[et,right=of c] (d) {Prête};
+\node[et,below=8mm of d] (e) {Expédiée};
+\node[et,left=of e] (f) {Disponible};
+\node[et,left=of f] (g) {Retirée};
+\node[ko,below=8mm of a] (x) {Annulée};
+
+\draw[f] (a) -- (b); \draw[f] (b) -- (c); \draw[f] (c) -- (d);
+\draw[f] (d) -- (e); \draw[f] (e) -- (f); \draw[f] (f) -- (g);
+\draw[f] (a) -- (x);
+\draw[f] (b) -- ($(b)+(0,-8mm)$) -- (x);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.5}{Le cycle de vie d'une commande. Une commande non payée peut
+être annulée par le client ou par le délai ; une commande payée ne peut l'être
+que par un administrateur, avec remboursement.}
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}p{3.6cm} p{11.2cm}@{}}
+\toprule
+État & Ce que vous devez faire \\
+\midrule
+En attente de paiement & Payer. Sans quoi la commande sera annulée. \\
+Payée & Rien. L'équipe prend le relais. \\
+En préparation & Rien. Votre marchandise est rassemblée. \\
+Prête & Rien. Elle attend son départ. \\
+Expédiée & Rien. Elle voyage. \\
+Disponible & \textbf{Aller la retirer}, avec votre code. \\
+Retirée & C'est terminé. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% -----------------------------------------------------------------------------
+\section{Module 4 — Suivre et retirer}
+
+\subsection{Tutoriel : suivre un colis}
+
+\begin{objectif}
+Savoir où en est votre marchandise, avec ou sans compte.
+\end{objectif}
+
+\etape{Ouvrir le suivi}
+
+Menu \textbf{« Suivre un colis »} sur la boutique, ou l'écran de suivi dans
+l'application.
+
+\begin{astuce}
+Le suivi fonctionne \textbf{sans compte}. Il suffit du numéro de suivi — vous
+pouvez donc le transmettre à la personne qui viendra retirer à votre place.
+\end{astuce}
+
+\etape{Saisir le numéro de suivi}
+
+Entrez le numéro. L'état du colis s'affiche.
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=5mm,
+  et/.style={rectangle,rounded corners=3pt,draw=garahMarque,fill=garahMarque!8,
+             line width=0.8pt,minimum height=8mm,text width=24mm,align=center,
+             font=\scriptsize\bfseries},
+  bl/.style={rectangle,rounded corners=3pt,draw=garahAlerte,fill=garahAlerte!12,
+             line width=0.8pt,minimum height=8mm,text width=24mm,align=center,
+             font=\scriptsize\bfseries},
+  f/.style={-{Stealth[length=2.6mm]},garahAttenue,line width=0.9pt}
+]
+\node[et] (a) {Créé};
+\node[et,right=of a] (b) {En transit};
+\node[et,right=of b] (c) {Disponible};
+\node[et,right=of c] (d) {Remis};
+\node[bl,below=7mm of b] (e) {Bloqué};
+\draw[f] (a) -- (b); \draw[f] (b) -- (c); \draw[f] (c) -- (d);
+\draw[f] (b) -- (e);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.6}{Les états d'un colis. « Bloqué » signale un incident en
+cours de route : contactez le service client.}
+
+\subsection{Tutoriel : retirer sa marchandise}
+
+\begin{objectif}
+Récupérer votre commande au point de récupération.
+\end{objectif}
+
+\begin{avant}
+Votre commande doit être à l'état \textbf{Disponible}. Vous devez avoir votre
+\textbf{code de retrait}.
+\end{avant}
+
+\etape{Attendre l'avis de disponibilité}
+
+Vous êtes prévenu lorsque la marchandise arrive au point.
+
+\etape{Se présenter avec le code}
+
+Donnez votre code de retrait à l'agent du point.
+
+\begin{attention}
+\textbf{Le code de retrait est le seul moyen de prouver la remise.} Sans lui,
+votre parole s'oppose à celle du point de récupération et personne ne peut
+trancher.
+
+Ne le communiquez qu'à la personne que vous chargez de retirer à votre place.
+\end{attention}
+
+\begin{resultat}
+La marchandise vous est remise et la commande passe à l'état
+\textbf{Retirée}.
+\end{resultat}
+
+% -----------------------------------------------------------------------------
+\section{Module 5 — Dialoguer avec GARAH}
+
+\subsection{Tutoriel : poser une question sur un article}
+
+\begin{objectif}
+Ouvrir une conversation depuis une fiche article, et suivre la réponse.
+\end{objectif}
+
+\etape{Ouvrir la conversation}
+
+Sur la fiche de l'article, touchez \textbf{« Contacter »}. Une conversation est
+créée, avec l'article en objet.
+
+\etape{Attendre qu'un conseiller la prenne}
+
+L'écran indique \textbf{« En attente d'un conseiller »} tant que personne ne
+s'en est chargé, puis \textbf{« Un conseiller vous suit »}.
+
+\begin{attention}
+Tant que la conversation est \textbf{en attente}, personne n'y est encore
+affecté. Vos messages sont bien enregistrés, mais la réponse en direct
+n'arrivera qu'une fois la conversation prise en charge.
+\end{attention}
+
+\etape{Échanger}
+
+Écrivez dans le champ du bas. \textbf{Les messages arrivent en direct}, dans
+les deux sens : vous n'avez pas à recharger la page.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  % Bulle client (droite)
+  \draw[draw=garahPrimaire!40,fill=garahPrimaire!12,rounded corners=3pt]
+    (52,26) rectangle (120,36);
+  \node[font=\tiny,text=garahEncre,anchor=west] at (55,32) {Bonjour, je voudrais en savoir plus.};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (55,28) {10 sept., 00:39};
+  % Bulle conseiller (gauche)
+  \draw[draw=garahBordure,fill=garahFond,rounded corners=3pt]
+    (0,12) rectangle (68,22);
+  \node[font=\tiny,text=garahEncre,anchor=west] at (3,18) {Bonjour, cette chaussure coûte 2 000 F.};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (3,14) {10 sept., 00:42};
+  % Champ
+  \draw[draw=garahBordure,fill=white,rounded corners=2pt] (0,0) rectangle (98,8);
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (3,4) {Votre message…};
+  \draw[fill=garahPrimaire,draw=none,rounded corners=2pt] (102,0) rectangle (120,8);
+  \node[font=\tiny,text=white] at (111,4) {Envoyer};
+  \node at (126,31) {\num{1}};
+  \node at (74,17) {\num{2}};
+  \node at (126,4) {\num{3}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.7}{Une conversation. \num{1} vos messages, à droite. \num{2} les
+réponses du conseiller, à gauche. \num{3} le champ de saisie.}
+
+\subsection{Comprendre une proposition de prix}
+
+Un conseiller peut vous faire une \textbf{proposition de prix} dans la
+conversation.
+
+\begin{attention}
+Une proposition \textbf{expire}. Passé sa date, elle devient « Expirée » et ne
+peut plus être acceptée — il faut en redemander une. Ne la laissez pas dormir.
+\end{attention}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=6mm,
+  et/.style={rectangle,rounded corners=3pt,line width=0.8pt,
+             minimum height=8mm,text width=24mm,align=center,
+             font=\scriptsize\bfseries},
+  f/.style={-{Stealth[length=2.6mm]},garahAttenue,line width=0.9pt}
+]
+\node[et,draw=garahMarque,fill=garahMarque!8] (a) {Proposée};
+\node[et,draw=garahSucces,fill=garahSucces!10,right=14mm of a] (b) {Acceptée};
+\node[et,draw=garahDanger,fill=garahDanger!8,below=5mm of b] (c) {Refusée};
+\node[et,draw=garahAlerte,fill=garahAlerte!12,below=5mm of c] (d) {Expirée};
+\draw[f] (a) -- (b);
+\draw[f] (a) -- (c);
+\draw[f] (a) -- (d);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.8}{Les issues d'une proposition de prix.}
+
+% -----------------------------------------------------------------------------
+\section{Module 6 — Après la vente}
+
+\subsection{Demander un retour}
+
+Un retour concerne \textbf{une marchandise qui revient}. Il suit ce circuit :
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=5mm,
+  et/.style={rectangle,rounded corners=3pt,line width=0.8pt,
+             minimum height=8mm,text width=22mm,align=center,
+             font=\scriptsize\bfseries},
+  f/.style={-{Stealth[length=2.6mm]},garahAttenue,line width=0.9pt}
+]
+\node[et,draw=garahMarque,fill=garahMarque!8] (a) {Demandé};
+\node[et,draw=garahSucces,fill=garahSucces!10,right=of a] (b) {Accepté};
+\node[et,draw=garahMarque,fill=garahMarque!8,right=of b] (c) {Réceptionné};
+\node[et,draw=garahSucces,fill=garahSucces!10,right=of c] (d) {Validé};
+\node[et,draw=garahDanger,fill=garahDanger!8,below=6mm of b] (e) {Refusé};
+\draw[f] (a) -- (b); \draw[f] (b) -- (c); \draw[f] (c) -- (d);
+\draw[f] (a) -- (e);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{2.9}{Le circuit d'un retour. Chaque étape est décidée par
+l'équipe ; vous suivez l'avancement depuis « Mes retours ».}
+
+\subsection{Déposer une réclamation}
+
+Une réclamation concerne \textbf{un problème}, pas une marchandise. Elle passe
+de \textbf{Ouverte} à \textbf{En cours} lorsqu'un responsable s'en saisit, puis
+à \textbf{Résolue}.
+
+\begin{retenir}
+\textbf{Retour} = quelque chose revient. \textbf{Réclamation} = quelque chose ne
+va pas. Deux écrans, deux circuits, ne les confondez pas.
+\end{retenir}
+
+% -----------------------------------------------------------------------------
+\section{Scénario complet : de la question à la marchandise}
+
+\begin{tcolorbox}[colback=garahFond,colframe=garahEncre,arc=4pt,boxrule=1pt]
+\textbf{Situation.} Vous cherchez des chaussures pour votre commerce. Vous en
+voulez une dizaine, et vous voulez savoir si le prix peut baisser.
+\end{tcolorbox}
+
+\begin{enumerate}[leftmargin=*,itemsep=4pt]
+  \item Vous ouvrez la boutique et touchez la catégorie \textbf{Chaussure}.
+  \item Vous ouvrez la fiche et lisez la grille : à partir de 7 pièces, le prix
+        passe de 2 000 à 1 500 FCFA.
+  \item Vous touchez \textbf{« Contacter »} et demandez un prix pour 20 pièces.
+  \item Le conseiller prend la conversation — la mention passe à
+        \textbf{« Un conseiller vous suit »}.
+  \item Il vous fait une proposition de prix. Vous l'acceptez \emph{avant son
+        expiration}.
+  \item Vous ajoutez la quantité au panier, puis \textbf{« Passer commande »}.
+  \item Vous choisissez votre point de récupération : les frais s'affichent, le
+        total se complète.
+  \item Vous payez par Mobile Money, validez sur votre téléphone, et appuyez sur
+        le bouton qui redemande l'état.
+  \item Vous suivez la commande jusqu'à \textbf{Disponible}.
+  \item Vous vous présentez au point avec votre \textbf{code de retrait}.
+\end{enumerate}
+
+\begin{exercice}
+\textbf{Objectif.} Passer une commande complète sans aide.
+
+\medskip
+\textbf{Actions attendues}
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item Créer un compte et confirmer l'adresse e-mail.
+  \item Trouver un article \emph{par la catégorie}, pas par la recherche.
+  \item Choisir une quantité qui déclenche le \emph{deuxième} palier de prix.
+  \item Ajouter au panier et vérifier le sous-total.
+  \item Passer commande, choisir un point de récupération.
+  \item Aller jusqu'à l'écran de paiement \emph{sans le valider}.
+\end{enumerate}
+
+\medskip
+\textbf{Résultat attendu.} L'écran de paiement affiche le numéro pré-rempli et
+un total qui inclut les frais d'acheminement.
+
+\medskip
+\textbf{Critères de réussite}
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item le prix unitaire correspond bien au deuxième palier ;
+  \item le total est supérieur au sous-total du panier (les frais s'ajoutent) ;
+  \item vous savez dire pourquoi.
+\end{itemize}
+\end{exercice}
+
+\begin{checklist}
+\case Je sais créer un compte et confirmer mon adresse\\
+\case Je sais me connecter et me déconnecter\\
+\case Je sais trouver un article par catégorie et par recherche\\
+\case Je sais reconnaître un filtre actif et l'enlever\\
+\case Je sais lire une grille de paliers et dire quel prix s'applique\\
+\case Je sais distinguer le sous-total du total à payer\\
+\case Je sais ajouter au panier et vérifier mon panier\\
+\case Je sais choisir un point de récupération\\
+\case Je sais payer par Mobile Money et vérifier la confirmation\\
+\case Je sais suivre un colis, avec et sans compte\\
+\case Je sais retirer ma marchandise avec mon code\\
+\case Je sais ouvrir une conversation et répondre\\
+\case Je sais ce qu'est une proposition de prix, et qu'elle expire\\
+\case Je sais distinguer un retour d'une réclamation\\
+\case Je sais quoi faire si le paiement ne se confirme pas
+\end{checklist}
+
+% =============================================================================
+\chapter{Formation du Responsable}
+\label{ch:responsable}
+% =============================================================================
+
+\begin{roleBox}
+\textbf{Qui vous êtes.} Vous faites le travail quotidien de GARAH depuis le
+back-office : répondre aux clients, préparer les commandes, suivre les
+expéditions, confirmer les retraits, traiter l'après-vente.
+
+\medskip
+\textbf{Ce que vous pouvez faire.} \emph{Cela dépend de vos profils.} Un
+responsable n'a aucun droit en propre : un administrateur lui attribue un ou
+plusieurs \textbf{profils}, et chaque profil est un paquet de droits.
+
+\begin{attention}
+\textbf{Si un écran n'apparaît pas dans votre menu, ce n'est pas une panne.}
+C'est que vos profils ne vous en donnent pas l'accès. Le menu ne montre que ce
+que vous pouvez réellement ouvrir — un back-office qui afficherait vingt écrans
+dont quinze répondent « accès refusé » serait illisible.
+
+Pour obtenir un accès, demandez-le à un administrateur. N'essayez pas de taper
+l'adresse à la main : le serveur refusera de toute façon.
+\end{attention}
+
+\medskip
+\textbf{Ce que vous ne pouvez pas faire}
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=3pt]
+  \item créer ou modifier des comptes de l'équipe, ni attribuer des profils ;
+  \item annuler une commande déjà payée (réservé à l'administrateur) ;
+  \item consulter le journal des actions (réservé au super administrateur) ;
+  \item voir les dossiers de toute l'équipe si votre filtre est sur
+        « Mes dossiers ».
+\end{itemize}
+
+\medskip
+\textbf{Avec qui vous interagissez.} Les \textbf{clients}, par les
+conversations et l'après-vente. Vos \textbf{collègues}, par la messagerie
+interne. Votre \textbf{administrateur}, pour vos droits.
+\end{roleBox}
+
+% -----------------------------------------------------------------------------
+\section{Module 1 — Se connecter et s'orienter}
+
+\subsection{Tutoriel : votre première connexion}
+
+\begin{objectif}
+Vous connecter au back-office et comprendre l'organisation du menu.
+\end{objectif}
+
+\begin{avant}
+Un administrateur a créé votre compte et vous a attribué au moins un profil.
+Vous avez confirmé votre adresse e-mail.
+\end{avant}
+
+\etape{Se connecter}
+
+Ouvrez l'adresse du back-office et saisissez votre adresse e-mail et votre mot
+de passe.
+
+\etape{Reconnaître le menu}
+
+Le menu de gauche est rangé dans \textbf{l'ordre de la vie d'une vente}, en
+sept groupes. Ce n'est pas une liste alphabétique : on cherche d'abord la bonne
+\emph{question}, puis l'écran dedans.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  \draw[fill=garahSurfaceNuit,draw=garahAccent!35,line width=0.8pt,rounded corners=3pt]
+    (0,0) rectangle (58,132);
+
+  % Marque
+  \node[font=\small\bfseries,text=white,anchor=west] at (5,125) {GARAH};
+  \node[font=\tiny,text=garahSucces,anchor=west] at (5,120.5) {AU-DELÀ DES FRONTIÈRES};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (5,116.5) {ADMINISTRATION};
+
+  \def\grp#1#2{\node[font=\tiny\bfseries,text=garahAttenue,anchor=west] at (5,#1) {#2};}
+  \def\ent#1#2{\node[font=\scriptsize,text=white!85,anchor=west] at (9,#1) {#2};
+               \draw[garahMarque!60,fill=garahMarque!30] (6,#1) circle (0.9);}
+
+  \grp{108}{PILOTAGE}
+  \ent{102}{Tableau de bord} \ent{96}{Statistiques}
+
+  \grp{88}{LE CATALOGUE}
+  \ent{82}{Produits} \ent{76}{Catégories} \ent{70}{Dimensions}
+  \ent{64}{Stock} \ent{58}{Marchands}
+
+  \grp{50}{LES VENTES}
+  \ent{44}{Commandes} \ent{38}{Paiements} \ent{32}{Marchands à payer}
+
+  \grp{24}{L'ACHEMINEMENT}
+  \ent{18}{Expéditions} \ent{12}{Retraits} \ent{6}{Lieux, Itinéraires}
+
+  \node at (64,108) {\num{1}};
+  \node at (64,88)  {\num{2}};
+  \node at (64,50)  {\num{3}};
+  \node at (64,24)  {\num{4}};
+
+  % Les trois groupes restants, en encart
+  \draw[draw=garahBordure,fill=garahFond,rounded corners=3pt,line width=0.7pt]
+    (72,60) rectangle (140,110);
+  \node[font=\tiny\bfseries,text=garahAttenue,anchor=west] at (76,104) {APRÈS-VENTE};
+  \node[font=\scriptsize,anchor=west] at (78,99) {Réclamations};
+  \node[font=\scriptsize,anchor=west] at (78,94) {Retours};
+  \node[font=\scriptsize,anchor=west] at (78,89) {Service client};
+  \node[font=\tiny\bfseries,text=garahAttenue,anchor=west] at (76,82) {LES GENS};
+  \node[font=\scriptsize,anchor=west] at (78,77) {Clients, Équipe, Mon service};
+  \node[font=\tiny\bfseries,text=garahAttenue,anchor=west] at (76,70) {LA TRACE};
+  \node[font=\scriptsize,anchor=west] at (78,65) {Journal des actions};
+  \node at (146,85) {\num{5}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{3.1}{Le menu du back-office, rangé par question.
+\num{1} où en est-on ? \num{2} ce qu'on vend. \num{3} ce qui se vend.
+\num{4} ce qui part. \num{5} l'après-vente, les gens, et la trace.
+Les entrées absentes de \emph{votre} menu correspondent à des droits que vous
+n'avez pas.}
+
+\captureAInserer[10em]{Le menu réel de votre installation — il varie selon vos
+profils.}
+
+\begin{astuce}
+Un chiffre à côté d'une entrée du menu indique un \textbf{nombre en attente}.
+Il n'apparaît que s'il est supérieur à zéro : un « 0 » permanent cesse d'être
+lu au bout de deux jours, et le jour où il devient « 1 », personne ne le voit.
+\end{astuce}
+
+\etape{Repérer votre compte}
+
+En bas de la barre latérale : votre nom, votre rôle, et le bouton de
+déconnexion. C'est aussi par là qu'on accède à son profil.
+
+% -----------------------------------------------------------------------------
+\section{Module 2 — Le service client}
+
+C'est le cœur du travail quotidien. Une conversation passe par trois états :
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=16mm,
+  et/.style={rectangle,rounded corners=3pt,line width=1pt,
+             minimum height=11mm,text width=30mm,align=center,
+             font=\small\bfseries},
+  f/.style={-{Stealth[length=3mm]},garahAttenue,line width=1pt},
+  lg/.style={font=\scriptsize\itshape,text=garahAttenue}
+]
+\node[et,draw=garahAlerte,fill=garahAlerte!12] (a) {En attente};
+\node[et,draw=garahMarque,fill=garahMarque!10,right=of a] (b) {En cours};
+\node[et,draw=garahAttenue,fill=garahFond,right=of b] (c) {Fermée};
+\draw[f] (a) -- node[lg,above=1pt]{« Prendre »} (b);
+\draw[f] (b) -- node[lg,above=1pt]{« Clore »} (c);
+\node[lg,below=2mm of a,text width=32mm,align=center]
+  {aucun responsable\\ affecté};
+\node[lg,below=2mm of b,text width=32mm,align=center]
+  {vous en êtes\\ responsable};
+\node[lg,below=2mm of c,text width=32mm,align=center]
+  {plus de réponse\\ possible};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{3.2}{Le cycle d'une conversation.}
+
+\subsection{Tutoriel : prendre en charge une conversation}
+
+\begin{objectif}
+Repérer une demande en attente, la prendre, y répondre, puis la clore.
+\end{objectif}
+
+\begin{avant}
+Vous devez disposer du droit de consulter les conversations, et de celui de les
+prendre en charge.
+\end{avant}
+
+\etape{Ouvrir le service client}
+
+Menu \textbf{Après-vente $\rightarrow$ Service client}.
+
+\etape{Filtrer sur « En attente »}
+
+Les onglets en haut filtrent la liste. \textbf{« En attente »} montre les
+dossiers que personne n'a encore pris.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  % Onglets
+  \draw[fill=garahPrimaire,draw=none,rounded corners=8pt] (0,42) rectangle (18,50);
+  \node[font=\tiny,text=white] at (9,46) {Toutes};
+  \foreach \x/\t in {21/En attente, 50/En cours, 76/Fermée} {
+    \draw[draw=garahBordure,fill=white,rounded corners=8pt] (\x,42) rectangle (\x+24,50);
+    \node[font=\tiny,text=garahEncre] at (\x+12,46) {\t};
+  }
+  \node at (34,54) {\num{1}};
+  \draw[-{Stealth[length=2mm]},garahPrimaire,line width=0.8pt] (34,52.6) -- (33,50.5);
+
+  % Une carte de conversation
+  \draw[draw=garahPrimaire!40,fill=white,rounded corners=3pt,line width=0.8pt]
+    (0,6) rectangle (140,38);
+  \draw[garahPrimaire,line width=1.6pt] (0.8,6) -- (0.8,38);
+  \node[font=\scriptsize\bfseries,text=garahEncre,anchor=west] at (5,33)
+    {Question : Chaussure Nike};
+  \node[font=\tiny,text=garahEncre,anchor=west] at (5,28) {Dominique Bria};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (28,28) {· CLI-000001};
+  % Pastille non lus
+  \draw[fill=garahPrimaire!14,draw=none,rounded corners=6pt] (5,16) rectangle (28,22);
+  \node[font=\tiny,text=garahPrimaire] at (16.5,19) {2 non lu(s)};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (32,19) {À l'instant};
+  % Etiquette statut
+  \draw[fill=garahAlerte!18,draw=none,rounded corners=6pt] (104,31) rectangle (136,37);
+  \node[font=\tiny,text=garahAlerte!70!black] at (120,34) {EN ATTENTE};
+  % Bouton Prendre
+  \draw[fill=garahPrimaire,draw=none,rounded corners=2pt] (112,14) rectangle (136,22);
+  \node[font=\tiny,text=white] at (124,18) {Prendre};
+  \node at (146,18) {\num{3}};
+  \node at (16.5,11) {\num{2}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{3.3}{La file du service client. \num{1} l'onglet « En attente ».
+\num{2} le compteur de messages non lus — il ne compte que les messages
+\emph{du client}, jamais vos propres réponses. \num{3} le bouton « Prendre ».}
+
+\etape{Prendre la conversation}
+
+Cliquez sur \textbf{« Prendre »}. Le dossier vous est affecté et passe à
+\textbf{En cours}.
+
+\begin{attention}
+La prise en charge est \textbf{atomique} : si un collègue clique une fraction de
+seconde avant vous, c'est lui qui l'obtient et un message vous le dit. Ce n'est
+pas une erreur — c'est ce qui empêche deux conseillers de répondre en même temps
+au même client.
+\end{attention}
+
+\etape{Lire et répondre}
+
+Ouvrez le dossier. Le fil s'affiche à droite, avec le champ de réponse.
+
+\begin{attention}
+\textbf{Les messages arrivent en direct, dans les deux sens.} Vous n'avez pas à
+recharger. Si rien n'arrive alors que le client vous dit avoir écrit,
+vérifiez que la conversation vous est bien \emph{affectée} : tant qu'elle est
+« en attente », rien n'est poussé côté conseiller.
+\end{attention}
+
+\etape{Clore la conversation}
+
+Quand la demande est traitée, cliquez sur \textbf{« Clore la conversation »}.
+
+\begin{attention}
+\textbf{Une conversation fermée n'accepte plus de message.} Le client devra en
+ouvrir une nouvelle. Ne clôturez qu'une fois certain que le sujet est réglé.
+\end{attention}
+
+\begin{resultat}
+Le dossier disparaît de « En attente », apparaît dans « En cours » puis dans
+« Fermée ». Le compteur de non lus retombe à zéro.
+\end{resultat}
+
+\subsection{Que faire si ça ne fonctionne pas ?}
+
+\begin{longtable}{@{}p{4cm} p{4cm} p{6.2cm}@{}}
+\toprule
+\bfseries Problème & \bfseries Cause possible & \bfseries Solution \\
+\midrule
+\endhead
+« Prendre » ne fait rien
+  & Un collègue a été plus rapide
+  & Actualisez : le dossier est maintenant « En cours » à son nom \\[4pt]
+Le message du client n'apparaît pas en direct
+  & La conversation n'est pas encore affectée
+  & Prenez-la d'abord. Sans responsable, rien n'est poussé \\[4pt]
+Impossible de répondre
+  & La conversation est fermée
+  & Demandez au client d'en ouvrir une nouvelle \\[4pt]
+« Service client » absent du menu
+  & Vos profils ne donnent pas l'accès
+  & Demandez le droit à un administrateur \\[4pt]
+Le compteur de non lus semble faux
+  & Il ne compte que les messages \emph{du client}
+  & C'est le comportement attendu : vos réponses n'y figurent pas \\
+\bottomrule
+\end{longtable}
+
+% -----------------------------------------------------------------------------
+\section{Module 3 — Les commandes et l'acheminement}
+
+\subsection{Tutoriel : suivre et faire avancer une commande}
+
+\begin{objectif}
+Retrouver une commande, comprendre son état, et la faire progresser.
+\end{objectif}
+
+\etape{Ouvrir les commandes}
+
+Menu \textbf{Les ventes $\rightarrow$ Commandes}.
+
+\etape{Comprendre l'état}
+
+Reportez-vous à la figure~2.5 du chapitre client : le cycle est le même, vu de
+l'autre côté. Ce qui vous concerne :
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}p{3.8cm} p{11cm}@{}}
+\toprule
+État & Votre action \\
+\midrule
+En attente de paiement & Attendre. Ne préparez rien. \\
+Payée & Lancer la préparation. \\
+En préparation & Rassembler la marchandise. \\
+Prête & Rattacher à une expédition. \\
+Expédiée & Suivre le colis. \\
+Disponible & Prévenir, puis confirmer le retrait. \\
+Retirée & Terminé. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{attention}
+\textbf{Ne préparez jamais une commande non payée.} L'état « En attente de
+paiement » signifie que l'argent n'est pas arrivé. Une commande non payée peut
+être annulée par le client ou par le délai.
+\end{attention}
+
+\subsection{Tutoriel : confirmer un retrait}
+
+\begin{objectif}
+Remettre la marchandise au client, contre son code.
+\end{objectif}
+
+\begin{avant}
+La commande doit être \textbf{Disponible} au point. Le client doit vous
+présenter son \textbf{code de retrait}.
+\end{avant}
+
+\etape{Ouvrir les retraits}
+
+Menu \textbf{L'acheminement $\rightarrow$ Retraits}.
+
+\etape{Vérifier le code}
+
+Saisissez ou vérifiez le code présenté par le client.
+
+\begin{attention}
+\textbf{Le code de retrait est la seule preuve de la remise.} Sans lui, la
+parole du client s'oppose à la vôtre et personne ne peut trancher.
+
+Ne confirmez jamais un retrait « de confiance », sans code. C'est vous qui
+serez interrogé en cas de litige.
+\end{attention}
+
+\etape{Confirmer ou refuser}
+
+Deux droits distincts existent : \textbf{confirmer} un retrait et le
+\textbf{refuser}. Refusez si le code ne correspond pas.
+
+\begin{resultat}
+La commande passe à \textbf{Retirée} et le colis à \textbf{Remis}.
+\end{resultat}
+
+\subsection{Les expéditions}
+
+Une expédition suit ce cycle :
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=4mm,
+  et/.style={rectangle,rounded corners=3pt,line width=0.8pt,
+             minimum height=9mm,text width=22mm,align=center,
+             font=\scriptsize\bfseries},
+  f/.style={-{Stealth[length=2.6mm]},garahAttenue,line width=0.9pt}
+]
+\node[et,draw=garahMarque,fill=garahMarque!8] (a) {Créée};
+\node[et,draw=garahMarque,fill=garahMarque!8,right=of a] (b) {Préparée};
+\node[et,draw=garahMarque,fill=garahMarque!8,right=of b] (c) {En transit};
+\node[et,draw=garahSucces,fill=garahSucces!10,right=of c] (d) {Disponible};
+\node[et,draw=garahSucces,fill=garahSucces!10,right=of d] (e) {Remise};
+\node[et,draw=garahAlerte,fill=garahAlerte!12,below=6mm of c] (x) {Bloquée};
+\draw[f] (a) -- (b); \draw[f] (b) -- (c); \draw[f] (c) -- (d); \draw[f] (d) -- (e);
+\draw[f] (c) -- (x);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{3.4}{Le cycle d'une expédition. « Bloquée » signale un incident :
+il doit être traité, sinon le client attend sans savoir.}
+
+\begin{astuce}
+\textbf{Lieux} et \textbf{Itinéraires} sont des référentiels : on y vient
+rarement, pour ajouter un point ou un chemin. \textbf{Expéditions} et
+\textbf{Retraits} sont le travail quotidien. C'est pourquoi le menu les place
+dans cet ordre.
+\end{astuce}
+
+% -----------------------------------------------------------------------------
+\section{Module 4 — Le catalogue et le stock}
+
+\subsection{Tutoriel : ajouter un produit}
+
+\begin{objectif}
+Créer un article vendable, avec ses déclinaisons et ses paliers de prix.
+\end{objectif}
+
+\begin{avant}
+Vous devez avoir le droit de créer un produit. Le \textbf{marchand} et la
+\textbf{catégorie} doivent déjà exister.
+\end{avant}
+
+\etape{Ouvrir les produits}
+
+Menu \textbf{Le catalogue $\rightarrow$ Produits}, puis le bouton de création.
+
+\etape{Renseigner l'article}
+
+Nom, description, catégorie, marchand, photos.
+
+\begin{astuce}
+Mettez \textbf{plusieurs photos}. Une seule photo d'un article qu'on ne peut ni
+toucher ni essayer est une raison de ne pas acheter. La première photo est
+celle qui part au panier.
+\end{astuce}
+
+\etape{Créer les déclinaisons}
+
+Une déclinaison = une version achetable. C'est elle qui porte le stock et le
+prix, pas l'article.
+
+\etape{Saisir les paliers de prix}
+
+\begin{attention}
+\textbf{Le dernier palier doit être ouvert} — c'est-à-dire sans quantité
+maximale, ce qui signifie « et au-delà ».
+
+Si vous fermez le dernier palier à 10, un client qui demande 11 tombe dans un
+trou : \emph{aucun prix n'existe pour cette quantité}. La boutique refuse alors
+la vente et affiche « Prix non fixé pour cette quantité ».
+\end{attention}
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  % Bon
+  \node[font=\scriptsize\bfseries,text=garahSucces,anchor=west] at (0,26) {\ding{51} Grille correcte};
+  \draw[draw=garahSucces,fill=garahSucces!7,rounded corners=2pt] (0,14) rectangle (28,22);
+  \node[font=\tiny] at (14,18) {1 -- 6};
+  \draw[draw=garahSucces,fill=garahSucces!7,rounded corners=2pt] (31,14) rectangle (59,22);
+  \node[font=\tiny] at (45,18) {7 -- 10};
+  \draw[draw=garahSucces,fill=garahSucces!7,rounded corners=2pt] (62,14) rectangle (90,22);
+  \node[font=\tiny\bfseries] at (76,18) {11 et +};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (0,9) {Aucune quantité sans prix.};
+
+  % Mauvais
+  \node[font=\scriptsize\bfseries,text=garahDanger,anchor=west] at (100,26) {\ding{55} Grille fermée};
+  \draw[draw=garahDanger,fill=garahDanger!7,rounded corners=2pt] (100,14) rectangle (124,22);
+  \node[font=\tiny] at (112,18) {1 -- 6};
+  \draw[draw=garahDanger,fill=garahDanger!7,rounded corners=2pt] (127,14) rectangle (151,22);
+  \node[font=\tiny] at (139,18) {7 -- 10};
+  \node[font=\tiny,text=garahDanger,anchor=west] at (100,9) {À partir de 11 : plus aucun prix.};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{3.5}{À gauche, une grille dont le dernier palier est ouvert :
+toute quantité a un prix. À droite, une grille fermée à 10 : au-delà, la vente
+est impossible.}
+
+\etape{Publier}
+
+Un produit est \textbf{Brouillon}, \textbf{Publié} ou \textbf{Masqué}. Seul un
+produit publié apparaît dans la boutique.
+
+\begin{resultat}
+L'article apparaît dans le catalogue de la boutique, dans sa catégorie, avec sa
+grille de prix.
+\end{resultat}
+
+\subsection{Le stock}
+
+\begin{attention}
+Le stock se décide \textbf{par déclinaison}. Une déclinaison à zéro s'affiche
+« Épuisée » et barrée dans la boutique — elle reste \emph{visible}, car la
+masquer ferait croire qu'elle n'existe pas et enverrait chercher ailleurs.
+\end{attention}
+
+% -----------------------------------------------------------------------------
+\section{Module 5 — L'après-vente}
+
+\subsection{Traiter un retour}
+
+Ouvrez \textbf{Après-vente $\rightarrow$ Retours}. Le circuit
+(figure~2.9) est :
+\textbf{Demandé} $\rightarrow$ \textbf{Accepté} ou \textbf{Refusé}
+$\rightarrow$ \textbf{Réceptionné} $\rightarrow$ \textbf{Validé}.
+
+Chaque passage est une décision qui vous engage :
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}p{3.4cm} p{11.4cm}@{}}
+\toprule
+Étape & Ce que vous décidez \\
+\midrule
+Accepter & Vous vous engagez à reprendre la marchandise. \\
+Refuser & Vous refusez la reprise. Expliquez pourquoi au client. \\
+Réceptionner & Vous confirmez avoir \emph{physiquement} reçu l'article. \\
+Valider & Vous clôturez le dossier. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Traiter une réclamation}
+
+Ouvrez \textbf{Après-vente $\rightarrow$ Réclamations}. Une réclamation passe de
+\textbf{Ouverte} à \textbf{En cours} lorsque vous vous en saisissez, puis à
+\textbf{Résolue}.
+
+% -----------------------------------------------------------------------------
+\section{Module 6 — Travailler avec ses collègues}
+
+\subsection{La messagerie interne}
+
+Le menu \textbf{Messages} permet d'écrire à un collègue. C'est un canal
+\textbf{interne} : les clients n'y ont pas accès.
+
+\begin{attention}
+\textbf{Ne confondez pas la messagerie interne et le service client.} Le service
+client parle \emph{aux clients}. La messagerie parle \emph{entre collègues}.
+Écrire au mauvais endroit expose une discussion interne, ou laisse un client
+sans réponse.
+\end{attention}
+
+\subsection{Mon service}
+
+\textbf{Les gens $\rightarrow$ Mon service} montre les membres de votre service.
+C'est utile pour savoir à qui s'adresser.
+
+% -----------------------------------------------------------------------------
+\section{Scénario complet : traiter une nouvelle demande client}
+
+\begin{tcolorbox}[colback=garahFond,colframe=garahEncre,arc=4pt,boxrule=1pt]
+\textbf{Situation.} Un client vient de poser une question sur un article. La
+conversation est en attente depuis trois minutes.
+\end{tcolorbox}
+
+\begin{enumerate}[leftmargin=*,itemsep=4pt]
+  \item Vous vous connectez au back-office.
+  \item Le \textbf{tableau de bord} vous signale des conversations en attente.
+  \item Vous ouvrez \textbf{Après-vente $\rightarrow$ Service client}, onglet
+        \textbf{En attente}.
+  \item Vous repérez le dossier : sujet, nom du client, code client, et le
+        compteur de messages non lus.
+  \item Vous cliquez sur \textbf{Prendre}. Le dossier passe à \textbf{En cours}
+        et vous est affecté.
+  \item Vous ouvrez le fil et lisez la question.
+  \item Si besoin, vous consultez la fiche de l'article dans un autre onglet
+        pour vérifier le stock et les paliers.
+  \item Vous répondez. \textbf{Le client vous voit répondre en direct.}
+  \item S'il négocie, vous lui faites une \textbf{proposition de prix} — pensez
+        à sa date d'expiration.
+  \item Une fois la demande réglée, vous \textbf{clôturez} la conversation.
+\end{enumerate}
+
+\begin{exercice}
+\textbf{Objectif.} Traiter une conversation de bout en bout.
+
+\medskip
+\textbf{Actions attendues}
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item Depuis un second appareil, ouvrir une conversation en tant que client.
+  \item Côté back-office, la retrouver dans l'onglet « En attente ».
+  \item La prendre en charge.
+  \item Répondre, et \emph{vérifier que la réponse apparaît côté client sans
+        recharger}.
+  \item Faire répondre le client, et vérifier l'arrivée en direct côté
+        back-office.
+  \item Clore la conversation.
+\end{enumerate}
+
+\medskip
+\textbf{Résultat attendu.} Le dossier est « Fermée », le compteur de non lus est
+à zéro, et le client ne peut plus écrire dedans.
+
+\medskip
+\textbf{Critères de réussite}
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item les messages sont arrivés \emph{sans rechargement} dans les deux sens ;
+  \item le compteur n'a \emph{pas} augmenté quand vous avez répondu ;
+  \item vous savez expliquer pourquoi rien n'arrivait avant la prise en charge.
+\end{itemize}
+\end{exercice}
+
+\begin{exercice}
+\textbf{Exercice avancé — la grille de prix piégée}
+
+\medskip
+Créez un article dont le dernier palier est \textbf{fermé} à 10 pièces. Puis,
+côté boutique, essayez d'en commander 11.
+
+\medskip
+\textbf{Résultat attendu.} La boutique refuse et affiche « Prix non fixé pour
+cette quantité » ; le sélecteur de quantité s'arrête à 10 et explique pourquoi.
+
+\medskip
+\textbf{Puis corrigez} la grille en ouvrant le dernier palier, et vérifiez que
+la commande de 11 devient possible.
+
+\medskip
+\textbf{Critère de réussite.} Vous savez dire, sans regarder ce manuel, ce
+qu'une grille fermée provoque côté client.
+\end{exercice}
+
+\begin{checklist}
+\case Je sais me connecter au back-office\\
+\case Je sais expliquer pourquoi un écran n'apparaît pas dans mon menu\\
+\case Je sais retrouver un écran à partir de la question qu'il traite\\
+\case Je sais filtrer la file du service client\\
+\case Je sais prendre en charge une conversation\\
+\case Je sais ce que fait « Clore », et que c'est irréversible pour le client\\
+\case Je sais lire le compteur de messages non lus\\
+\case Je sais reconnaître l'état d'une commande et dire ce que j'en fais\\
+\case Je sais que je ne prépare jamais une commande non payée\\
+\case Je sais confirmer un retrait, et pourquoi le code est indispensable\\
+\case Je sais suivre une expédition et repérer un colis bloqué\\
+\case Je sais créer un produit, ses déclinaisons et ses paliers\\
+\case Je sais pourquoi le dernier palier doit rester ouvert\\
+\case Je sais traiter un retour et une réclamation, et les distinguer\\
+\case Je sais écrire à un collègue sans me tromper de canal
+\end{checklist}
+
+% =============================================================================
+\chapter{Formation de l'Administrateur}
+\label{ch:admin}
+% =============================================================================
+
+\begin{roleBox}
+\textbf{Qui vous êtes.} Vous ne faites pas le travail quotidien : vous
+\textbf{décidez qui le fait}. Vous créez les comptes de l'équipe, vous
+attribuez les profils, vous gérez les marchands et vous suivez l'argent dû.
+
+\medskip
+\textbf{Ce que vous pouvez faire, en plus d'un responsable}
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=3pt]
+  \item créer, modifier et désactiver des comptes internes ;
+  \item créer des profils et choisir les droits qu'ils contiennent ;
+  \item attribuer un ou plusieurs profils à un responsable ;
+  \item gérer les marchands et suivre ce qui leur est dû ;
+  \item annuler une commande déjà payée, avec remboursement ;
+  \item consulter les statistiques générales.
+\end{itemize}
+
+\medskip
+\textbf{Ce que vous ne pouvez pas faire}
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=3pt]
+  \item inventer un droit qui n'existe pas dans le catalogue des permissions ;
+  \item désactiver le compte d'amorçage — plus personne ne pourrait rendre la
+        main ;
+  \item consulter le journal des actions, réservé au super administrateur.
+\end{itemize}
+\end{roleBox}
+
+% -----------------------------------------------------------------------------
+\section{Module 1 — Comprendre le système des droits}
+
+C'est le concept le plus important de votre rôle. Il tient en une chaîne :
+
+\begin{center}
+\begin{tikzpicture}[
+  b/.style={rectangle,rounded corners=4pt,line width=1pt,
+            minimum height=15mm,text width=34mm,align=center,font=\small},
+  f/.style={-{Stealth[length=3.4mm]},garahAttenue,line width=1.2pt}
+]
+\node[b,draw=garahAccent,fill=garahAccent!8] (a)
+  {\textbf{ADMINISTRATEUR}\\[2pt]\scriptsize décide qui fait quoi};
+\node[b,draw=garahPrimaire,fill=garahPrimaire!8,right=18mm of a] (b)
+  {\textbf{PROFIL}\\[2pt]\scriptsize un paquet de droits};
+\node[b,draw=garahMarque,fill=garahMarque!8,right=18mm of b] (c)
+  {\textbf{RESPONSABLE}\\[2pt]\scriptsize fait le travail};
+\draw[f] (a) -- (b);
+\draw[f] (b) -- (c);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{4.1}{La chaîne des droits, telle qu'elle est rappelée en haut de
+l'écran « Équipe ».}
+
+\begin{retenir}
+\textbf{Un compte n'a aucun droit en propre.} Tous ses droits viennent de ses
+profils. Retirer un profil retire les droits correspondants, immédiatement.
+\end{retenir}
+
+\begin{attention}
+\textbf{Un profil ne CRÉE pas de droits : il en SÉLECTIONNE.} Vous choisissez
+parmi un catalogue de permissions existantes. C'est ce qui vous empêche
+d'inventer un droit qui ne correspondrait à rien — et qui ne garderait donc
+rien.
+\end{attention}
+
+\subsection{Tutoriel : créer un compte et lui donner des droits}
+
+\begin{objectif}
+Créer un compte interne et le rendre opérationnel.
+\end{objectif}
+
+\etape{Ouvrir l'équipe}
+
+Menu \textbf{Les gens $\rightarrow$ Équipe}.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  % Entête
+  \node[font=\small\bfseries,anchor=west] at (0,50) {Équipe};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (0,45) {3 compte(s) interne(s)};
+  \draw[fill=garahSucces,draw=none,rounded corners=2pt] (96,44) rectangle (120,52);
+  \node[font=\tiny,text=white] at (108,48) {Profils};
+  \draw[fill=garahPrimaire,draw=none,rounded corners=2pt] (123,44) rectangle (152,52);
+  \node[font=\tiny,text=white] at (137.5,48) {Nouveau compte};
+  \node at (108,57) {\num{2}};
+  \node at (137.5,57) {\num{1}};
+
+  % Bandeau explicatif
+  \draw[draw=garahBordure,fill=garahFond,rounded corners=3pt] (0,28) rectangle (152,40);
+  \node[font=\tiny\bfseries,anchor=west] at (4,36) {Comment se composent les accès};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (4,31.5)
+    {Un compte n'a pas de droits en propre : il en reçoit par ses profils.};
+
+  % Ligne de tableau
+  \draw[draw=garahBordure,fill=white,rounded corners=3pt] (0,4) rectangle (152,24);
+  \node[font=\tiny\bfseries,anchor=west] at (4,18) {Ophelie BRIA};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (4,13) {bria@gmail.com};
+  \draw[fill=garahAlerte!18,draw=none,rounded corners=5pt] (48,15) rectangle (76,21);
+  \node[font=\tiny] at (62,18) {RESPONSABLE};
+  \draw[fill=garahMarque!18,draw=none,rounded corners=5pt] (82,15) rectangle (116,21);
+  \node[font=\tiny] at (99,18) {SERVICE MARKETING};
+  \node at (99,10) {\num{3}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{4.2}{L'écran Équipe. \num{1} créer un compte. \num{2} gérer les
+profils et leurs droits. \num{3} les profils attribués à ce compte — c'est
+là que se lisent ses accès réels.}
+
+\etape{Créer le compte}
+
+Cliquez sur \textbf{« Nouveau compte »} et renseignez nom, prénom, adresse
+e-mail.
+
+\begin{attention}
+Un compte créé mais \textbf{sans profil ne peut rien faire}. Il se connectera
+et verra un menu presque vide. Ne vous arrêtez pas là.
+\end{attention}
+
+\etape{Attribuer un ou plusieurs profils}
+
+Choisissez les profils qui correspondent au métier de la personne.
+
+\begin{astuce}
+Donnez \textbf{le moins de droits possible}, quitte à en ajouter ensuite. Un
+droit accordé « au cas où » finit par servir un jour où il ne fallait pas.
+\end{astuce}
+
+\etape{Vérifier}
+
+La ligne du tableau doit afficher le niveau et les profils. Demandez à la
+personne de se connecter et de vérifier son menu.
+
+\begin{resultat}
+Le compte apparaît \textbf{Actif}, avec ses profils. La personne voit dans son
+menu exactement les écrans que ses profils autorisent.
+\end{resultat}
+
+\subsection{Que faire si ça ne fonctionne pas ?}
+
+\begin{longtable}{@{}p{4.2cm} p{4cm} p{6cm}@{}}
+\toprule
+\bfseries Problème & \bfseries Cause possible & \bfseries Solution \\
+\midrule
+\endhead
+La personne ne voit pas un écran
+  & Aucun profil ne porte le droit correspondant
+  & Ajoutez le droit au profil, ou attribuez un autre profil \\[4pt]
+Elle ne peut pas se connecter
+  & Adresse non confirmée, ou compte inactif
+  & Vérifiez la mention « NON VÉRIFIÉE » et le statut \\[4pt]
+Le profil est refusé
+  & Le profil est désactivé
+  & Réactivez-le, ou choisissez-en un autre \\[4pt]
+Impossible de désactiver un compte
+  & C'est le compte d'amorçage
+  & C'est volontaire : le désactiver ferait perdre la main à tout le monde \\
+\bottomrule
+\end{longtable}
+
+% -----------------------------------------------------------------------------
+\section{Module 2 — Les marchands et l'argent}
+
+\subsection{Les marchands}
+
+Menu \textbf{Le catalogue $\rightarrow$ Marchands}. Un marchand fournit des
+produits.
+
+\begin{astuce}
+Le marchand est rangé dans « Le catalogue » et non dans « Les gens », parce
+qu'on le choisit \textbf{en créant un produit}, pas en gérant des comptes.
+\end{astuce}
+
+\subsection{Marchands à payer}
+
+Menu \textbf{Les ventes $\rightarrow$ Marchands à payer}. C'est l'écran des
+dettes envers les marchands.
+
+\begin{retenir}
+Une vente produit \textbf{trois choses} : une commande, un encaissement, et une
+dette envers le marchand. C'est pourquoi les trois écrans se suivent dans le
+menu.
+\end{retenir}
+
+\subsection{Les statistiques}
+
+Menu \textbf{Pilotage $\rightarrow$ Statistiques}.
+
+\captureAInserer[9em]{L'écran Statistiques de votre installation.}
+
+% -----------------------------------------------------------------------------
+\section{Module 3 — Les situations particulières}
+
+\subsection{Annuler une commande payée}
+
+\begin{attention}
+\textbf{Vous êtes le seul à pouvoir le faire}, et cela déclenche un
+remboursement. Ce n'est pas une correction de saisie : c'est une décision
+financière qui laisse une trace dans le journal des actions.
+
+Vérifiez trois fois avant de valider.
+\end{attention}
+
+\subsection{Retirer un dossier à quelqu'un}
+
+Une conversation prise par un collègue absent peut être remise en attente.
+L'opération est \textbf{tracée} : retirer un dossier à quelqu'un est une
+décision qui doit pouvoir s'expliquer.
+
+\begin{exercice}
+\textbf{Objectif.} Créer un responsable opérationnel, sans lui donner trop.
+
+\medskip
+\textbf{Actions attendues}
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item Créer un profil qui ne contient que les droits du service client.
+  \item Créer un compte et lui attribuer ce seul profil.
+  \item Faire connecter la personne et \emph{lister avec elle} les écrans
+        visibles.
+  \item Vérifier qu'elle ne voit ni « Équipe », ni « Marchands à payer », ni
+        « Journal des actions ».
+\end{enumerate}
+
+\medskip
+\textbf{Critères de réussite.} Le menu de la personne contient le service
+client et rien de plus. Elle sait expliquer pourquoi.
+\end{exercice}
+
+\begin{checklist}
+\case Je sais expliquer la chaîne administrateur $\rightarrow$ profil $\rightarrow$ responsable\\
+\case Je sais créer un compte interne\\
+\case Je sais créer un profil et y choisir des droits\\
+\case Je sais attribuer et retirer un profil\\
+\case Je sais vérifier les accès réels d'une personne\\
+\case Je sais pourquoi un profil ne peut pas inventer un droit\\
+\case Je sais gérer les marchands\\
+\case Je sais lire l'écran « Marchands à payer »\\
+\case Je sais qu'annuler une commande payée est une décision financière tracée\\
+\case Je sais pourquoi le compte d'amorçage ne se désactive pas
+\end{checklist}
+
+% =============================================================================
+\chapter{Formation du Super administrateur}
+\label{ch:superadmin}
+% =============================================================================
+
+\begin{roleBox}
+\textbf{Qui vous êtes.} Vous avez tous les droits, et une responsabilité que
+les autres n'ont pas : \textbf{savoir ce qui s'est passé}.
+
+\medskip
+\textbf{Ce que vous seul pouvez faire}
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=3pt]
+  \item consulter le \textbf{journal des actions} internes ;
+  \item accéder aux écrans de surveillance et de sécurité.
+\end{itemize}
+
+\begin{attention}
+\textbf{Ce que vous voyez dans le journal est sensible.} Les clichés « avant /
+après » contiennent l'état des objets modifiés — potentiellement n'importe
+quelle donnée du système. C'est pour cette raison que la route est réservée à
+votre seul rôle.
+\end{attention}
+\end{roleBox}
+
+% -----------------------------------------------------------------------------
+\section{Module 1 — Le journal des actions}
+
+\subsection{À quelle question il répond}
+
+\begin{center}
+\begin{tcolorbox}[width=0.9\linewidth,colback=garahAccent!7,
+  colframe=garahAccent,arc=4pt,boxrule=1pt]
+\centering
+« Qui a annulé cette commande ? »\quad « Qui a mis ce taux à 30\,\% ? »\\
+« Qui a remboursé ce client ? »
+\end{tcolorbox}
+\end{center}
+
+Ces questions se posent toutes \textbf{des semaines après le geste}, quand la
+table concernée ne porte plus que son état courant.
+
+\begin{retenir}
+\textbf{Il y a trois journaux, et celui-ci n'est pas les deux autres :}
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=3pt]
+  \item ce que fait un \textbf{client} $\rightarrow$ son parcours, mesuré à part ;
+  \item les faits d'\textbf{authentification} $\rightarrow$ le journal de sécurité ;
+  \item les actions \textbf{internes} $\rightarrow$ le journal des actions.
+\end{itemize}
+Les fondre en un seul les rendrait tous les trois inexploitables : les quelques
+gestes internes d'une journée disparaîtraient sous le trafic de la boutique.
+\end{retenir}
+
+\subsection{Tutoriel : retrouver qui a fait quoi}
+
+\begin{objectif}
+Retrouver une action précise et lire exactement ce qui a changé.
+\end{objectif}
+
+\etape{Ouvrir le journal}
+
+Menu \textbf{La trace $\rightarrow$ Journal des actions}.
+
+\etape{Filtrer}
+
+Deux listes : \textbf{le geste} et \textbf{l'objet}. Elles sont peuplées par ce
+que le journal \emph{contient} — un filtre proposé rend donc toujours quelque
+chose.
+
+\etape{Déplier une ligne}
+
+Cliquez sur une ligne. Un tableau montre \textbf{uniquement les champs qui ont
+changé} : l'ancienne valeur barrée, la nouvelle mise en avant.
+
+\begin{center}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  \draw[fill=garahSurfaceNuit,draw=garahAccent!30,rounded corners=3pt] (0,0) rectangle (150,40);
+  \node[font=\tiny\bfseries,text=garahAttenue,anchor=west] at (5,35) {CE QUI A CHANGÉ};
+  \node[font=\tiny\bfseries,text=garahAttenue,anchor=west] at (62,35) {AVANT};
+  \node[font=\tiny\bfseries,text=garahAttenue,anchor=west] at (105,35) {APRÈS};
+  \draw[garahAccent!25] (5,31) -- (145,31);
+
+  \node[font=\tiny\bfseries,text=white,anchor=west] at (5,25) {Prénom};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (62,25) {Ophelie};
+  \draw[garahAttenue] (62,25) -- (74,25);
+  \draw[garahMarque,line width=1.2pt] (103,21) -- (103,29);
+  \node[font=\tiny\bfseries,text=white,anchor=west] at (105,25) {Ophélie};
+  \draw[garahAccent!25] (5,19) -- (145,19);
+
+  \node[font=\tiny\bfseries,text=white,anchor=west] at (5,13) {Statut};
+  \node[font=\tiny,text=garahAttenue,anchor=west] at (62,13) {ACTIF};
+  \draw[garahAttenue] (62,13) -- (72,13);
+  \draw[garahMarque,line width=1.2pt] (103,9) -- (103,17);
+  \node[font=\tiny\bfseries,text=white,anchor=west] at (105,13) {INACTIF};
+
+  \node at (156,25) {\num{1}};
+  \node at (156,13) {\num{2}};
+\end{tikzpicture}
+\end{center}
+\legendeIllus{5.1}{Le détail d'une action. \num{1} l'ancienne valeur, barrée et
+atténuée. \num{2} la nouvelle, portée par un liseré. Seuls les champs
+\emph{modifiés} sont affichés.}
+
+\begin{astuce}
+Si l'écran affiche \textbf{« Aucun champ n'a changé »}, ce n'est pas une panne :
+le geste a bien été enregistré, mais les valeurs sont restées les mêmes. C'est
+une information en soi.
+\end{astuce}
+
+\begin{attention}
+Les \textbf{identifiants restent des identifiants} : le journal écrit « n\textdegree~3 »
+et non le nom du profil. C'est volontaire — afficher le nom d'\emph{aujourd'hui}
+sur un geste d'il y a six mois serait un mensonge. Un journal d'audit montre ce
+qui a été enregistré, pas ce qui est vrai maintenant.
+\end{attention}
+
+\begin{resultat}
+Vous savez qui a agi, quand, sur quel objet, depuis quelle adresse, et
+exactement ce qui a changé.
+\end{resultat}
+
+\begin{checklist}
+\case Je sais ouvrir le journal des actions\\
+\case Je sais filtrer par geste et par objet\\
+\case Je sais lire un détail « avant / après »\\
+\case Je sais interpréter « Aucun champ n'a changé »\\
+\case Je sais pourquoi le journal montre des identifiants et non des noms\\
+\case Je sais distinguer les trois journaux\\
+\case Je sais que le contenu du journal est sensible et pourquoi il m'est réservé
+\end{checklist}
+
+% =============================================================================
+\chapter{Dépannage général}
+\label{ch:depannage}
+% =============================================================================
+
+Ce chapitre rassemble les problèmes qui touchent \textbf{tous les acteurs}. La
+méthode est toujours la même :
+
+\begin{center}
+\begin{tikzpicture}[
+  b/.style={rectangle,rounded corners=3pt,draw=garahMarque,fill=garahMarque!8,
+            line width=0.9pt,minimum height=11mm,text width=26mm,align=center,
+            font=\small\bfseries},
+  f/.style={-{Stealth[length=3mm]},garahAttenue,line width=1pt}
+]
+\node[b] (a) {Problème};
+\node[b,right=8mm of a] (b) {Cause possible};
+\node[b,right=8mm of b] (c) {Vérification};
+\node[b,right=8mm of c] (d) {Solution};
+\draw[f] (a) -- (b); \draw[f] (b) -- (c); \draw[f] (c) -- (d);
+\end{tikzpicture}
+\end{center}
+\legendeIllus{6.1}{La méthode de dépannage. Ne sautez pas la vérification :
+c'est elle qui distingue une vraie panne d'un malentendu.}
+
+\section{Connexion et accès}
+
+\begin{longtable}{@{}p{3.6cm} p{3.4cm} p{3.4cm} p{3.8cm}@{}}
+\toprule
+\bfseries Problème & \bfseries Cause & \bfseries Vérification & \bfseries Solution \\
+\midrule
+\endhead
+« Mauvais identifiants »
+  & Adresse ou mot de passe faux
+  & Retapez lentement
+  & Le message ne dit pas lequel des deux est faux : le préciser aiderait
+    quelqu'un qui cherche à deviner \\[4pt]
+Déconnexion inattendue
+  & La session a expiré
+  & Reconnectez-vous
+  & Normal. L'application mobile garde la session plus longtemps \\[4pt]
+« Accès refusé »
+  & Vos profils ne portent pas ce droit
+  & Regardez si l'entrée est dans votre menu
+  & Demandez le droit à un administrateur \\[4pt]
+Un écran manque au menu
+  & Même cause
+  & Comparez avec un collègue du même métier
+  & Ce n'est pas une panne : le menu ne montre que l'accessible \\[4pt]
+« NON VÉRIFIÉE » à côté du compte
+  & Adresse e-mail non confirmée
+  & Cherchez le message de confirmation
+  & Cliquez le lien reçu. Vérifiez les indésirables \\
+\bottomrule
+\end{longtable}
+
+\section{Commande et paiement}
+
+\begin{longtable}{@{}p{3.6cm} p{3.4cm} p{3.4cm} p{3.8cm}@{}}
+\toprule
+\bfseries Problème & \bfseries Cause & \bfseries Vérification & \bfseries Solution \\
+\midrule
+\endhead
+« Votre panier est vide » alors qu'il ne l'est pas
+  & Le panier n'a pas été envoyé au serveur
+  & Revenez au panier : les articles y sont-ils ?
+  & Repassez par « Passer commande ». Si le réseau a échoué, un message le dit
+    et le panier est conservé \\[4pt]
+« Le numéro de téléphone est obligatoire »
+  & Le champ Mobile Money est vide
+  & Regardez le champ au-dessus du bouton
+  & Saisissez le numéro qui recevra la demande de validation \\[4pt]
+Le paiement reste « en attente »
+  & L'opérateur n'a pas encore confirmé
+  & Avez-vous validé sur votre téléphone ?
+  & Validez, puis appuyez sur le bouton qui redemande l'état. L'écran ne se
+    rafraîchit pas seul, exprès \\[4pt]
+« Prix non fixé pour cette quantité »
+  & Aucun palier ne couvre cette quantité
+  & Regardez la grille de prix
+  & Baissez la quantité, ou contactez le marchand. Côté back-office : ouvrez
+    le dernier palier \\[4pt]
+Le bouton « + » ne répond plus
+  & Le stock ou le tarif borne
+  & Lisez le message sous le compteur
+  & Les deux cas n'appellent pas le même geste \\[4pt]
+Total différent du sous-total
+  & Les frais d'acheminement s'ajoutent
+  & Changez de point de récupération
+  & C'est normal : les frais dépendent du point \\
+\bottomrule
+\end{longtable}
+
+\section{Conversations et temps réel}
+
+\begin{longtable}{@{}p{3.6cm} p{3.4cm} p{3.4cm} p{3.8cm}@{}}
+\toprule
+\bfseries Problème & \bfseries Cause & \bfseries Vérification & \bfseries Solution \\
+\midrule
+\endhead
+Les messages n'arrivent pas en direct
+  & La conversation n'est pas affectée
+  & L'étiquette dit-elle « En attente » ?
+  & Prenez-la en charge. Sans responsable, rien n'est poussé \\[4pt]
+Rien n'arrive même après la prise en charge
+  & La connexion temps réel est coupée
+  & Rechargez la page une fois
+  & Si le rechargement affiche les messages, signalez-le : le direct est en
+    cause, pas les données \\[4pt]
+Impossible d'écrire
+  & La conversation est fermée
+  & Regardez l'étiquette
+  & Ouvrez-en une nouvelle \\[4pt]
+« Prendre » échoue
+  & Un collègue a été plus rapide
+  & Actualisez la liste
+  & C'est ce qui empêche deux réponses simultanées \\
+\bottomrule
+\end{longtable}
+
+\section{Affichage et réseau}
+
+\begin{longtable}{@{}p{3.6cm} p{3.4cm} p{3.4cm} p{3.8cm}@{}}
+\toprule
+\bfseries Problème & \bfseries Cause & \bfseries Vérification & \bfseries Solution \\
+\midrule
+\endhead
+Le catalogue paraît presque vide
+  & Un filtre est actif
+  & Cherchez la puce de filtre
+  & Enlevez-la avec sa croix \\[4pt]
+Une image ne s'affiche pas
+  & L'adresse signée a expiré
+  & Rechargez l'écran
+  & Une silhouette s'affiche à la place plutôt qu'une icône cassée \\[4pt]
+« Pas de connexion »
+  & Réseau absent ou coupé
+  & Ouvrez une autre page
+  & Réessayez. Le panier local, lui, n'est pas perdu \\
+\bottomrule
+\end{longtable}
+
+% =============================================================================
+\chapter{Guide rapide}
+\label{ch:rapide}
+% =============================================================================
+
+Cette partie s'adresse à quelqu'un \textbf{qui sait déjà}, et qui cherche
+seulement à retrouver un chemin.
+
+\section{Où trouver quoi, dans le back-office}
+
+\begin{longtable}{@{}>{\bfseries}p{5.6cm} p{9.2cm}@{}}
+\toprule
+Je veux\dots & Menu \\
+\midrule
+\endhead
+voir où on en est & Pilotage $\rightarrow$ Tableau de bord \\
+voir les chiffres & Pilotage $\rightarrow$ Statistiques \\
+ajouter un produit & Le catalogue $\rightarrow$ Produits \\
+ranger les catégories & Le catalogue $\rightarrow$ Catégories \\
+gérer les dimensions de déclinaison & Le catalogue $\rightarrow$ Dimensions \\
+vérifier un stock & Le catalogue $\rightarrow$ Stock \\
+gérer un fournisseur & Le catalogue $\rightarrow$ Marchands \\
+traiter une commande & Les ventes $\rightarrow$ Commandes \\
+vérifier un encaissement & Les ventes $\rightarrow$ Paiements \\
+savoir ce qu'on doit aux marchands & Les ventes $\rightarrow$ Marchands à payer \\
+suivre un colis & L'acheminement $\rightarrow$ Expéditions \\
+remettre la marchandise & L'acheminement $\rightarrow$ Retraits \\
+ajouter un point de récupération & L'acheminement $\rightarrow$ Lieux \\
+définir un chemin & L'acheminement $\rightarrow$ Itinéraires \\
+traiter un problème client & Après-vente $\rightarrow$ Réclamations \\
+traiter une marchandise qui revient & Après-vente $\rightarrow$ Retours \\
+répondre à un client & Après-vente $\rightarrow$ Service client \\
+consulter un client & Les gens $\rightarrow$ Clients \\
+gérer l'équipe & Les gens $\rightarrow$ Équipe \\
+voir mes collègues & Les gens $\rightarrow$ Mon service \\
+écrire à un collègue & Messages \\
+savoir qui a fait quoi & La trace $\rightarrow$ Journal des actions \\
+\bottomrule
+\end{longtable}
+
+\section{Les gestes du client, en une page}
+
+\begin{longtable}{@{}>{\bfseries}p{5.6cm} p{9.2cm}@{}}
+\toprule
+Je veux\dots & Où \\
+\midrule
+\endhead
+parcourir sans compte & Catalogue, ou une puce de catégorie sur l'accueil \\
+mettre de côté & le cœur sur une fiche ($\rightarrow$ Ma liste) \\
+commander & Panier $\rightarrow$ Passer commande \\
+payer & Choisir le point, puis Mobile Money \\
+suivre un colis \emph{sans compte} & Suivre un colis + numéro de suivi \\
+retirer & se présenter avec le \textbf{code de retrait} \\
+poser une question & « Contacter » sur une fiche article \\
+voir mes échanges & Mes discussions \\
+voir mes achats & Mes commandes \\
+renvoyer un article & Mes retours \\
+signaler un problème & Mes réclamations \\
+\bottomrule
+\end{longtable}
+
+\section{Les cinq réflexes qui évitent les erreurs}
+
+\begin{enumerate}[leftmargin=*,itemsep=5pt]
+  \item \textbf{Le dernier palier de prix reste toujours ouvert.} Sinon la
+        vente devient impossible au-delà.
+  \item \textbf{On ne prépare jamais une commande non payée.}
+  \item \textbf{On ne confirme jamais un retrait sans code.}
+  \item \textbf{On ne clôture une conversation que si le sujet est réglé} : le
+        client ne pourra plus y écrire.
+  \item \textbf{On donne le moins de droits possible}, quitte à en ajouter.
+\end{enumerate}
+
+% =============================================================================
+\chapter{Manuel du formateur}
+\label{ch:formateur}
+% =============================================================================
+
+\section{Avant la session}
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}p{4.4cm} p{10.4cm}@{}}
+\toprule
+À préparer & Pourquoi \\
+\midrule
+Un environnement d'essai & Personne n'apprend en touchant les vraies commandes. \\
+Un compte par stagiaire & Se connecter fait partie de la formation. \\
+Deux appareils par binôme & Le temps réel ne se démontre qu'à deux écrans. \\
+Un jeu de données & Au moins deux catégories, un article à plusieurs paliers,
+                    un article épuisé. \\
+Les captures de \emph{votre} installation & À insérer aux emplacements prévus. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{attention}
+\textbf{Préparez un article dont le dernier palier est fermé.} C'est le meilleur
+exercice du manuel : il montre en trente secondes pourquoi une règle de saisie
+compte, et l'erreur se voit côté client.
+\end{attention}
+
+\section{Programme proposé — deux journées}
+
+\subsection*{Journée 1 — Comprendre et vendre}
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}p{2.2cm} p{5.4cm} p{6.8cm}@{}}
+\toprule
+Durée & Séquence & Démonstration à faire \\
+\midrule
+45 min & Découvrir GARAH (ch.~\ref{ch:decouvrir}) & Le parcours d'une commande au tableau \\
+30 min & Vocabulaire & Montrer une déclinaison et une grille de paliers \\
+1 h 30 & Le client (ch.~\ref{ch:client}) & Commander en direct, du catalogue au paiement \\
+30 min & Exercice client & Chacun passe une commande \\
+1 h & Suivi et retrait & Faire circuler un code de retrait \\
+1 h & Conversations & \textbf{Deux écrans côte à côte}, temps réel \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Journée 2 — Traiter et administrer}
+
+\begin{center}
+\begin{tabular}{@{}>{\bfseries}p{2.2cm} p{5.4cm} p{6.8cm}@{}}
+\toprule
+Durée & Séquence & Démonstration à faire \\
+\midrule
+30 min & Le menu par question & Faire retrouver cinq écrans de mémoire \\
+1 h 30 & Service client (ch.~\ref{ch:responsable}) & Prendre, répondre, clore \\
+1 h & Commandes et retraits & Refuser un retrait sans code \\
+1 h & Catalogue et paliers & \textbf{L'exercice du palier fermé} \\
+1 h & Droits (ch.~\ref{ch:admin}) & Créer un profil minimal, constater le menu \\
+30 min & Journal (ch.~\ref{ch:superadmin}) & Modifier puis retrouver le geste \\
+30 min & Checklists & Validation individuelle \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Les erreurs à surveiller chez les stagiaires}
+
+\begin{longtable}{@{}p{6cm} p{8.8cm}@{}}
+\toprule
+\bfseries Erreur fréquente & \bfseries Ce qu'il faut corriger \\
+\midrule
+\endhead
+Confondre réclamation et retour
+  & Faire ouvrir les deux écrans côte à côte \\[4pt]
+Croire qu'un écran manquant est une panne
+  & Rappeler que le menu ne montre que l'accessible \\[4pt]
+Attendre que le paiement se confirme seul
+  & Montrer le bouton qui redemande l'état, et dire pourquoi il existe \\[4pt]
+Clôturer une conversation trop tôt
+  & Faire constater que le client ne peut plus écrire \\[4pt]
+Fermer le dernier palier de prix
+  & Faire l'exercice du palier fermé \\[4pt]
+Confirmer un retrait sans code
+  & Rejouer le litige : deux paroles, aucune preuve \\[4pt]
+Chercher dans le catalogue sans voir le filtre actif
+  & Faire repérer la puce de filtre \\[4pt]
+Donner tous les droits « pour simplifier »
+  & Faire lister ce que la personne peut alors casser \\
+\bottomrule
+\end{longtable}
+
+\section{Comment valider qu'un stagiaire est opérationnel}
+
+Un stagiaire est opérationnel quand il coche \textbf{toute} la checklist de son
+chapitre \emph{sans le manuel sous les yeux}, et qu'il sait répondre à ces trois
+questions :
+
+\begin{enumerate}[leftmargin=*,itemsep=4pt]
+  \item « Un écran ne s'affiche pas dans votre menu. Que faites-vous ? »\\
+        \textit{Attendu : ce n'est pas une panne ; demander le droit à un
+        administrateur.}
+  \item « Un client dit qu'il a écrit et vous ne voyez rien. Que vérifiez-vous
+        d'abord ? »\\
+        \textit{Attendu : la conversation est-elle prise en charge ?}
+  \item « Que se passe-t-il si le dernier palier de prix est fermé ? »\\
+        \textit{Attendu : au-delà, aucun prix n'existe et la vente est refusée.}
+\end{enumerate}
+
+% =============================================================================
+\chapter*{Glossaire}
+\addcontentsline{toc}{chapter}{Glossaire}
+\markboth{Glossaire}{Glossaire}
+% =============================================================================
+
+\begin{description}[leftmargin=3.4cm,style=nextline,font=\bfseries]
+  \item[Back-office] L'application interne, réservée aux responsables,
+        administrateurs et super administrateurs.
+  \item[Code de retrait] Le code unique qui prouve la remise de la marchandise.
+        Seule preuve opposable.
+  \item[Conversation] Un échange écrit entre un client et le service client.
+        Trois états : en attente, en cours, fermée.
+  \item[Déclinaison] Une version achetable d'un article. Porte le stock et le
+        prix.
+  \item[Expédition] Le voyage de colis sur un itinéraire.
+  \item[Itinéraire] Le chemin suivi, avec ses points de transit.
+  \item[Mobile Money] Le paiement par téléphone : MTN Mobile Money ou Orange
+        Money.
+  \item[Palier de prix] Une tranche de quantité associée à un prix unitaire.
+  \item[Point de récupération] Le lieu où le client retire sa marchandise.
+  \item[Profil] Un paquet de droits attribué à un responsable.
+  \item[Proposition de prix] Un prix négocié dans une conversation. Elle expire.
+  \item[Réclamation] Un problème signalé après la vente.
+  \item[Retour] Une marchandise qui revient.
+  \item[Service] Le regroupement métier d'un responsable.
+  \item[Sous-total] Le montant des articles, \emph{hors} frais d'acheminement.
+  \item[Total à payer] Le sous-total \emph{plus} les frais d'acheminement.
+\end{description}
+
+% =============================================================================
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+\markboth{Conclusion}{Conclusion}
+% =============================================================================
+
+Vous avez maintenant tout ce qu'il faut pour travailler seul.
+
+Si vous ne deviez retenir que trois choses de ce manuel :
+
+\begin{enumerate}[leftmargin=*,itemsep=6pt]
+  \item \textbf{La plateforme vous dit toujours pourquoi elle refuse.} Un
+        bouton désactivé, une entrée absente du menu, un message d'erreur : ce
+        ne sont pas des pannes, ce sont des réponses. Lisez-les avant de
+        chercher plus loin.
+  \item \textbf{Un droit, un code, un palier : chacun protège quelqu'un.} Le
+        code de retrait protège le client \emph{et} l'agent. Le palier ouvert
+        protège la vente. Le profil minimal protège l'entreprise.
+  \item \textbf{Ce qui n'est pas tracé n'existe pas.} Le journal des actions est
+        ce qui permet, des semaines plus tard, de répondre à « qui a fait ça ? »
+        autrement que par des suppositions.
+\end{enumerate}
+
+\vfill
+\begin{center}
+\begin{tcolorbox}[width=0.8\linewidth,colback=garahFond,colframe=garahMarque,
+  arc=5pt,boxrule=1.2pt]
+\centering
+{\Large\bfseries\color{garahEncre}%
+ G\textcolor{garahMarque}{AR}\textcolor{garahAccent}{AH}}\\[3pt]
+{\small\bfseries\color{garahSlogan}\MakeUppercase{Au-delà des frontières}}\\[8pt]
+\footnotesize Douala $\rightarrow$ Bangui
+\end{tcolorbox}
+\end{center}
+\vfill
+
+\end{document}
