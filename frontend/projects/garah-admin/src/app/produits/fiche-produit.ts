@@ -84,7 +84,6 @@ export class FicheProduit {
   protected readonly categorieId = signal<number | null>(null);
 
   // --- Champs d'une déclinaison ---
-  protected readonly sku = signal('');
   protected readonly libelle = signal('');
 
   // --- La création par grille ---
@@ -424,7 +423,6 @@ export class FicheProduit {
   }
 
   protected ouvrirCreationVariante(): void {
-    this.sku.set('');
     this.libelle.set('');
     this.erreurForm.set(null);
     this.formulaire.set({ quoi: 'variante-creation' });
@@ -530,7 +528,6 @@ export class FicheProduit {
   }
 
   protected ouvrirEditionVariante(v: Variante): void {
-    this.sku.set(v.sku);
     this.libelle.set(v.libelle);
     this.erreurForm.set(null);
     this.formulaire.set({ quoi: 'variante-edition', varianteId: v.id });
@@ -715,7 +712,9 @@ export class FicheProduit {
 
     this.http
       .post<Variante>(`/api/produits/${this.id()}/variantes`, {
-        sku: this.sku().trim(),
+        // ⚠️ Plus de `sku` : il est ENGENDRÉ côté serveur, à partir de la
+        // référence du produit et de l'intitulé. Saisi, il divergeait — on a
+        // trouvé « Adidas 42 » portant la référence « BL460 ».
         libelle: this.libelle().trim(),
       })
       .subscribe({
@@ -741,7 +740,9 @@ export class FicheProduit {
 
     this.http
       .put<Variante>(`/api/produits/${this.id()}/variantes/${varianteId}`, {
-        sku: this.sku().trim(),
+        // ⚠️ Plus de `sku` : il est ENGENDRÉ côté serveur, à partir de la
+        // référence du produit et de l'intitulé. Saisi, il divergeait — on a
+        // trouvé « Adidas 42 » portant la référence « BL460 ».
         libelle: this.libelle().trim(),
       })
       .subscribe({

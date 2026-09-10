@@ -221,11 +221,17 @@
                  placeholder="Taille 42 — Blanc"
                  [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
 
-          <label class="gu-libelle" for="sku">Référence</label>
-          <input id="sku" name="sku" class="gu-champ" required maxlength="50"
-                 placeholder="CHEM-OXF-01-42"
-                 [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
-          <p class="aide">Le code lu sur un bordereau. Il doit être unique.</p>
+          <!-- ⚠️ PLUS DE CHAMP « Référence ». Elle est engendrée à partir de
+               la référence du produit et de l'intitulé ci-dessus.
+
+               Saisie, elle divergeait : on a trouvé « Adidas 42 » portant la
+               référence « BL460 », qui ne se rattache à rien. Et une
+               déclinaison dont l'intitulé disait « 42 » et la référence
+               « Taille » — les deux champs inversés. -->
+          <p class="aide">
+            La référence est engendrée à partir de celle du produit et de
+            l’intitulé. Elle s’affichera dès la création.
+          </p>
 
           @if (erreurForm(); as m) {
             <p class="alerte" role="alert">{{ m }}</p>
@@ -235,7 +241,7 @@
             <button type="button" class="gu-btn gu-btn--secondaire petit"
                     (click)="fermer()">Annuler</button>
             <button type="submit" class="gu-btn gu-btn--primaire petit"
-                    [disabled]="action() !== null || !sku() || !libelle()">
+                    [disabled]="action() !== null || !libelle()">
               Créer la déclinaison
             </button>
           </div>
@@ -408,9 +414,15 @@
                               <input [id]="'lib-' + v.id" name="libelle" class="gu-champ" required maxlength="200"
                                      [ngModel]="libelle()" (ngModelChange)="libelle.set($event)" />
 
-                              <label class="gu-libelle" [for]="'sku-' + v.id">Référence</label>
-                              <input [id]="'sku-' + v.id" name="sku" class="gu-champ" required maxlength="50"
-                                     [ngModel]="sku()" (ngModelChange)="sku.set($event)" />
+                              <!-- ⚠️ La référence NE SE MODIFIE PLUS : elle
+                                   identifie, et elle figure sur des bordereaux,
+                                   des mouvements de stock et des lignes de
+                                   commande déjà passées. Ces documents-là ne se
+                                   réécrivent pas.
+
+                                   L'intitulé, lui, DÉCRIT : il se corrige. -->
+                              <p class="gu-libelle">Référence</p>
+                              <p class="aide"><code>{{ v.sku }}</code> — engendrée, non modifiable.</p>
 
                               @if (erreurForm(); as m) {
                                 <p class="alerte" role="alert">{{ m }}</p>
@@ -420,7 +432,7 @@
                                 <button type="button" class="gu-btn gu-btn--secondaire petit"
                                         (click)="fermer()">Annuler</button>
                                 <button type="submit" class="gu-btn gu-btn--primaire petit"
-                                        [disabled]="action() !== null || !sku() || !libelle()">Enregistrer</button>
+                                        [disabled]="action() !== null || !libelle()">Enregistrer</button>
                               </div>
                             </form>
                           }

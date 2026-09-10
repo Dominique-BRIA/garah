@@ -240,15 +240,44 @@ class ServiceCatalogueTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("un SKU ne peut pas être réutilisé")
-    void skuUnique() {
-        Long id = creerChemise().id();
-        catalogue.ajouterVariante(id, "CHO-M-BLE", "M / Bleu", List.of());
+    @DisplayName("⚠️ le SKU est ENGENDRÉ, plus saisi")
+    void leSkuEstEngendre() {
+        // 🎯 Saisi, il divergeait : « Adidas 42 » portait la référence
+        //    « BL460 », qui ne se rattache à rien. Engendré, il descend de la
+        //    référence du produit — on sait d'où il vient rien qu'en le lisant.
+        DetailProduit produit = creerChemise();
+        Variante v = catalogue.ajouterVariante(produit.id(), "Bleu roi", List.of());
         em.flush();
 
-        assertThatThrownBy(() -> catalogue.ajouterVariante(id, "CHO-M-BLE", "autre", List.of()))
-                .isInstanceOf(RegleMetierViolee.class)
-                .hasMessageContaining("SKU");
+        assertThat(v.getSku()).startsWith(produit.reference());
+        assertThat(v.getSku()).endsWith("BLEUROI");
+    }
+
+    @Test
+    @DisplayName("⚠️ deux intitulés identiques donnent deux SKU DISTINCTS")
+    void deuxIntitulesIdentiquesNeCollisionnentPas() {
+        // Le SKU est unique en base. Sans suffixe de rang, la seconde
+        // déclinaison échouerait à l'insertion — et l'écran afficherait une
+        // erreur de contrainte que personne ne sait lire.
+        Long id = creerChemise().id();
+        Variante premiere = catalogue.ajouterVariante(id, "Bleu", List.of());
+        Variante seconde = catalogue.ajouterVariante(id, "Bleu", List.of());
+        em.flush();
+
+        assertThat(seconde.getSku()).isNotEqualTo(premiere.getSku());
+        assertThat(seconde.getSku()).isEqualTo(premiere.getSku() + "-2");
+    }
+
+    @Test
+    @DisplayName("un intitulé vide n'ajoute pas de tiret orphelin")
+    void intituleVideNAjoutePasDeTiret() {
+        // ⚠️ « …-  » en fin de SKU se recopie sur les bordereaux et se lit
+        //    comme une troncature.
+        DetailProduit produit = creerChemise();
+        Variante v = catalogue.ajouterVariante(produit.id(), "", List.of());
+        em.flush();
+
+        assertThat(v.getSku()).doesNotEndWith("-");
     }
 
     // -------------------------------------------------------------------------

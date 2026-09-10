@@ -30,9 +30,14 @@ public class ServiceVariante {
         this.variantes = variantes;
     }
 
+    /**
+     * ⚠️ Plus de {@code sku} en paramètre : il est ENGENDRÉ à partir de la
+     * référence du produit et de l'intitulé. Saisi, il divergeait — « Adidas
+     * 42 » portait la référence {@code BL460}, qui ne se rattache à rien.
+     */
     @Transactional
-    public VueVariante ajouter(Long produitId, String sku, String libelle) {
-        Variante variante = catalogue.ajouterVariante(produitId, sku, libelle, List.of());
+    public VueVariante ajouter(Long produitId, String libelle) {
+        Variante variante = catalogue.ajouterVariante(produitId, libelle, List.of());
         return VueVariante.de(variante, produitId, List.of());
     }
 
@@ -97,19 +102,24 @@ public class ServiceVariante {
      * chemin ne l'evite.</p>
      */
     @Transactional
-    public VueVariante modifier(Long varianteId, String sku, String libelle) {
+    /**
+     * Corrige l'intitule d'une declinaison.
+     *
+     * <h2>⚠️ LE SKU NE SE MODIFIE PLUS</h2>
+     *
+     * <p>Il est engendre a la creation, et il <b>identifie</b> : il figure sur
+     * les bordereaux, dans les mouvements de stock, dans les lignes de
+     * commande deja passees. Le changer romprait le lien avec tout ce qui le
+     * cite — et ces documents-la ne se reecrivent pas.</p>
+     *
+     * <p>L'intitule, lui, DECRIT : il se corrige librement. C'est la meme
+     * repartition que {@code CompositionVariante} enonce pour la grille : « le
+     * SKU reste (il identifie), l'intitule se recalcule (il decrit) ».</p>
+     */
+    public VueVariante modifier(Long varianteId, String libelle) {
         Variante variante = variantes.findById(varianteId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Variante", varianteId));
 
-        // ⚠️ Compare a l'ancien AVANT d'interroger la base : sans ce test,
-        // enregistrer une declinaison sans toucher a son SKU la ferait entrer
-        // en collision avec elle-meme.
-        if (!variante.getSku().equals(sku) && variantes.existsBySku(sku)) {
-            throw new RegleMetierViolee("SKU_DEJA_UTILISE",
-                    "La reference " + sku + " est deja utilisee par une autre declinaison.");
-        }
-
-        variante.setSku(sku);
         variante.setLibelle(libelle);
         return recharger(varianteId);
     }

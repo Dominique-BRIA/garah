@@ -238,21 +238,67 @@ public class ServiceCatalogue {
                 "Trop de produits portent déjà ce nom. Précisez-le.");
     }
 
+    /**
+     * Ajoute une déclinaison, dont le SKU est <b>engendré</b>.
+     *
+     * <h2>🎯 Il était saisi, et il divergeait</h2>
+     *
+     * <p>{@link CompositionVariante} le disait déjà pour la grille : « une
+     * déclinaison portait l'intitulé "42" et la référence "Taille" — les deux
+     * champs inversés. Une autre, "Blanc" et "BL460" — une référence inventée
+     * qui ne se rattache à rien. »</p>
+     *
+     * <p>La grille les composait donc. Mais le chemin « une par une », lui,
+     * demandait toujours le SKU — et c'est par là que passe le back-office.
+     * On y trouvait exactement ce que ce commentaire décrivait : un article
+     * « Adidas 42 » portant la référence {@code BL460}.</p>
+     *
+     * <p>Le produit a sa référence engendrée depuis toujours ({@link
+     * ReferenceProduit}). Sa déclinaison l'hérite, suffixée de son intitulé.</p>
+     *
+     * <p>⚠️ L'unicité se règle ici, contre la base — seul endroit qui sache ce
+     * qui existe déjà. Deux « Bleu » sur le même produit donnent la même base :
+     * le second devient {@code …-BLEU-2}.</p>
+     */
     @Transactional
-    public Variante ajouterVariante(Long produitId, String sku, String libelle,
+    public Variante ajouterVariante(Long produitId, String libelle,
                                     List<ValeurAttribut> valeurs) {
         Produit produit = produits.findById(produitId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Produit", produitId));
 
-        if (variantes.existsBySku(sku)) {
-            throw new RegleMetierViolee("SKU_DEJA_UTILISE",
-                    "Le SKU " + sku + " est déjà utilisé.");
-        }
+        // Avec des valeurs d'attribut, on compose comme la grille : c'est la
+        // MÊME règle, et deux règles pour un même SKU finiraient par diverger.
+        String base = valeurs.isEmpty()
+                ? CompositionVariante.skuDepuisLibelle(produit.getReference(), libelle)
+                : CompositionVariante.sku(produit.getReference(), valeurs);
 
-        Variante variante = produit.ajouterVariante(sku, libelle, false);
+        Variante variante = produit.ajouterVariante(skuLibre(base), libelle, false);
         valeurs.forEach(variante::definirPar);
         annoncerLaNaissance(variante);
         return variante;
+    }
+
+    /**
+     * Le premier SKU libre à partir de cette base.
+     *
+     * <p>⚠️ La colonne accepte 60 caractères. On tronque AVANT de suffixer,
+     * sinon le rang tomberait hors de la colonne et deux déclinaisons
+     * porteraient le même SKU tronqué.</p>
+     */
+    private String skuLibre(String base) {
+        String court = base.length() <= 55 ? base : base.substring(0, 55);
+
+        if (!variantes.existsBySku(court)) {
+            return court;
+        }
+        for (int rang = 2; rang <= 999; rang++) {
+            String candidat = court + "-" + rang;
+            if (!variantes.existsBySku(candidat)) {
+                return candidat;
+            }
+        }
+        throw new RegleMetierViolee("SKU_INTROUVABLE",
+                "Trop de déclinaisons portent déjà cet intitulé. Précisez-le.");
     }
 
     /**

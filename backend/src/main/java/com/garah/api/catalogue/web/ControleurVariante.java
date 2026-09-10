@@ -39,7 +39,7 @@ public class ControleurVariante {
     @PreAuthorize("hasAuthority('VARIANTE_CREER')")
     public VueVariante ajouter(@PathVariable Long produitId,
                                @Valid @RequestBody DemandeVariante demande) {
-        return variantes.ajouter(produitId, demande.sku(), demande.libelle());
+        return variantes.ajouter(produitId, demande.libelle());
     }
 
     /**
@@ -68,13 +68,18 @@ public class ControleurVariante {
         return variantes.creerGrille(produitId, demande.dimensions());
     }
 
-    /** Corrige le SKU et l'intitule d'une declinaison. */
+    /**
+     * Corrige l'intitule d'une declinaison.
+     *
+     * <p>⚠️ Le SKU n'est PLUS modifiable : il identifie, et il figure sur des
+     * bordereaux et des lignes de commande qui ne se reecrivent pas.</p>
+     */
     @PutMapping("/{varianteId}")
     @PreAuthorize("hasAuthority('VARIANTE_MODIFIER')")
     public VueVariante modifier(@PathVariable Long produitId,
                                 @PathVariable Long varianteId,
                                 @Valid @RequestBody DemandeVariante demande) {
-        return variantes.modifier(varianteId, demande.sku(), demande.libelle());
+        return variantes.modifier(varianteId, demande.libelle());
     }
 
     /*
@@ -141,13 +146,21 @@ public class ControleurVariante {
                 demande.quantiteMax(), demande.prixUnitaire());
     }
 
+    /**
+     * ⚠️ PLUS DE SKU. Il est engendre a partir de la reference du produit et
+     * de l intitule — voir {@code CompositionVariante}.
+     *
+     * <p>Saisi, il divergeait : « Adidas 42 » portait la reference
+     * {@code BL460}, qui ne se rattache a rien. Le commentaire de
+     * {@code CompositionVariante} decrivait deja ce defaut pour la grille ;
+     * il valait aussi pour ce chemin-ci, par lequel passe le back-office.</p>
+     *
+     * <p>⚠️ Un client qui envoie encore un champ {@code sku} n obtient pas
+     * d erreur : Jackson ignore ce qu il ne connait pas. Le champ est
+     * simplement sans effet, ce qui est le bon comportement pendant le
+     * decalage entre deux deploiements.</p>
+     */
     public record DemandeVariante(
-            @NotBlank(message = "Le SKU est obligatoire.")
-            @Size(max = 50, message = "Le SKU ne peut pas depasser 50 caracteres.")
-            @Pattern(regexp = "^[A-Za-z0-9._-]+$",
-                     message = "Le SKU ne peut contenir que lettres, chiffres, points, tirets et underscores.")
-            String sku,
-
             @NotBlank(message = "Le libelle est obligatoire.")
             @Size(max = 200, message = "Le libelle ne peut pas depasser 200 caracteres.")
             String libelle) {

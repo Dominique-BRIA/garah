@@ -53,6 +53,31 @@ public final class CompositionVariante {
     }
 
     /**
+     * Le SKU d'une déclinaison SANS valeurs d'attribut, composé de son intitulé.
+     *
+     * <pre>
+     * référence 202020-CHA-ADIDAS · intitulé « Taille 42 »
+     *                        ──▶  202020-CHA-ADIDAS-TAILLE42
+     * </pre>
+     *
+     * <h2>🎯 Ce que cette méthode ferme</h2>
+     *
+     * <p>Toutes les déclinaisons ne viennent pas d'une grille d'attributs :
+     * beaucoup n'ont qu'un intitulé libre — « Bleu roi », « 6,5 kg », « Mini ».
+     * Pour celles-là, le SKU restait <b>saisi à la main</b>, avec exactement
+     * les conséquences décrites plus haut : « Adidas 42 » portait la référence
+     * {@code BL460}, qui ne se rattache à rien.</p>
+     *
+     * <p>⚠️ L'intitulé vide rend la référence du produit telle quelle : une
+     * déclinaison unique n'a pas besoin de suffixe, et {@code …-} traînerait
+     * en fin de SKU.</p>
+     */
+    public static String skuDepuisLibelle(String referenceProduit, String libelle) {
+        String suffixe = libelle == null ? "" : abreger(libelle);
+        return suffixe.isEmpty() ? referenceProduit : referenceProduit + "-" + suffixe;
+    }
+
+    /**
      * L'intitulé lisible : « 42 — Blanc ».
      *
      * <p>Les libellés, pas les codes : c'est ce qu'on lit sur un bordereau et
