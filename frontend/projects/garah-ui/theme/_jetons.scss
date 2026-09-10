@@ -29,6 +29,15 @@
   --accent-secondary: #3b82f6;
 
   --success: #10b981;
+
+  // ⚠️ LE VERT DU SLOGAN N EST PAS --success, et il porte DEUX valeurs.
+  //
+  //    Le vert vif tombe a 2,5 contre 1 sur le fond clair : un texte gris
+  //    pale, illisible. Cette version foncee monte a 5,4 contre 1. Une seule
+  //    valeur pour les deux themes rendrait le slogan illisible la moitie du
+  //    temps — et un slogan illisible ne sert a rien.
+  --slogan: #047857;
+
   --warning: #f59e0b;
   --danger: #ef4444;
   --info: #0ea5e9;
@@ -117,6 +126,9 @@
 // =============================================================================
 
 @mixin jetons-sombres {
+  // Sur le fond nuit, le vert vif passe a 7,4 contre 1 : c est lui qu il faut.
+  --slogan: #10b981;
+
   --fond: #0c0c14;
   --texte: #f3f4f6;
   --texte-attenue: #9ca3af;

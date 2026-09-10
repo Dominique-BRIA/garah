@@ -96,6 +96,25 @@
   color: var(--texte);
 }
 
+// ⚠️ PETIT ET ESPACE, jamais gros. Un slogan qui rivalise de taille avec le
+//    nom en prend la place : on lit la phrase et plus la marque. A 0,5 rem
+//    tres espace, il se lit comme une signature — ce qu il est.
+//
+// ⚠️ Le vert vient de --slogan et NON de --success : le vert vif tombe a 2,5
+//    contre 1 sur le fond clair, illisible. --slogan porte deux valeurs, une
+//    par theme.
+.marque__slogan {
+  margin-top: 0.2rem;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--slogan);
+  // La barre laterale fait 268 px : le slogan tient sur une ligne, et doit y
+  // rester. Coupe en deux, il cesse de se lire comme une signature.
+  white-space: nowrap;
+}
+
 .marque__role {
   font-size: 0.62rem;
   font-weight: 700;
