@@ -151,10 +151,11 @@ public class ControleurExpedition {
     @PostMapping("/{id}/colis")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('EXPEDITION_PREPARER')")
-    public VueExpedition.VueColis ajouterColis(@PathVariable Long id,
-                                               @Valid @RequestBody DemandeColis demande) {
-        return VueExpedition.VueColis.de(
-                expeditions.ajouterColis(id, demande.numeroSuivi()));
+    public VueExpedition.VueColis ajouterColis(@PathVariable Long id) {
+        // ⚠️ Plus de corps de requete : le numero de suivi est TOUJOURS engendre.
+        //    Il etait « obligatoire » ici alors que l'ecran disait de le laisser
+        //    vide — laisse vide, il etait refuse. Il n'y a plus rien a saisir.
+        return VueExpedition.VueColis.de(expeditions.ajouterColis(id));
     }
 
     /**
@@ -305,12 +306,6 @@ public class ControleurExpedition {
 
             /* L'itinéraire est facultatif : une expédition directe n'en a pas. */
             Long itineraireId) {
-    }
-
-    public record DemandeColis(
-            @NotBlank(message = "Le numéro de suivi est obligatoire.")
-            @Size(max = 50, message = "Numéro de suivi trop long.")
-            String numeroSuivi) {
     }
 
     public record DemandeLigneColis(

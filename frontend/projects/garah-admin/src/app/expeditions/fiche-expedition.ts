@@ -61,8 +61,6 @@ export class FicheExpedition {
   protected readonly lieuId = signal<number | null>(null);
   protected readonly observation = signal('');
 
-  protected readonly formColis = signal(false);
-  protected readonly numeroSuivi = signal('');
 
   constructor() {
     // `input.required` n'est pas lisible dans le constructeur : on charge au
@@ -114,37 +112,26 @@ export class FicheExpedition {
   // Ajouter un colis
   // -------------------------------------------------------------------------
 
-  protected ouvrirColis(): void {
-    this.colisOuvert.set(null);
-    this.numeroSuivi.set('');
-    this.erreurForm.set(null);
-    this.formColis.set(true);
-  }
-
   protected ajouterColis(): void {
     if (this.action()) {
       return;
     }
     this.action.set('colis');
-    this.erreurForm.set(null);
+    this.erreur.set(null);
 
-    this.http
-      .post<Colis>(`/api/expeditions/${this.id()}/colis`, {
-        // Vide = le serveur engendre le numéro. Le laisser saisir donnerait
-        // des numéros de suivi inventés, qu'aucun bordereau ne porterait.
-        numeroSuivi: this.numeroSuivi().trim() || null,
-      })
-      .subscribe({
-        next: () => {
-          this.action.set(null);
-          this.formColis.set(false);
-          this.charger();
-        },
-        error: (e: unknown) => {
-          this.action.set(null);
-          this.erreurForm.set(messageErreur(e, 'Le colis n’a pas pu être ajouté.'));
-        },
-      });
+    // Aucun corps : le serveur engendre le numéro de suivi, toujours. Ce qui
+    // est engendré n'est jamais saisi — et un numéro tapé à la main pourrait
+    // confondre O et 0, ou appartenir déjà à un autre colis.
+    this.http.post<Colis>(`/api/expeditions/${this.id()}/colis`, null).subscribe({
+      next: () => {
+        this.action.set(null);
+        this.charger();
+      },
+      error: (e: unknown) => {
+        this.action.set(null);
+        this.erreur.set(messageErreur(e, 'Le colis n’a pas pu être ajouté.'));
+      },
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -152,7 +139,6 @@ export class FicheExpedition {
   // -------------------------------------------------------------------------
 
   protected ouvrirEvenement(colisId: number): void {
-    this.formColis.set(false);
     this.typeEvenement.set('ARRIVEE');
     this.lieuId.set(this.lieux()[0]?.id ?? null);
     this.observation.set('');
@@ -162,7 +148,6 @@ export class FicheExpedition {
 
   protected fermer(): void {
     this.colisOuvert.set(null);
-    this.formColis.set(false);
     this.erreurForm.set(null);
   }
 

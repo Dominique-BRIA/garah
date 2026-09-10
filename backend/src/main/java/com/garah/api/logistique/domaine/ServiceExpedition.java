@@ -127,8 +127,21 @@ public class ServiceExpedition {
         return creee;
     }
 
+    /**
+     * Ajoute un colis, avec un numéro de suivi ENGENDRÉ.
+     *
+     * <h2>🎯 Ce qui est engendré n'est jamais saisi</h2>
+     *
+     * <p>Le numéro était facultatif ici, obligatoire dans la route, et l'écran
+     * disait « laisser vide pour l'engendrer » : laissé vide, il était refusé
+     * par la route avant d'atteindre ce service. Il n'y a plus rien à saisir.</p>
+     *
+     * <p>C'est le numéro de GARAH : le guichet public le lit, le client le
+     * reçoit dans ses discussions. Saisi à la main, il pourrait contenir un O
+     * pour un 0, ou déjà appartenir à un autre colis.</p>
+     */
     @Transactional
-    public Colis ajouterColis(Long expeditionId, String numeroSuivi) {
+    public Colis ajouterColis(Long expeditionId) {
         Expedition expedition = chargerExpedition(expeditionId);
 
         if (expedition.getStatut() != StatutExpedition.CREEE
@@ -137,7 +150,7 @@ public class ServiceExpedition {
                     "On ne peut plus ajouter de colis à une expédition déjà partie.");
         }
 
-        return expedition.ajouterColis(numeroSuivi == null ? genererNumeroSuivi() : numeroSuivi);
+        return expedition.ajouterColis(genererNumeroSuivi());
     }
 
     /**

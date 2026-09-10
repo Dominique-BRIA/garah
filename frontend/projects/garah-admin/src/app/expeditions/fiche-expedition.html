@@ -29,9 +29,17 @@
            colis. Ce n'est pas lui la vérité — c'est le parcours ci-dessous. -->
       <span class="gu-badge" [class]="badge(e.statut)">{{ libelle(e.statut) }}</span>
 
-      @if (session.peut('EXPEDITION_PREPARER') && !formColis() && colisOuvert() === null) {
-        <button type="button" class="gu-btn gu-btn--secondaire" (click)="ouvrirColis()">
-          <gu-icone nom="plus" /> Ajouter un colis
+      <!-- ⚠️ UN clic, pas de formulaire : le numéro de suivi est engendré par le
+           serveur. Le champ disait « laisser vide pour l'engendrer », et le
+           serveur refusait le champ vide — il n'y a plus rien à saisir. -->
+      @if (session.peut('EXPEDITION_PREPARER') && colisOuvert() === null) {
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="ajouterColis()" [disabled]="action() !== null">
+          @if (action() === 'colis') {
+            <gu-icone nom="circle-notch" tourne /> Ajout…
+          } @else {
+            <gu-icone nom="plus" /> Ajouter un colis
+          }
         </button>
       }
 
@@ -65,34 +73,6 @@
     </div>
   }
 
-  @if (formColis()) {
-    <form class="gu-carte encart" (ngSubmit)="ajouterColis()" novalidate>
-      <label class="gu-libelle" for="suivi">Numéro de suivi</label>
-      <input id="suivi" name="numeroSuivi" class="gu-champ" maxlength="40"
-             placeholder="Laisser vide pour l’engendrer"
-             [ngModel]="numeroSuivi()" (ngModelChange)="numeroSuivi.set($event)" />
-      <!-- Vide = engendré. Un numéro saisi à la main serait un numéro inventé,
-           qu'aucun bordereau ne porterait. -->
-      <p class="aide">
-        Laissé vide, il est engendré — sans caractère ambigu, pour être lu
-        et recopié sans erreur.
-      </p>
-
-      @if (erreurForm(); as m) {
-        <p class="alerte" role="alert">{{ m }}</p>
-      }
-
-      <div class="boutons">
-        <button type="button" class="gu-btn gu-btn--secondaire" (click)="fermer()">Annuler</button>
-        <button type="submit" class="gu-btn gu-btn--primaire" [disabled]="action() !== null">
-          @if (action() === 'colis') {
-            <gu-icone nom="circle-notch" tourne /> Ajout…
-          } @else { Ajouter le colis }
-        </button>
-      </div>
-    </form>
-  }
-
   @if (e.colis.length === 0) {
     <div class="gu-carte etat">
       <gu-icone nom="box-open" class="etat__icone" />
@@ -113,7 +93,7 @@
           </div>
 
           @if (session.peut('TRANSIT_ENREGISTRER_DEPART')
-               && colisOuvert() === null && !formColis()) {
+               && colisOuvert() === null) {
             <button type="button" class="lien-action" (click)="ouvrirEvenement(c.id)">
               <gu-icone nom="plus" /> Enregistrer une étape
             </button>

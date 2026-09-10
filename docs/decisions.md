@@ -2437,3 +2437,32 @@ fil est ouvert, et recharge sa propre liste au même moment.
 > `ecrans-communs.scss` : les deux styles s'additionnaient, et elle héritait
 > de leurs 3,5 rem. Elle s'appelle désormais `.compteur-menu`. C'est la
 > deuxième collision de ce nom, après l'écran des attributs.
+
+---
+
+## D-49 — Le numéro de suivi d'un colis ne se saisit plus
+
+**Le défaut.** Pour ajouter un colis, la fiche d'expédition ouvrait un
+formulaire avec un champ « Numéro de suivi » et l'aide « Laisser vide pour
+l'engendrer ». Laissé vide, il était refusé : « Le numéro de suivi est
+obligatoire. »
+
+Trois couches disaient trois choses différentes :
+
+| Couche | Ce qu'elle disait |
+|---|---|
+| L'écran | Laissez vide, il sera engendré |
+| La route | Obligatoire (`@NotBlank`) |
+| Le service | Engendré s'il est absent |
+
+La route refusait la demande avant qu'elle atteigne le service, qui aurait
+pourtant fait exactement ce que l'écran promettait.
+
+**La règle.** Ce qui est engendré n'est jamais saisi. Le numéro de suivi est
+**toujours** engendré par le serveur, sans caractère ambigu. C'est celui de
+GARAH : le guichet public le lit, et le client le reçoit dans ses
+discussions (D-43). Tapé à la main, il pourrait confondre O et 0, ou
+appartenir déjà à un autre colis.
+
+Le formulaire a disparu : « Ajouter un colis » ajoute le colis en un clic.
+La route n'attend plus aucun corps, et le service n'accepte plus de numéro.

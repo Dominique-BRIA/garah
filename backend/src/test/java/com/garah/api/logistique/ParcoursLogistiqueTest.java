@@ -183,7 +183,7 @@ class ParcoursLogistiqueTest {
 
     private Colis colisPret() {
         Expedition expedition = expeditions.creer(commande.id(), entrepotId, pointRetraitId, null);
-        Colis colis = expeditions.ajouterColis(expedition.getId(), null);
+        Colis colis = expeditions.ajouterColis(expedition.getId());
         Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
         expeditions.remplir(colis.getId(), ligneId, 10);
         return colis;
@@ -215,7 +215,7 @@ class ParcoursLogistiqueTest {
     @DisplayName("on ne met pas en colis plus que ce qui a été commandé")
     void triggerQuantiteColis() {
         Expedition expedition = expeditions.creer(commande.id(), entrepotId, pointRetraitId, null);
-        Colis colis = expeditions.ajouterColis(expedition.getId(), null);
+        Colis colis = expeditions.ajouterColis(expedition.getId());
         Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
 
         // I-35, porté par un TRIGGER : SQL ne sait pas exprimer « la somme des
@@ -869,11 +869,11 @@ class ParcoursLogistiqueTest {
         assertThat(statutCommande()).isEqualTo("EN_PREPARATION");
 
         // Deux colis, et la moitie de la marchandise seulement : pas pret.
-        Colis premier = expeditions.ajouterColis(envoi.getId(), null);
+        Colis premier = expeditions.ajouterColis(envoi.getId());
         expeditions.remplir(premier.getId(), ligneId, 4);
         assertThat(statutCommande()).isEqualTo("EN_PREPARATION");
 
-        Colis second = expeditions.ajouterColis(envoi.getId(), null);
+        Colis second = expeditions.ajouterColis(envoi.getId());
         expeditions.remplir(second.getId(), ligneId, 6);
         assertThat(statutCommande()).as("tout est en colis").isEqualTo("PRETE");
 
