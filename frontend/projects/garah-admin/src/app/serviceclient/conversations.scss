@@ -179,3 +179,66 @@
 // close. ⚠️ Elles s'enroulent au lieu de déborder — sur un écran étroit, deux
 // noms complets dépassent largement la largeur du panneau.
 .aide__part { white-space: nowrap; }
+
+// --- La demande de clôture ---------------------------------------------------
+//
+// 🎯 Elle remplace `confirm()`, la boîte grise du navigateur. Celle-ci bloquait,
+//    ce qui était sa qualité — mais après quelques ouvertures, le navigateur
+//    propose « empêcher cette page de créer d'autres boîtes de dialogue ». Une
+//    fois la case cochée, `confirm()` rend `false` SANS RIEN AFFICHER : le
+//    bouton « Clore » devient silencieusement mort.
+//
+// ⚠️ Au-dessus du panneau latéral (z-index 70), sinon la demande s'ouvrirait
+//    DERRIÈRE la conversation qu'elle concerne.
+.voile--dialogue { z-index: 80; }
+
+.dialogue {
+  position: fixed;
+  z-index: 90;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--verre-bordure);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ombre-large);
+
+  h2 {
+    margin: 0 0 0.9rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+}
+
+.dialogue__texte {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--texte-attenue);
+
+  strong { color: var(--texte); font-weight: 600; }
+}
+
+// Ce qui n'a jamais été ouvert. En rouge, parce que c'est la seule chose de ce
+// dialogue qu'on regrette après coup.
+.dialogue__alerte {
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  color: var(--danger);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+// ⚠️ « Annuler » à GAUCHE, l'action destructrice à droite : c'est l'ordre que
+//    la main connaît, et inverser les deux fait cliquer à côté.
+.dialogue__boutons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}

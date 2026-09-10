@@ -240,3 +240,68 @@
     }
   </aside>
 }
+
+<!-- ============================================================================
+     La demande de clôture, DANS l'interface
+     ============================================================================
+     🎯 C'était `confirm()`, la boîte grise du navigateur. Elle bloquait, ce
+        qui était sa qualité — mais après quelques ouvertures, le navigateur
+        propose « empêcher cette page de créer d'autres boîtes de dialogue ».
+        Une fois la case cochée, `confirm()` rend `false` SANS RIEN AFFICHER :
+        le bouton « Clore » devient silencieusement mort.
+
+     ⚠️ DEUX étapes, et la seconde apporte un fait neuf. Deux écrans identiques
+        n'apprendraient qu'à cliquer deux fois.
+     ============================================================================ -->
+@if (etapeCloture() > 0) {
+  <div class="voile voile--dialogue" (click)="annulerCloture()" aria-hidden="true"></div>
+
+  <div class="dialogue" role="alertdialog" aria-modal="true"
+       aria-labelledby="cloture-titre">
+    @if (etapeCloture() === 1) {
+      <h2 id="cloture-titre">Clore la conversation ?</h2>
+      <p class="dialogue__texte">
+        La conversation avec <strong>{{ clientDuFil() }}</strong> ne pourra plus
+        recevoir de réponse, ni de sa part ni de la vôtre.
+      </p>
+      <p class="dialogue__texte">
+        Pour reprendre l’échange, il devra en ouvrir une nouvelle et tout
+        réexpliquer.
+      </p>
+
+      <div class="dialogue__boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="annulerCloture()">Annuler</button>
+        <button type="button" class="gu-btn gu-btn--primaire"
+                (click)="etapeSuivante()">Continuer</button>
+      </div>
+    } @else {
+      <h2 id="cloture-titre">Dernier mot</h2>
+
+      @if (nonLusDuFil(); as n) {
+        <!-- ⚠️ LE FAIT QUI JUSTIFIE LA SECONDE ÉTAPE. Clore sur un message non
+             lu est précisément l'erreur à attraper : le client a écrit,
+             personne n'a lu, et on ferme la porte. -->
+        <p class="dialogue__alerte" role="alert">
+          {{ n }} message(s) de {{ clientDuFil() }} n’ont jamais été ouverts.
+        </p>
+        <p class="dialogue__texte">
+          Clore maintenant, c’est fermer sans les avoir lus.
+        </p>
+      } @else {
+        <p class="dialogue__texte">
+          Tous les messages de {{ clientDuFil() }} ont été lus.
+        </p>
+      }
+
+      <div class="dialogue__boutons">
+        <button type="button" class="gu-btn gu-btn--secondaire"
+                (click)="annulerCloture()">Annuler</button>
+        <!-- Le libellé nomme le geste, pas « OK » : c'est ce qu'on relit avant
+             de cliquer. -->
+        <button type="button" class="gu-btn gu-btn--danger"
+                (click)="confirmerCloture()">Clore définitivement</button>
+      </div>
+    }
+  </div>
+}

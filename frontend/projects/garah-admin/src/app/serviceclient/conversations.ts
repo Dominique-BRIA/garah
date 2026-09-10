@@ -88,6 +88,16 @@ export class Conversations {
   // --- Le fil ouvert ---
   protected readonly ouverte = signal<Conversation | null>(null);
   protected readonly propositions = signal<readonly Proposition[]>([]);
+
+  /**
+   * L'étape de la demande de clôture : 0 fermée, 1 la conséquence, 2 le
+   * dernier mot.
+   *
+   * <p>⚠️ DEUX étapes, et la seconde apporte un fait neuf — le nombre de
+   * messages jamais ouverts. Deux écrans identiques n'apprendraient qu'à
+   * cliquer deux fois.</p>
+   */
+  protected readonly etapeCloture = signal(0);
   protected readonly chargementFil = signal(false);
   protected readonly action = signal<string | null>(null);
   protected readonly erreurFil = signal<string | null>(null);
@@ -223,6 +233,9 @@ export class Conversations {
   // -------------------------------------------------------------------------
 
   protected ouvrir(c: ResumeConversation): void {
+    // ⚠️ Sans cela, une demande de clôture laissée ouverte se reporterait sur
+    //    la conversation SUIVANTE — et on clorait la mauvaise.
+    this.etapeCloture.set(0);
     this.chargementFil.set(true);
     this.erreurFil.set(null);
     this.ouverte.set(null);
@@ -260,6 +273,7 @@ export class Conversations {
     this.propositions.set([]);
     this.erreurFil.set(null);
     this.chargementFil.set(false);
+    this.etapeCloture.set(0);
   }
 
   // -------------------------------------------------------------------------
@@ -344,48 +358,70 @@ export class Conversations {
    * projet pour ce qui ne se rattrape pas. À remplacer par une boîte de
    * dialogue maison, jamais par rien.</p>
    */
+  /**
+   * Demande confirmation, DANS l'interface.
+   *
+   * <h2>🎯 Pourquoi ce n'est plus `confirm()`</h2>
+   *
+   * <p>La boîte grise du navigateur bloquait, ce qui était sa qualité. Mais
+   * elle a un défaut qu'on ne découvre qu'en production : après quelques
+   * ouvertures, le navigateur propose « empêcher cette page de créer d'autres
+   * boîtes de dialogue ». Une fois la case cochée, <b>{@code confirm()} rend
+   * `false` sans rien afficher</b> — et le bouton « Clore » devient
+   * silencieusement mort. On clique, rien ne se passe, et rien ne l'explique.</p>
+   *
+   * <p>Le commentaire qui accompagnait ces `confirm()` disait déjà : « à
+   * remplacer par une boîte de dialogue maison, jamais par rien ».</p>
+   */
   protected clore(): void {
     const fil = this.ouverte();
     if (!fil || this.action()) {
       return;
     }
+    this.etapeCloture.set(1);
+  }
 
-    // ⚠️ Le nom vient de la LISTE : le détail d'une conversation ne le porte
-    //    pas, il n'a que l'identifiant du client. Nommer la personne dans une
-    //    confirmation sans retour vaut le détour — « clore la conversation
-    //    avec ce client » se lit sans se relire.
-    const client = this.liste().find((c) => c.id === fil.id)?.clientNom ?? 'ce client';
+  /** Le nom du client, pour nommer la personne dans la demande. */
+  protected clientDuFil(): string {
+    const fil = this.ouverte();
+    if (!fil) {
+      return 'ce client';
+    }
+    // ⚠️ Le nom vient de la LISTE : le détail ne porte que l'identifiant.
+    return this.liste().find((c) => c.id === fil.id)?.clientNom ?? 'ce client';
+  }
 
-    // Premier rappel : la CONSÉQUENCE, dite en clair.
-    const premier =
-      `Clore la conversation avec ${client} ?
+  /**
+   * Les messages du client jamais ouverts.
+   *
+   * <p>⚠️ C'est le SEUL fait que la première étape ne pouvait pas dire, et
+   * c'est ce qui justifie une seconde. Clore sur un message non lu est
+   * précisément l'erreur à attraper : le client a écrit, personne n'a lu, et
+   * on ferme la porte.</p>
+   */
+  protected nonLusDuFil(): number {
+    const fil = this.ouverte();
+    if (!fil) {
+      return 0;
+    }
+    return fil.messages.filter((m) => !m.lu && !this.deLEquipe(m.expediteurId)).length;
+  }
 
-`
-      + 'Elle ne pourra plus recevoir de réponse, ni de sa part ni de la '
-      + 'vôtre. Pour reprendre l’échange, il devra en ouvrir une nouvelle et '
-      + 'tout réexpliquer.';
-    if (!confirm(premier)) {
+  protected annulerCloture(): void {
+    this.etapeCloture.set(0);
+  }
+
+  protected etapeSuivante(): void {
+    this.etapeCloture.set(2);
+  }
+
+  /** Le geste, une fois les deux étapes franchies. */
+  protected confirmerCloture(): void {
+    const fil = this.ouverte();
+    if (!fil || this.action()) {
       return;
     }
-
-    // Second rappel : ce que la première boîte ne pouvait pas dire.
-    const nonLus = fil.messages.filter(
-      (m) => !m.lu && !this.deLEquipe(m.expediteurId),
-    ).length;
-
-    const second = nonLus > 0
-      ? `⚠️ ${nonLus} message(s) de ${client} n’ont jamais été ouverts.
-
-`
-        + 'Clore maintenant, c’est fermer sans les avoir lus. Confirmez-vous ?'
-      : `Tous les messages de ${client} ont été lus.
-
-`
-        + 'Confirmez-vous la clôture définitive ?';
-    if (!confirm(second)) {
-      return;
-    }
-
+    this.etapeCloture.set(0);
     this.action.set('cloture');
     this.erreurFil.set(null);
 
