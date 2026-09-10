@@ -2406,3 +2406,34 @@ l'argent est entré. Son remboursement se compte le jour où il sort.
 > d'acheminement appartiennent à la commande, pas à un produit. Le total de
 > ce classement ne vaut donc pas le chiffre d'affaires, et l'écran le nomme
 > « Montant vendu » pour qu'on ne les compare pas.
+
+---
+
+## D-48 — Ouvrir une conversation la lit
+
+**Le défaut.** Aucun code ne marquait jamais un message comme lu. La méthode
+`marquerLu()` existait, et personne ne l'appelait. Les « N non lus » des
+conversations et la pastille « Service client » du menu ne pouvaient donc que
+**monter** : un agent pouvait lire dix fois le même fil, il restait « à
+traiter ».
+
+**La règle.** Ouvrir un fil marque comme lus les messages de **l'autre
+partie**, dans la même transaction que sa lecture :
+
+| Qui ouvre | Ce qui passe à « lu » |
+|---|---|
+| L'équipe | Les messages du client |
+| Le client | Les messages de l'équipe et du système (expéditeur nul, V34) |
+
+On ne marque jamais ses propres messages : la réponse d'un agent reste non
+lue pour le client tant qu'il ne l'a pas ouverte.
+
+**La pastille redescend à l'instant.** Le menu ne recomptait que toutes les
+deux minutes. L'écran des conversations le lui demande désormais dès qu'un
+fil est ouvert, et recharge sa propre liste au même moment.
+
+> ⚠️ **La pastille avait aussi la taille d'une tuile.** Elle s'appelait
+> `.pastille`, comme les grands ronds d'icônes que définit
+> `ecrans-communs.scss` : les deux styles s'additionnaient, et elle héritait
+> de leurs 3,5 rem. Elle s'appelle désormais `.compteur-menu`. C'est la
+> deuxième collision de ce nom, après l'écran des attributs.

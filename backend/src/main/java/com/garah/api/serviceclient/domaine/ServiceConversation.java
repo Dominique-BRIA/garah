@@ -659,4 +659,29 @@ public class ServiceConversation {
         }
     }
 
+
+    /**
+     * Ouvrir un fil : marquer lu ce que l'AUTRE a écrit, puis le montrer.
+     *
+     * <h2>🎯 Le défaut que ceci ferme</h2>
+     *
+     * <p>Aucun code ne marquait jamais un message comme lu. Les « N non lus »
+     * des conversations et la pastille du menu ne pouvaient que monter : un
+     * agent pouvait lire dix fois le même fil, il restait « à traiter ».</p>
+     *
+     * <p>⚠️ Dans la MÊME transaction que la lecture du fil : ce qu'on montre et
+     * ce qu'on marque lu sont les mêmes messages. Marquer après aurait pu
+     * marquer lu un message arrivé entre les deux, jamais affiché.</p>
+     *
+     * @param parLeClient vrai si c'est le client qui ouvre ; faux pour l'équipe.
+     */
+    @Transactional
+    public VueConversation lire(Long conversationId, boolean parLeClient) {
+        if (parLeClient) {
+            conversations.marquerLusParLeClient(conversationId);
+        } else {
+            conversations.marquerLusParLEquipe(conversationId);
+        }
+        return vue(conversationId);
+    }
 }

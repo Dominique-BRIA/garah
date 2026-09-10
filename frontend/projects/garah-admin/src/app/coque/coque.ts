@@ -1,7 +1,9 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Avatar, Icone, Marque, ServiceSession, ServiceTheme, libelleRole } from 'garah-ui';
+
+import { SignalNonLus } from '../serviceclient/signal-non-lus';
 
 interface Entree {
   readonly libelle: string;
@@ -38,6 +40,7 @@ const RYTHME_NON_LUS_MS = 120_000;
 export class Coque implements OnDestroy {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
+  private readonly signalNonLus = inject(SignalNonLus);
 
   private minuteur?: ReturnType<typeof setInterval>;
   protected readonly session = inject(ServiceSession);
@@ -200,7 +203,13 @@ export class Coque implements OnDestroy {
   }
 
   constructor() {
-    this.compterLesNonLus();
+    // Compte au démarrage, puis À CHAQUE DEMANDE — une conversation ouverte
+    // passe ses messages à « lu », et la pastille doit le montrer à l'instant,
+    // pas au prochain passage du minuteur, deux minutes plus tard.
+    effect(() => {
+      this.signalNonLus.demandes();
+      untracked(() => this.compterLesNonLus());
+    });
     this.minuteur = setInterval(() => this.compterLesNonLus(), RYTHME_NON_LUS_MS);
   }
 

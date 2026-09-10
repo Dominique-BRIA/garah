@@ -49,7 +49,7 @@
                    permanent à côté d'un libellé cesse d'être lu au bout de deux
                    jours — et le jour où il devient « 1 », personne ne le voit. -->
               @if (entree.compteur && entree.compteur() > 0) {
-                <span class="pastille"
+                <span class="compteur-menu"
                       [attr.aria-label]="entree.compteur() + ' en attente'">
                   {{ entree.compteur() }}
                 </span>

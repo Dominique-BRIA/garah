@@ -363,7 +363,10 @@ nav a {
 // ⚠️ Poussée à DROITE, jamais collée au libellé : les entrées du menu ont des
 //    noms de longueurs différentes, et une pastille qui suit le texte donne
 //    une colonne en dents de scie.
-.pastille {
+// ⚠️ Pas « .pastille » : ecrans-communs.scss definit deja une classe de ce
+//    nom pour les GRANDS ronds d icones des tableaux de bord. Les deux
+//    s additionnaient, et la pastille du menu heritait de leur taille.
+.compteur-menu {
   margin-left: auto;
   min-width: 1.3rem;
   padding: 0.05rem 0.4rem;

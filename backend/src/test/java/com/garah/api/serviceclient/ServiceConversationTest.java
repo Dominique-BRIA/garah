@@ -409,6 +409,40 @@ class ServiceConversationTest {
         assertThat(nonLusDe(convId)).isEqualTo(2);
     }
 
+    @Test
+    @DisplayName("⚠️ ouvrir le fil marque lus les messages de l'autre partie — et eux seuls")
+    void ouvrirLeFilLeMarqueLu() {
+        // 🎯 LE DEFAUT QUE CE TEST FERME.
+        //
+        //    Aucun code ne marquait jamais un message comme lu : marquerLu()
+        //    existait, et personne ne l'appelait. Les « N non lus » et la
+        //    pastille du menu ne pouvaient que MONTER — un agent lisait dix
+        //    fois le meme fil, il restait « a traiter ».
+        Long convId = conversations.ouvrir(clientId, "Livraison", "Bonjour").getId();
+        conversations.repondre(convId, clientId, "Vous êtes là ?");
+        Long agent = responsableIds.getFirst();
+        conversations.repondre(convId, agent, "Oui, je regarde.");
+        assertThat(nonLusDe(convId)).isEqualTo(2);
+
+        // L'EQUIPE ouvre le fil : les deux messages du client sont lus.
+        conversations.lire(convId, false);
+        assertThat(nonLusDe(convId)).isZero();
+
+        // ⚠️ Mais la reponse de l'agent reste non lue pour le CLIENT : c'est
+        //    lui qui doit la lire, pas l'equipe qui l'a ecrite.
+        assertThat(nonLusEnBase(convId)).isEqualTo(1);
+
+        conversations.lire(convId, true);
+        assertThat(nonLusEnBase(convId)).isZero();
+    }
+
+    /** Tous les messages non lus du fil, quel qu'en soit l'auteur. */
+    private long nonLusEnBase(Long convId) {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM message WHERE conversation_id = ? AND lu = false",
+                Long.class, convId);
+    }
+
     private long nonLusDe(Long convId) {
         return vueDe(convId).nonLus();
     }

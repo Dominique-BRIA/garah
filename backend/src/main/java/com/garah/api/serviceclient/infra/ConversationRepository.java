@@ -183,4 +183,41 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
             """)
     int prendre(@Param("conversationId") Long conversationId,
                 @Param("prisPar") Long prisPar);
+
+    /**
+     * L'équipe a ouvert le fil : les messages DU CLIENT sont lus.
+     *
+     * <p>🎯 Rien ne marquait jamais un message comme lu. {@code marquerLu()}
+     * existait, et personne ne l'appelait : les compteurs de non-lus ne
+     * pouvaient que monter, et la pastille du menu ne redescendait jamais.</p>
+     *
+     * <p>⚠️ Seuls les messages du client. Ceux de l'équipe et du système ne
+     * sont pas « à lire » pour l'équipe ; les marquer ici effacerait
+     * l'information qu'ils portent pour le client.</p>
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE message SET lu = true
+             WHERE conversation_id = :conversationId
+               AND lu = false
+               AND expediteur_id = (SELECT client_id FROM conversation WHERE id = :conversationId)
+            """, nativeQuery = true)
+    int marquerLusParLEquipe(@Param("conversationId") Long conversationId);
+
+    /**
+     * Le client a ouvert le fil : les messages de l'ÉQUIPE et du SYSTÈME sont lus.
+     *
+     * <p>⚠️ {@code expediteur_id IS NULL} compte : c'est une annonce du système
+     * (V34). Une comparaison seule l'oublierait — NULL n'est différent de
+     * rien, pas même du client.</p>
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE message SET lu = true
+             WHERE conversation_id = :conversationId
+               AND lu = false
+               AND (expediteur_id IS NULL
+                    OR expediteur_id <> (SELECT client_id FROM conversation WHERE id = :conversationId))
+            """, nativeQuery = true)
+    int marquerLusParLeClient(@Param("conversationId") Long conversationId);
 }

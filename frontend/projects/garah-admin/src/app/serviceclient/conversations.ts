@@ -20,6 +20,7 @@ import {
   StatutConversation,
   STATUTS_CONVERSATION,
 } from 'garah-ui';
+import { SignalNonLus } from './signal-non-lus';
 
 /**
  * La file personnelle des messages de conversation.
@@ -66,6 +67,7 @@ const TAILLE_PAGE = 25;
 })
 export class Conversations {
   private readonly http = inject(HttpClient);
+  private readonly signalNonLus = inject(SignalNonLus);
   private readonly tempsReel = inject(ServiceTempsReel);
   private readonly destruction = inject(DestroyRef);
   protected readonly session = inject(ServiceSession);
@@ -247,6 +249,10 @@ export class Conversations {
         this.chargementFil.set(false);
         this.ouverte.set(fil);
         this.chargerPropositions(c.id);
+        // ⚠️ APRÈS l'ouverture : c'est elle qui passe les messages à « lu ».
+        //    Recharger la liste ou le menu avant montrerait l'ancien nombre.
+        this.charger();
+        this.signalNonLus.demander();
       },
       error: (e: unknown) => {
         this.chargementFil.set(false);

@@ -109,7 +109,9 @@ public class ControleurConversation {
     public VueConversation fil(@PathVariable Long id,
                                @AuthenticationPrincipal Jwt jeton) {
         conversations.exigerAcces(id, utilisateur(jeton), estClient(jeton));
-        return conversations.vue(id);
+        // Ouvrir le fil, c'est le LIRE : ce que l'autre partie a écrit passe
+        // a « lu ». Sans cela, aucun compteur de non-lus ne redescendait.
+        return conversations.lire(id, estClient(jeton));
     }
 
     /**
