@@ -14,7 +14,10 @@ import java.util.List;
 public record VueConversation(
         Long id,
         Long clientId,
-        Long responsableId,
+        Long prisPar,
+        String prisParNom,
+        Long closPar,
+        String closParNom,
         String sujet,
         String statut,
         Instant dateCreation,
@@ -22,15 +25,30 @@ public record VueConversation(
         Instant dateCloture,
         List<VueMessage> messages) {
 
-    /** Sans les messages : pour les listes et les files d'attente. */
+    /**
+     * ⚠️ Les NOMS sont facultatifs : les routes qui n'ont pas de quoi les
+     * résoudre passent {@code null}. Un identifiant nu à l'écran ne dit rien à
+     * personne, mais un écran vide ne dit rien non plus — mieux vaut le
+     * numéro que rien, et le nom quand on l'a.
+     */
     public static VueConversation resume(Conversation c) {
-        return new VueConversation(c.getId(), c.getClientId(), c.getResponsableId(),
+        return resume(c, null, null);
+    }
+
+    public static VueConversation resume(Conversation c, String prisParNom, String closParNom) {
+        return new VueConversation(c.getId(), c.getClientId(),
+                c.getPrisPar(), prisParNom, c.getClosPar(), closParNom,
                 c.getSujet(), c.getStatut().name(), c.getDateCreation(),
                 c.getDateAffectation(), c.getDateCloture(), List.of());
     }
 
     public static VueConversation complete(Conversation c) {
-        return new VueConversation(c.getId(), c.getClientId(), c.getResponsableId(),
+        return complete(c, null, null);
+    }
+
+    public static VueConversation complete(Conversation c, String prisParNom, String closParNom) {
+        return new VueConversation(c.getId(), c.getClientId(),
+                c.getPrisPar(), prisParNom, c.getClosPar(), closParNom,
                 c.getSujet(), c.getStatut().name(), c.getDateCreation(),
                 c.getDateAffectation(), c.getDateCloture(),
                 c.getMessages().stream().map(VueMessage::de).toList());

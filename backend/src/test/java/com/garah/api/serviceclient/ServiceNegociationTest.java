@@ -217,7 +217,7 @@ class ServiceNegociationTest {
     @DisplayName("on ne négocie plus dans une conversation fermée")
     void conversationFermee() {
         conversations.prendre(conversationId, responsableId);
-        conversations.fermer(conversationId);
+        conversations.fermer(conversationId, responsableId);
         em.flush();
 
         assertThatThrownBy(() -> negociation.proposer(conversationId, varianteId, 5,

@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Avatar, Icone, Marque, ServiceSession, ServiceTheme, libelleRole } from 'garah-ui';
 
@@ -8,6 +9,15 @@ interface Entree {
   readonly icone: string;
   /** Le code de `cas_utilisation` qui donne accès. Vide = toujours visible. */
   readonly permission?: string;
+
+  /**
+   * Ce qui attend derrière cette entrée, s'il y a lieu.
+   *
+   * <p>⚠️ Un SIGNAL, pas un nombre : le menu est rendu une fois et vit pendant
+   * toute la session. Une valeur figée resterait celle du chargement, et la
+   * pastille mentirait dès la première minute.</p>
+   */
+  readonly compteur?: () => number;
 }
 
 /** Un paquet d'écrans qui répondent à la même question. */
@@ -16,18 +26,39 @@ interface Groupe {
   readonly entrees: readonly Entree[];
 }
 
+/** Deux minutes : un rappel de fond, pas un suivi de conversation. */
+const RYTHME_NON_LUS_MS = 120_000;
+
 @Component({
   selector: 'ga-coque',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, Icone, Avatar, Marque],
   templateUrl: './coque.html',
   styleUrl: './coque.scss',
 })
-export class Coque {
+export class Coque implements OnDestroy {
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
+
+  private minuteur?: ReturnType<typeof setInterval>;
   protected readonly session = inject(ServiceSession);
   protected readonly theme = inject(ServiceTheme);
 
   protected readonly menuOuvert = signal(false);
+
+  /**
+   * Les messages de clients jamais ouverts.
+   *
+   * <h2>🎯 Ce que la pastille change</h2>
+   *
+   * <p>Sans elle, on n'ouvre « Service client » que si l'on y pense — et un
+   * client qui attend depuis trois jours attend parce que personne n'a eu
+   * l'idée de regarder.</p>
+   *
+   * <p>⚠️ Rafraîchie à un rythme LENT. Ce n'est pas une conversation ouverte
+   * qu'on suit : c'est un rappel de fond. Une requête toutes les cinq secondes
+   * sur chaque écran du back-office coûterait bien plus qu'elle ne rapporte.</p>
+   */
+  protected readonly conversationsNonLues = signal(0);
 
   /** `SUPER_ADMIN` n'a rien à faire à l'écran : on affiche le libellé. */
   protected readonly role = libelleRole;
@@ -116,7 +147,15 @@ export class Coque {
       entrees: [
         { libelle: 'Reclamations', chemin: '/reclamations', icone: 'life-ring', permission: 'RECLAMATION_CONSULTER' },
         { libelle: 'Retours', chemin: '/retours', icone: 'arrows-rotate', permission: 'RETOUR_CONSULTER' },
-        { libelle: 'Service client', chemin: '/conversations', icone: 'comments', permission: 'CONVERSATION_CONSULTER' },
+        // ⚠️ La pastille compte les messages de CLIENTS jamais ouverts, pas la
+        //    file d'attente. Une conversation peut être prise et porter quand
+        //    même un message qu'on n'a pas lu — c'est même le cas courant : on
+        //    prend, on répond, le client renchérit, et personne ne le voit.
+        {
+          libelle: 'Service client', chemin: '/conversations', icone: 'comments',
+          permission: 'CONVERSATION_CONSULTER',
+          compteur: () => this.conversationsNonLues(),
+        },
       ],
     },
     {
@@ -158,6 +197,34 @@ export class Coque {
         entrees: g.entrees.filter((e) => !e.permission || this.session.peut(e.permission)),
       }))
       .filter((g) => g.entrees.length > 0);
+  }
+
+  constructor() {
+    this.compterLesNonLus();
+    this.minuteur = setInterval(() => this.compterLesNonLus(), RYTHME_NON_LUS_MS);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.minuteur);
+  }
+
+  /**
+   * ⚠️ SILENCIEUSE. Une erreur réseau sur un compteur de menu ne doit rien
+   * afficher : on garde la dernière valeur connue plutôt que de faire clignoter
+   * un message d'erreur au-dessus de l'écran qu'on est en train d'utiliser.
+   *
+   * <p>⚠️ Et seulement pour qui a le droit de consulter : sans cette garde, un
+   * responsable sans accès au service client déclencherait un 403 toutes les
+   * deux minutes, dans le journal du serveur.</p>
+   */
+  private compterLesNonLus(): void {
+    if (!this.session.peut('CONVERSATION_CONSULTER')) {
+      return;
+    }
+    this.http.get<number>('/api/conversations/non-lus').subscribe({
+      next: (n) => this.conversationsNonLues.set(n),
+      error: () => undefined,
+    });
   }
 
   protected seDeconnecter(): void {

@@ -25,8 +25,8 @@ public class AffectationConversation {
     @Column(name = "conversation_id", nullable = false)
     private Long conversationId;
 
-    @Column(name = "responsable_id", nullable = false)
-    private Long responsableId;
+    @Column(name = "pris_par", nullable = false)
+    private Long prisPar;
 
     /** {@code null} si le responsable a pris la conversation lui-meme. */
     @Column(name = "affecte_par")
@@ -44,9 +44,9 @@ public class AffectationConversation {
     protected AffectationConversation() {
     }
 
-    public AffectationConversation(Long conversationId, Long responsableId, Long affectePar) {
+    public AffectationConversation(Long conversationId, Long prisPar, Long affectePar) {
         this.conversationId = conversationId;
-        this.responsableId = responsableId;
+        this.prisPar = prisPar;
         this.affectePar = affectePar;
     }
 
@@ -57,7 +57,7 @@ public class AffectationConversation {
 
     public Long getId() { return id; }
     public Long getConversationId() { return conversationId; }
-    public Long getResponsableId() { return responsableId; }
+    public Long getPrisPar() { return prisPar; }
     public Long getAffectePar() { return affectePar; }
     public String getMotif() { return motif; }
     public Instant getDateDebut() { return dateDebut; }

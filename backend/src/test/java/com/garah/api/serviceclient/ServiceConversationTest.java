@@ -148,8 +148,69 @@ class ServiceConversationTest {
         Conversation conv = conversations.ouvrir(clientId, "Question prix", "Bonjour, quel est votre meilleur prix ?");
 
         assertThat(conv.getStatut()).isEqualTo(StatutConversation.WAITING);
-        assertThat(conv.getResponsableId()).isNull();
+        assertThat(conv.getPrisPar()).isNull();
         assertThat(conversations.fileDAttente()).extracting(Conversation::getId).contains(conv.getId());
+    }
+
+    @Test
+    @DisplayName("⚠️ répondre à un client PREND la conversation, sans geste de plus")
+    void repondrePrendLaMain() {
+        // 🎯 L'exiger en deux gestes — « Prendre », puis « Répondre » —
+        //    produisait des conversations traitées mais toujours affichées
+        //    WAITING : un collègue les rouvrait pour découvrir qu'on y avait
+        //    déjà répondu.
+        Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
+        Long agent = responsableIds.getFirst();
+
+        conversations.repondre(convId, agent, "Bonjour, je regarde cela.");
+
+        Conversation apres = conversations.parId(convId);
+        assertThat(apres.getStatut()).isEqualTo(StatutConversation.ASSIGNED);
+        assertThat(apres.getPrisPar()).isEqualTo(agent);
+        assertThat(conversations.historique(convId)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("⚠️ mais le CLIENT ne prend jamais sa propre conversation")
+    void leClientNePrendPasLaSienne() {
+        // Sans cette garde, la file d'attente se viderait toute seule dès le
+        // deuxième message du client — et plus personne ne verrait qu'il
+        // attend.
+        Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
+
+        conversations.repondre(convId, clientId, "Je précise ma question.");
+
+        Conversation apres = conversations.parId(convId);
+        assertThat(apres.getStatut()).isEqualTo(StatutConversation.WAITING);
+        assertThat(apres.getPrisPar()).isNull();
+    }
+
+    @Test
+    @DisplayName("⚠️ répondre à une conversation DÉJÀ prise ne change pas de main")
+    void uneConversationPriseNeChangePasDeMain() {
+        Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
+        Long premier = responsableIds.getFirst();
+        conversations.prendre(convId, premier);
+
+        // Un collègue qui répond en renfort n'en devient pas le titulaire :
+        // la réaffectation est un geste explicite, avec son motif.
+        conversations.repondre(convId, responsableIds.get(1), "Je complète.");
+
+        assertThat(conversations.parId(convId).getPrisPar()).isEqualTo(premier);
+    }
+
+    @Test
+    @DisplayName("⚠️ on sait QUI a clos, pas seulement quand")
+    void onSaitQuiAClos() {
+        Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
+        Long agent = responsableIds.getFirst();
+        conversations.prendre(convId, agent);
+
+        conversations.fermer(convId, agent);
+
+        Conversation close = conversations.parId(convId);
+        assertThat(close.getClosPar()).isEqualTo(agent);
+        assertThat(close.getDateCloture()).isNotNull();
     }
 
     @Test
@@ -160,7 +221,7 @@ class ServiceConversationTest {
         Conversation prise = conversations.prendre(convId, responsableIds.getFirst());
 
         assertThat(prise.getStatut()).isEqualTo(StatutConversation.ASSIGNED);
-        assertThat(prise.getResponsableId()).isEqualTo(responsableIds.getFirst());
+        assertThat(prise.getPrisPar()).isEqualTo(responsableIds.getFirst());
         assertThat(conversations.historique(convId)).hasSize(1);
     }
 
@@ -231,7 +292,7 @@ class ServiceConversationTest {
         Conversation apres = conversations.reaffecter(convId, responsableIds.get(1), responsableIds.get(2),
                 "Absence prolongée du responsable");
 
-        assertThat(apres.getResponsableId()).isEqualTo(responsableIds.get(1));
+        assertThat(apres.getPrisPar()).isEqualTo(responsableIds.get(1));
         // Les deux affectations sont conservées : qui l'a eue, quand, pourquoi.
         assertThat(conversations.historique(convId)).hasSize(2);
     }
@@ -241,7 +302,7 @@ class ServiceConversationTest {
     void pasDeReponseApresFermeture() {
         Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
         conversations.prendre(convId, responsableIds.getFirst());
-        conversations.fermer(convId);
+        conversations.fermer(convId, responsableIds.getFirst());
 
         assertThatThrownBy(() -> conversations.repondre(convId, clientId, "Encore une question"))
                 .isInstanceOf(ConflitEtat.class);
@@ -253,8 +314,8 @@ class ServiceConversationTest {
         Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
         conversations.prendre(convId, responsableIds.getFirst());
 
-        conversations.fermer(convId);
-        assertThat(conversations.fermer(convId).estFermee()).isTrue();
+        conversations.fermer(convId, responsableIds.getFirst());
+        assertThat(conversations.fermer(convId, responsableIds.getFirst()).estFermee()).isTrue();
     }
 
     @Test
@@ -268,7 +329,7 @@ class ServiceConversationTest {
         assertThatThrownBy(() -> conversations.evaluer(convId, 5, "Parfait"))
                 .isInstanceOf(ConflitEtat.class);
 
-        conversations.fermer(convId);
+        conversations.fermer(convId, responsableIds.getFirst());
         assertThat(conversations.evaluer(convId, 5, "Parfait").getNote()).isEqualTo(5);
 
         assertThatThrownBy(() -> conversations.evaluer(convId, 1, "Finalement non"))
@@ -281,7 +342,7 @@ class ServiceConversationTest {
     void noteInvalide() {
         Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
         conversations.prendre(convId, responsableIds.getFirst());
-        conversations.fermer(convId);
+        conversations.fermer(convId, responsableIds.getFirst());
 
         assertThatThrownBy(() -> conversations.evaluer(convId, 0, null))
                 .isInstanceOf(RegleMetierViolee.class);

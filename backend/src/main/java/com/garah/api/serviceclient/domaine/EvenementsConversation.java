@@ -35,7 +35,7 @@ public final class EvenementsConversation {
      *                     si c est le client qui ecrit a l equipe. Le sens
      *                     decide du destinataire, et il ne se devine pas au
      *                     dernier moment.
-     * @param responsableId celui qui suit le dossier. Nul tant que personne ne
+     * @param prisPar celui qui suit le dossier. Nul tant que personne ne
      *                      l a pris : le message part alors a l equipe.
      * @param extrait       les premiers mots, POUR LA NOTIFICATION. Une
      *                      banniere affiche deux lignes ; y mettre le message
@@ -46,14 +46,14 @@ public final class EvenementsConversation {
      *                      plus a chaque phrase echangee.
      */
     public record MessageDansConversation(Long conversationId, Long clientId,
-                                          Long responsableId, Long expediteurId,
+                                          Long prisPar, Long expediteurId,
                                           String extrait, boolean versLeClient,
                                           VueMessage message) {
     }
 
     /** Une proposition de prix a ete faite, ou acceptee. */
     public record PropositionDePrix(Long conversationId, Long clientId,
-                                    Long responsableId, boolean versLeClient,
+                                    Long prisPar, boolean versLeClient,
                                     boolean acceptee) {
     }
 }

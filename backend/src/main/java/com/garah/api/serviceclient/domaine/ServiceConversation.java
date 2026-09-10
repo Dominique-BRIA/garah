@@ -14,6 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,9 +40,14 @@ public class ServiceConversation {
 
     /** Pour NOMMER le client dans les listes, jamais pour le modifier. */
     private final ServiceClient clients;
+
+    /** ⚠️ `utilisateur` et non `responsable` : depuis V33, un administrateur
+     *  peut prendre et clore une conversation. */
+    private final com.garah.api.iam.infra.UtilisateurRepository utilisateurs;
     private final org.springframework.context.ApplicationEventPublisher evenements;
 
-    public ServiceConversation(ConversationRepository conversations,
+    public ServiceConversation(com.garah.api.iam.infra.UtilisateurRepository utilisateurs,
+                               ConversationRepository conversations,
                                AffectationConversationRepository affectations,
                                EvaluationConversationRepository evaluations,
                                ServiceClient clients,
@@ -46,6 +56,7 @@ public class ServiceConversation {
         this.affectations = affectations;
         this.evaluations = evaluations;
         this.clients = clients;
+        this.utilisateurs = utilisateurs;
         this.evenements = evenements;
     }
 
@@ -87,17 +98,17 @@ public class ServiceConversation {
      * pas, et fait cliquer trois fois de plus.</p>
      */
     @Transactional
-    public Conversation prendre(Long conversationId, Long responsableId) {
+    public Conversation prendre(Long conversationId, Long prisPar) {
         // Sans cette garde, un responsable nul produirait une conversation
         // ASSIGNED sans responsable — que la contrainte
         // conversation_responsable_coherent refuse, avec un message
         // incompréhensible pour l'appelant.
-        if (responsableId == null) {
+        if (prisPar == null) {
             throw new RegleMetierViolee("RESPONSABLE_OBLIGATOIRE",
                     "Une conversation doit être prise par un responsable identifié.");
         }
 
-        int lignes = conversations.prendre(conversationId, responsableId);
+        int lignes = conversations.prendre(conversationId, prisPar);
 
         if (lignes == 0) {
             conversations.findById(conversationId)
@@ -107,7 +118,7 @@ public class ServiceConversation {
                     "Un autre responsable a déjà pris cette conversation.");
         }
 
-        affectations.save(new AffectationConversation(conversationId, responsableId, null));
+        affectations.save(new AffectationConversation(conversationId, prisPar, null));
         return charger(conversationId);
     }
 
@@ -119,7 +130,7 @@ public class ServiceConversation {
      * l'évaluation du responsable (§20).</p>
      */
     @Transactional
-    public Conversation reaffecter(Long conversationId, Long nouveauResponsableId,
+    public Conversation reaffecter(Long conversationId, Long nouveauPrisPar,
                                    Long adminId, String motif) {
         if (motif == null || motif.isBlank()) {
             throw new RegleMetierViolee("MOTIF_OBLIGATOIRE",
@@ -143,10 +154,10 @@ public class ServiceConversation {
         conversation.remettreEnAttente();
         conversations.saveAndFlush(conversation);
 
-        if (nouveauResponsableId != null) {
-            conversations.prendre(conversationId, nouveauResponsableId);
+        if (nouveauPrisPar != null) {
+            conversations.prendre(conversationId, nouveauPrisPar);
             affectations.save(new AffectationConversation(
-                    conversationId, nouveauResponsableId, adminId));
+                    conversationId, nouveauPrisPar, adminId));
         }
 
         return charger(conversationId);
@@ -164,6 +175,28 @@ public class ServiceConversation {
                     "Cette conversation est fermée. Ouvrez-en une nouvelle.");
         }
 
+        // 🎯 LA MAIN SE PREND TOUTE SEULE.
+        //
+        //    Répondre à un client, c'est prendre la conversation. L'exiger en
+        //    deux gestes — « Prendre », puis « Répondre » — produisait des
+        //    conversations traitées mais toujours affichées WAITING : un
+        //    collègue les rouvrait pour découvrir qu'on y avait déjà répondu.
+        //
+        // ⚠️ Seulement si l'expéditeur N'EST PAS le client : sans cette garde,
+        //    le client se verrait attribuer sa propre conversation dès son
+        //    deuxième message, et la file d'attente se viderait toute seule.
+        boolean estLeClient = expediteurId.equals(conversation.getClientId());
+        boolean prise = !estLeClient && conversation.prendreSiLibre(expediteurId);
+
+        if (prise) {
+            // ⚠️ Journalisée SEULEMENT quand la prise a lieu : une ligne par
+            //    réponse remplirait l'historique de doublons.
+            // `affectePar` reste nul : personne ne l a affectee, elle a ete
+            // prise. C est ce que fait deja `prendre()`.
+            affectations.save(new AffectationConversation(
+                    conversationId, expediteurId, null));
+        }
+
         Message message = conversation.ajouterMessage(expediteurId, contenu);
 
         // ⚠️ VIDER AVANT DE PUBLIER. ajouterMessage() ne fait qu ajouter a
@@ -177,12 +210,12 @@ public class ServiceConversation {
         //    plus tard, dans l'écouteur, demanderait de recharger la
         //    conversation — et de se tromper le jour où un responsable est
         //    aussi client.
-        boolean versLeClient = !expediteurId.equals(conversation.getClientId());
+        boolean versLeClient = !estLeClient;
 
         evenements.publishEvent(new EvenementsConversation.MessageDansConversation(
                 conversationId,
                 conversation.getClientId(),
-                conversation.getResponsableId(),
+                conversation.getPrisPar(),
                 expediteurId,
                 extrait(contenu),
                 versLeClient,
@@ -203,17 +236,27 @@ public class ServiceConversation {
         return propre.length() <= 120 ? propre : propre.substring(0, 117) + "…";
     }
 
+    /**
+     * Ferme, en retenant QUI ferme.
+     *
+     * <p>🎯 {@code date_cloture} disait quand. Rien ne disait qui — et c'est
+     * la seule question qu'on pose en relisant une conversation close.</p>
+     *
+     * <p>⚠️ Reste idempotent : fermer deux fois n'est pas une erreur. Mais la
+     * SECONDE fermeture ne réécrit pas l'auteur : celui qui a fermé est celui
+     * qui a fermé le premier.</p>
+     */
     @Transactional
-    public Conversation fermer(Long conversationId) {
+    public Conversation fermer(Long conversationId, Long parQui) {
         Conversation conversation = charger(conversationId);
         if (conversation.estFermee()) {
-            return conversation;   // idempotent : fermer deux fois n'est pas une erreur
+            return conversation;
         }
 
         affectations.findByConversationIdAndDateFinIsNull(conversationId)
                 .ifPresent(a -> a.cloturer("Conversation close"));
 
-        conversation.fermer();
+        conversation.fermer(parQui);
         return conversation;
     }
 
@@ -264,6 +307,18 @@ public class ServiceConversation {
                 .map(VueConversation::resume);
     }
 
+    /**
+     * Une conversation, telle qu'elle est en base.
+     *
+     * <p>⚠️ Rendue au DOMAINE, pas en vue : c'est ce dont les tests ont besoin
+     * pour éprouver un statut ou un auteur de clôture. Les écrans, eux,
+     * passent par {@code vue()}.</p>
+     */
+    @Transactional(readOnly = true)
+    public Conversation parId(Long conversationId) {
+        return charger(conversationId);
+    }
+
     @Transactional(readOnly = true)
     public List<Conversation> fileDAttente() {
         return conversations.findByStatutOrderByDateCreationAsc(StatutConversation.WAITING);
@@ -287,15 +342,15 @@ public class ServiceConversation {
      * « laquelle attend ma réponse ? », et un total de messages n'y répond
      * pas.</p>
      *
-     * @param responsableId non nul pour ne voir que ses propres dossiers.
+     * @param prisPar non nul pour ne voir que ses propres dossiers.
      *                      Sans ce filtre, un agent parcourrait les
      *                      conversations de toute l'équipe pour retrouver les
      *                      siennes.
      */
     @Transactional(readOnly = true)
-    public Page<ResumeConversation> administration(StatutConversation statut, Long responsableId,
+    public Page<ResumeConversation> administration(StatutConversation statut, Long prisPar,
                                                    Pageable pagination) {
-        Page<Conversation> page = conversations.administration(statut, responsableId, pagination);
+        Page<Conversation> page = conversations.administration(statut, prisPar, pagination);
 
         if (page.isEmpty()) {
             // `IN ()` sur une collection vide est refusé par certains
@@ -310,13 +365,61 @@ public class ServiceConversation {
                 .stream()
                 .collect(Collectors.toMap(ligne -> (Long) ligne[0], ligne -> ligne));
 
+        // ⚠️ EN UN APPEL, pour toute la page. Résoudre un nom par ligne, c'est
+        //    vingt requêtes sur vingt conversations — invisible ici, coûteux
+        //    en production.
+        Map<Long, String> internes = nomsInternes(page.stream()
+                .flatMap(c -> Stream.of(c.getPrisPar(), c.getClosPar()))
+                .filter(Objects::nonNull)
+                .toList());
+
         return page.map(c -> {
             Object[] total = totaux.get(c.getId());
             return ResumeConversation.de(c, noms.get(c.getClientId()),
+                    nomDe(internes, c.getPrisPar()), nomDe(internes, c.getClosPar()),
                     total == null ? 0 : ((Number) total[1]).longValue(),
                     total == null ? 0 : ((Number) total[2]).longValue(),
                     total == null ? null : (Instant) total[3]);
         });
+    }
+
+    /**
+     * ⚠️ Une conversation en attente n'a été prise par PERSONNE : son
+     * identifiant est nul. Et {@code Map.of()} refuse une clé nulle même en
+     * LECTURE — elle lève, là où {@code HashMap} rendrait {@code null}. Trois
+     * tests l'ont attrapé ; en production, c'était la liste des conversations
+     * qui tombait dès qu'une seule attendait.
+     */
+    private static String nomDe(Map<Long, String> noms, Long id) {
+        return id == null ? null : noms.get(id);
+    }
+
+    /**
+     * Les noms des comptes internes cités par une conversation.
+     *
+     * <p>⚠️ Un identifiant absent de la carte rend {@code null}, et c'est
+     * voulu : un compte supprimé laisse une conversation dont on sait qu'elle
+     * a été prise, sans savoir par qui. Mieux vaut le dire que d'inventer.</p>
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> nomsInternes(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+        return utilisateurs.nomsPar(ids).stream().collect(Collectors.toMap(
+                l -> (Long) l[0],
+                l -> {
+                    String prenom = (String) l[1];
+                    String nom = (String) l[2];
+                    return prenom == null || prenom.isBlank() ? nom : prenom + " " + nom;
+                },
+                (unNom, autre) -> unNom));
+    }
+
+    /** Les messages de clients jamais ouverts, pour la pastille du menu. */
+    @Transactional(readOnly = true)
+    public long totalNonLus() {
+        return conversations.totalNonLus();
     }
 
     @Transactional(readOnly = true)

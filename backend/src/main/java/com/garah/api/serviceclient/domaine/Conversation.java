@@ -28,8 +28,8 @@ public class Conversation {
     private Long clientId;
 
     /** {@code null} tant que la conversation est en attente. */
-    @Column(name = "responsable_id")
-    private Long responsableId;
+    @Column(name = "pris_par")
+    private Long prisPar;
 
     @Column(length = 200)
     private String sujet;
@@ -46,6 +46,22 @@ public class Conversation {
 
     @Column(name = "date_cloture")
     private Instant dateCloture;
+
+    /**
+     * Qui a clos, et non pas seulement quand.
+     *
+     * <p>🎯 {@code dateCloture} disait <b>quand</b>. Rien ne disait <b>qui</b>.
+     * Sur un litige, savoir qu'une conversation a été close le 3 mars à 14h12
+     * sans savoir par qui ne sert à rien — c'est exactement la question
+     * posée.</p>
+     *
+     * <p>⚠️ {@code null} pour les conversations closes <b>avant</b> V33 : la
+     * base ne l'a jamais su. Y écrire {@code prisPar} rétroactivement serait
+     * une supposition, et une supposition dans un journal qu'on relit sur
+     * litige est pire qu'une case vide.</p>
+     */
+    @Column(name = "clos_par")
+    private Long closPar;
 
     @OneToMany(mappedBy = "conversation", fetch = FetchType.LAZY,
                cascade = CascadeType.ALL, orphanRemoval = true)
@@ -73,14 +89,33 @@ public class Conversation {
      * un dossier à quelqu'un est une décision qui doit pouvoir s'expliquer.</p>
      */
     void remettreEnAttente() {
-        this.responsableId = null;
+        this.prisPar = null;
         this.statut = StatutConversation.WAITING;
         this.dateAffectation = null;
     }
 
-    void fermer() {
+    void fermer(Long parQui) {
         this.statut = StatutConversation.CLOSED;
         this.dateCloture = Instant.now();
+        this.closPar = parQui;
+    }
+
+    /**
+     * Prend la conversation, si personne ne l'a encore prise.
+     *
+     * <p>⚠️ Rend {@code true} SEULEMENT si la prise a eu lieu. L'appelant s'en
+     * sert pour ne journaliser une affectation que lorsqu'il y en a une :
+     * enregistrer une prise à chaque réponse remplirait l'historique de lignes
+     * identiques.</p>
+     */
+    boolean prendreSiLibre(Long parQui) {
+        if (statut != StatutConversation.WAITING || parQui == null) {
+            return false;
+        }
+        this.prisPar = parQui;
+        this.statut = StatutConversation.ASSIGNED;
+        this.dateAffectation = Instant.now();
+        return true;
     }
 
     public boolean estFermee() {
@@ -89,11 +124,12 @@ public class Conversation {
 
     public Long getId() { return id; }
     public Long getClientId() { return clientId; }
-    public Long getResponsableId() { return responsableId; }
+    public Long getPrisPar() { return prisPar; }
     public String getSujet() { return sujet; }
     public StatutConversation getStatut() { return statut; }
     public Instant getDateCreation() { return dateCreation; }
     public Instant getDateAffectation() { return dateAffectation; }
     public Instant getDateCloture() { return dateCloture; }
+    public Long getClosPar() { return closPar; }
     public List<Message> getMessages() { return messages; }
 }

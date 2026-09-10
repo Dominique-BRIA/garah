@@ -22,7 +22,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     Page<Conversation> findByClientIdOrderByDateCreationDesc(Long clientId, Pageable pagination);
 
-    Page<Conversation> findByResponsableIdAndStatut(Long responsableId,
+    Page<Conversation> findByPrisParAndStatut(Long prisPar,
                                                     StatutConversation statut,
                                                     Pageable pagination);
 
@@ -49,11 +49,11 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     @Query("""
             SELECT c FROM Conversation c
              WHERE (:statut IS NULL OR c.statut = :statut)
-               AND (:responsableId IS NULL OR c.responsableId = :responsableId)
+               AND (:prisPar IS NULL OR c.prisPar = :prisPar)
              ORDER BY c.dateCreation ASC
             """)
     Page<Conversation> administration(@Param("statut") StatutConversation statut,
-                                      @Param("responsableId") Long responsableId,
+                                      @Param("prisPar") Long prisPar,
                                       Pageable pagination);
 
     /**
@@ -91,6 +91,29 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     List<Object[]> totauxPar(@Param("ids") Collection<Long> ids);
 
     /**
+     * Les messages de CLIENTS jamais ouverts, toutes conversations confondues.
+     *
+     * <p>🎯 Pour la pastille du menu « Service client ». Sans elle, on n'ouvre
+     * l'écran que si l'on y pense — et un client qui attend depuis trois jours
+     * attend parce que personne n'a eu l'idée de regarder.</p>
+     *
+     * <p>⚠️ Le compte est GLOBAL, pas « les miennes » : la file d'attente
+     * n'appartient à personne, et c'est justement ce qui n'y est affecté à
+     * personne qui risque le plus de rester sans réponse.</p>
+     *
+     * <p>⚠️ Les conversations CLOSES sont exclues. Un message arrivé juste
+     * avant la fermeture resterait non lu pour toujours, et la pastille
+     * afficherait un nombre que rien ne peut faire descendre.</p>
+     */
+    @Query("""
+            SELECT count(m) FROM Message m
+             WHERE m.lu = false
+               AND m.expediteurId = m.conversation.clientId
+               AND m.conversation.statut <> com.garah.api.serviceclient.domaine.StatutConversation.CLOSED
+            """)
+    long totalNonLus();
+
+    /**
      * Prend une conversation en attente — de facon atomique.
      *
      * <p>C est la SECONDE technique du chapitre 05 : au lieu de verrouiller
@@ -109,12 +132,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Conversation c
-               SET c.responsableId = :responsableId,
+               SET c.prisPar = :prisPar,
                    c.statut = com.garah.api.serviceclient.domaine.StatutConversation.ASSIGNED,
                    c.dateAffectation = CURRENT_TIMESTAMP
              WHERE c.id = :conversationId
                AND c.statut = com.garah.api.serviceclient.domaine.StatutConversation.WAITING
             """)
     int prendre(@Param("conversationId") Long conversationId,
-                @Param("responsableId") Long responsableId);
+                @Param("prisPar") Long prisPar);
 }

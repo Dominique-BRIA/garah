@@ -108,7 +108,9 @@ export class Messagerie implements OnDestroy {
     effect(() => {
       const fil = this.ouvert();
       if (fil) {
-        this.chargerLeFil(fil.id);
+        // La liste SUIT le chargement : ouvrir un fil marque ses messages lus,
+        // et la pastille doit descendre tout de suite, pas au prochain tour.
+        this.chargerLeFil(fil.id, false, () => this.chargerLaListe());
       }
     });
   }
@@ -144,24 +146,49 @@ export class Messagerie implements OnDestroy {
    * rafraîchissement du tout.</p>
    */
   private rafraichir(): void {
+    const fil = this.ouvert();
+
+    // 🎯 DANS CET ORDRE, ET C'EST TOUT LE DÉFAUT DU COMPTEUR.
+    //
+    //    Les deux appels partaient EN PARALLÈLE. Or ouvrir un fil le marque lu
+    //    côté serveur : la liste, demandée en même temps, arrivait le plus
+    //    souvent AVANT ce marquage. La pastille recomptait donc les messages
+    //    qu'on était en train de lire, et remontait toutes les vingt secondes.
+    //
+    //    On charge le fil D'ABORD — ce qui marque —, puis la liste.
+    if (fil) {
+      this.chargerLeFil(fil.id, true, () => this.chargerLaListe());
+      return;
+    }
+    this.chargerLaListe();
+  }
+
+  /** ⚠️ Silencieuse : ni chargement ni erreur. Voir `rafraichir`. */
+  private chargerLaListe(): void {
     this.http.get<Fil[]>('/api/messagerie/fils').subscribe({
       next: (f) => this.fils.set(f),
       error: () => undefined,
     });
-
-    const fil = this.ouvert();
-    if (fil) {
-      this.chargerLeFil(fil.id, true);
-    }
   }
 
-  private chargerLeFil(id: number, silencieux = false): void {
+  /**
+   * @param ensuite ce qu'on fait UNE FOIS le fil chargé — donc une fois les
+   *        messages marqués lus côté serveur. C'est ce qui permet de recompter
+   *        la pastille sur un état à jour.
+   */
+  private chargerLeFil(id: number, silencieux = false, ensuite?: () => void): void {
     this.http.get<MessageInterne[]>(`/api/messagerie/fils/${id}`).subscribe({
-      next: (m) => this.messages.set(m),
+      next: (m) => {
+        this.messages.set(m);
+        ensuite?.();
+      },
       error: (e: unknown) => {
         if (!silencieux) {
           this.erreur.set(messageErreur(e, 'Ce fil n’a pas pu être ouvert.'));
         }
+        // ⚠️ Même sur échec : sinon un fil illisible fige la pastille sur une
+        //    valeur qui ne redescendra jamais.
+        ensuite?.();
       },
     });
   }

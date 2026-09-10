@@ -28,7 +28,11 @@ public record ResumeConversation(
         Long clientId,
         String clientCode,
         String clientNom,
-        Long responsableId,
+        Long prisPar,
+        /** ⚠️ Le NOM, pas l'identifiant : « 7 » ne dit à personne qui a pris. */
+        String prisParNom,
+        Long closPar,
+        String closParNom,
         String sujet,
         String statut,
         long nombreMessages,
@@ -41,11 +45,19 @@ public record ResumeConversation(
     public static ResumeConversation de(Conversation c, NomClient client,
                                         long nombreMessages, long nonLus,
                                         Instant dernierMessageLe) {
+        return de(c, client, null, null, nombreMessages, nonLus, dernierMessageLe);
+    }
+
+    public static ResumeConversation de(Conversation c, NomClient client,
+                                        String prisParNom, String closParNom,
+                                        long nombreMessages, long nonLus,
+                                        Instant dernierMessageLe) {
         return new ResumeConversation(
                 c.getId(), c.getClientId(),
                 client == null ? null : client.code(),
                 client == null ? null : client.nom(),
-                c.getResponsableId(), c.getSujet(), c.getStatut().name(),
+                c.getPrisPar(), prisParNom, c.getClosPar(), closParNom,
+                c.getSujet(), c.getStatut().name(),
                 nombreMessages, nonLus, dernierMessageLe,
                 c.getDateCreation(), c.getDateAffectation(), c.getDateCloture());
     }

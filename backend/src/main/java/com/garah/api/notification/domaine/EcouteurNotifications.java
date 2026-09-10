@@ -101,8 +101,8 @@ public class EcouteurNotifications {
             return;
         }
 
-        if (e.responsableId() != null) {
-            notifications.prevenir(e.responsableId(), "Message d'un client", e.extrait(), donnees);
+        if (e.prisPar() != null) {
+            notifications.prevenir(e.prisPar(), "Message d'un client", e.extrait(), donnees);
         } else {
             notifications.prevenirTous(
                     roles.ayantLaPermission(PERMISSION_FILE_ATTENTE),
@@ -131,8 +131,8 @@ public class EcouteurNotifications {
 
         if (e.versLeClient()) {
             notifications.prevenir(e.clientId(), titre, corps, donnees);
-        } else if (e.responsableId() != null) {
-            notifications.prevenir(e.responsableId(), titre,
+        } else if (e.prisPar() != null) {
+            notifications.prevenir(e.prisPar(), titre,
                     "Un client a répondu à votre proposition.", donnees);
         }
     }

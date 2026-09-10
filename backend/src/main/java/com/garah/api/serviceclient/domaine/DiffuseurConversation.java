@@ -70,7 +70,7 @@ public class DiffuseurConversation {
         //    écran doit suivre le premier. C'est au client d'ignorer un
         //    message qu'il a déjà affiché — il connaît son identifiant.
         pousser(e.clientId(), e);
-        pousser(e.responsableId(), e);
+        pousser(e.prisPar(), e);
     }
 
     private void pousser(Long destinataireId, EvenementsConversation.MessageDansConversation e) {

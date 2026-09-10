@@ -40,6 +40,15 @@
                (click)="fermerLeMenu()">
               <gu-icone class="icone" [nom]="entree.icone" />
               {{ entree.libelle }}
+              <!-- ⚠️ La pastille ne s'affiche QUE si le compte est > 0. Un « 0 »
+                   permanent à côté d'un libellé cesse d'être lu au bout de deux
+                   jours — et le jour où il devient « 1 », personne ne le voit. -->
+              @if (entree.compteur && entree.compteur() > 0) {
+                <span class="pastille"
+                      [attr.aria-label]="entree.compteur() + ' en attente'">
+                  {{ entree.compteur() }}
+                </span>
+              }
             </a>
           }
         }

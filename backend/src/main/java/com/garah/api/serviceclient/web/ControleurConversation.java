@@ -161,11 +161,25 @@ public class ControleurConversation {
     }
 
     /**
+     * Les messages de clients jamais ouverts, pour la pastille du menu.
+     *
+     * <p>⚠️ Ce n'est PAS la file d'attente. Une conversation peut être prise et
+     * porter quand même un message qu'on n'a pas lu — c'est même le cas le plus
+     * courant : on prend, on répond, le client renchérit, et personne ne le
+     * voit tant qu'il n'ouvre pas l'écran.</p>
+     */
+    @GetMapping("/non-lus")
+    @PreAuthorize("hasAuthority('CONVERSATION_CONSULTER')")
+    public long totalNonLus() {
+        return conversations.totalNonLus();
+    }
+
+    /**
      * La liste du back-office.
      *
      * <p>{@code miennes=true} ne renvoie que les dossiers de l'appelant. Le
      * responsable est lu dans le <b>jeton signé</b>, jamais dans un paramètre :
-     * un {@code ?responsableId=} laisserait n'importe quel agent lire la file
+     * un {@code ?prisPar=} laisserait n'importe quel agent lire la file
      * d'un collègue, et le classer comme sien.</p>
      *
      * <p>Les plus <b>anciennes</b> d'abord : une conversation qui traîne est
@@ -205,13 +219,19 @@ public class ControleurConversation {
                                       @Valid @RequestBody DemandeReaffectation demande,
                                       @AuthenticationPrincipal Jwt jeton) {
         return VueConversation.resume(conversations.reaffecter(
-                id, demande.responsableId(), utilisateur(jeton), demande.motif()));
+                id, demande.prisPar(), utilisateur(jeton), demande.motif()));
     }
 
+    /**
+     * ⚠️ Le jeton sert a RETENIR QUI FERME. `date_cloture` disait quand ;
+     * rien ne disait qui — et c est la seule question qu on pose en relisant
+     * une conversation close sur litige.
+     */
     @PostMapping("/{id}/fermeture")
     @PreAuthorize("hasAuthority('CONVERSATION_FERMER')")
-    public VueConversation fermer(@PathVariable Long id) {
-        return VueConversation.resume(conversations.fermer(id));
+    public VueConversation fermer(@PathVariable Long id,
+                                  @AuthenticationPrincipal Jwt jeton) {
+        return VueConversation.resume(conversations.fermer(id, utilisateur(jeton)));
     }
 
     // -------------------------------------------------------------------------
@@ -346,7 +366,7 @@ public class ControleurConversation {
 
     public record DemandeReaffectation(
             @NotNull(message = "Le nouveau responsable est obligatoire.")
-            Long responsableId,
+            Long prisPar,
 
             @NotBlank(message = "Le motif de réaffectation est obligatoire.")
             @Size(max = 500, message = "Motif trop long.")

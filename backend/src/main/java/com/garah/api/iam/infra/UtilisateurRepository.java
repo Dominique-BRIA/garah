@@ -10,6 +10,23 @@ import java.util.Optional;
 public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> {
 
     /**
+     * Les noms d'un lot de comptes, pour les afficher au lieu d'identifiants.
+     *
+     * <p>⚠️ En UN appel. Résoudre un nom par ligne d'une liste de vingt
+     * conversations, c'est vingt requêtes — le genre de détail qui ne se voit
+     * qu'en production, sur une connexion lente.</p>
+     *
+     * <p>⚠️ Le nom COMPLET, prénom compris : « BRIA » et « Lionel BRIA » pour
+     * la même personne selon l'écran, c'est déjà arrivé.</p>
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT u.id, u.prenom, u.nom FROM Utilisateur u WHERE u.id IN :ids
+            """)
+    java.util.List<Object[]> nomsPar(
+            @org.springframework.data.repository.query.Param("ids")
+            java.util.Collection<Long> ids);
+
+    /**
      * Ce compte est-il de ce type ?
      *
      * <p>⚠️ Rend un <b>booléen</b>, et non l'utilisateur : {@link

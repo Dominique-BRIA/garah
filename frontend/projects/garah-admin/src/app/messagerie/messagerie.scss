@@ -207,3 +207,24 @@
   align-items: center;
   justify-content: center;
 }
+
+// --- L'accusé de réception ---------------------------------------------------
+//
+// 🎯 « Mon message est-il arrivé jusqu'à ses yeux ? » — la seule question qu'on
+//    se pose après avoir écrit, et à laquelle rien ne répondait. La date de
+//    lecture était pourtant enregistrée depuis le début : elle voyageait dans
+//    la réponse, et aucun écran ne l'affichait.
+//
+// ⚠️ Discret, et volontairement. Un accusé plus visible que le message lui-même
+//    déplace l'attention vers l'accusé.
+.accuse {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+// Lu : la couleur de la marque, sans gras. C'est une confirmation, pas une
+// alerte.
+.accuse--lu {
+  color: var(--marque);
+  opacity: 1;
+}
