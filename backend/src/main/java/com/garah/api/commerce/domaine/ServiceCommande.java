@@ -50,8 +50,40 @@ import java.util.stream.Collectors;
 @Service
 public class ServiceCommande {
 
-    /** Au-delà, une commande impayée est annulée et son stock libéré. */
-    private static final Duration DELAI_PAIEMENT = Duration.ofMinutes(30);
+    /** Un mois. Voir {@link #delaiPaiement} pour ce que ce choix coûte. */
+    private static final String DELAI_PAIEMENT_DEFAUT = "43200";
+
+    /**
+     * Au-delà, une commande impayée est annulée et son stock libéré.
+     *
+     * <h2>⚠️ Ce délai n'est pas un réglage de confort</h2>
+     *
+     * <p>Il est la <b>contrepartie</b> du choix de réserver le stock plutôt
+     * que de le décrémenter. Tant qu'une commande attend son paiement, sa
+     * marchandise est immobilisée : elle n'apparaît plus comme disponible,
+     * alors qu'elle est en rayon.</p>
+     *
+     * <pre>
+     * délai court   le stock revient vite, mais un client lent perd sa commande
+     * délai long    le client a le temps, mais le stock dort
+     * </pre>
+     *
+     * <p>Il était de <b>30 minutes</b> — taillé pour un paiement mobile money
+     * qui aboutit en quelques minutes. C'est trop court dès qu'un client doit
+     * approvisionner son compte, attendre une rentrée d'argent, ou faire payer
+     * un proche. Le défaut se lit mal : la commande disparaît, et rien
+     * n'explique qu'elle a expiré.</p>
+     *
+     * <p>⚠️ <b>Configurable</b>, et volontairement : la bonne valeur dépend du
+     * comportement réel des clients, qu'on ne connaîtra qu'en observant. Écrite
+     * en dur, chaque ajustement demanderait un déploiement.</p>
+     *
+     * <p>⚠️ Le revers à surveiller : avec un délai d'un mois, une série de
+     * commandes non payées peut faire afficher « épuisé » sur de la
+     * marchandise présente. Si cela arrive, ce n'est pas un bug de stock —
+     * c'est ce délai. La liste des commandes en attente de paiement le dira.</p>
+     */
+    private final Duration delaiPaiement;
 
     /** Transitions autorisées (chapitre 04 §4.1). */
     private static final Map<StatutCommande, Set<StatutCommande>> TRANSITIONS = Map.of(
@@ -101,7 +133,19 @@ public class ServiceCommande {
                            ServiceCommission commissions, ServiceStock stock,
                            LieuRepository lieux, ServiceVerificationEmail verification,
                            ServiceClient clients, JournalActions journal,
-                           JournalParcours parcours) {
+                           JournalParcours parcours,
+                           @org.springframework.beans.factory.annotation.Value(
+                               "${GARAH_DELAI_PAIEMENT_MINUTES:" + DELAI_PAIEMENT_DEFAUT + "}")
+                           long delaiPaiementMinutes) {
+        // ⚠️ Un délai nul ou négatif annulerait TOUTE commande au premier
+        //    passage de la tâche périodique — y compris celle qu'on vient de
+        //    passer. On refuse de démarrer plutôt que de vider la boutique.
+        if (delaiPaiementMinutes <= 0) {
+            throw new IllegalArgumentException(
+                    "GARAH_DELAI_PAIEMENT_MINUTES doit être strictement positif.");
+        }
+        this.delaiPaiement = Duration.ofMinutes(delaiPaiementMinutes);
+
         this.journal = journal;
         this.parcours = parcours;
         this.commandes = commandes;
@@ -330,7 +374,7 @@ public class ServiceCommande {
      */
     @Transactional
     public int libererLesImpayees() {
-        Instant limite = Instant.now().minus(DELAI_PAIEMENT);
+        Instant limite = Instant.now().minus(delaiPaiement);
 
         List<Commande> expirees = commandes.findByStatutAndDateCreationBefore(
                 StatutCommande.EN_ATTENTE_PAIEMENT, limite);

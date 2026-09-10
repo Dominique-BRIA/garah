@@ -34,10 +34,45 @@ public class ControleurConfiguration {
     private final StockageObjet stockage;
     private final String version;
 
+    /**
+     * Le paiement tourne-t-il en DÉMONSTRATION ?
+     *
+     * <h2>🎯 Personne ne pouvait le savoir</h2>
+     *
+     * <p>L'opérateur mobile money a deux environnements : une démonstration,
+     * où aucun argent ne circule, et la production. Ils se distinguent par une
+     * seule variable — {@code GARAH_CAMPAY_BASE_URL} — que rien n'affichait.</p>
+     *
+     * <p>⚠️ Le danger est asymétrique et silencieux dans les deux sens :</p>
+     * <ul>
+     *   <li>une boutique restée en démonstration <b>n'encaisse rien</b>, et
+     *       le découvre au premier client qui réclame sa marchandise ;</li>
+     *   <li>une démonstration passée en production <b>débite pour de vrai</b>
+     *       des essais qu'on croyait sans conséquence.</li>
+     * </ul>
+     *
+     * <p>⚠️ Publier ce fait est sans risque : « démonstration » ou
+     * « production » n'est pas un secret, et c'est exactement le genre
+     * d'information qu'on accepterait d'afficher — la règle de cette route.
+     * Ni l'adresse, ni les identifiants ne sortent d'ici.</p>
+     *
+     * <p>⚠️ Lu comme une PROPRIÉTÉ, pas injecté depuis le module de paiement :
+     * {@code commun} ne doit dépendre d'aucun domaine, et le test
+     * d'architecture refuserait ce lien.</p>
+     */
+    private final boolean paiementDemonstration;
+
     public ControleurConfiguration(StockageObjet stockage,
-                                   @Value("${GARAH_VERSION:dev}") String version) {
+                                   @Value("${GARAH_VERSION:dev}") String version,
+                                   @Value("${GARAH_CAMPAY_BASE_URL:}") String urlPaiement) {
         this.stockage = stockage;
         this.version = version;
+
+        String url = urlPaiement == null ? "" : urlPaiement.toLowerCase(java.util.Locale.ROOT);
+        // ⚠️ Non configuré compte AUSSI comme démonstration : une boutique sans
+        //    opérateur n'encaisse pas davantage qu'une boutique en bac à sable.
+        //    Annoncer « production » dans ce cas serait le pire des deux.
+        this.paiementDemonstration = url.isBlank() || url.contains("demo");
     }
 
     @GetMapping
@@ -69,6 +104,10 @@ public class ControleurConfiguration {
                 //    rejeté en silence et enregistré « fr ». Le symptôme :
                 //    choisir le sängö ne fait rien, indéfiniment, sans une
                 //    ligne dans les journaux.
-                "langues", List.of("fr", "en", "sg"));
+                "langues", List.of("fr", "en", "sg"),
+
+                // ⚠️ Vrai quand AUCUN argent ne circule : bac à sable, ou
+                //    opérateur non configuré. Voir le champ du même nom.
+                "paiementDemonstration", paiementDemonstration);
     }
 }

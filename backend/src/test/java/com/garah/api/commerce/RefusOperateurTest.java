@@ -84,4 +84,17 @@ class RefusOperateurTest {
                 client.encaisser(BigDecimal.ONE, "699707810", "Test", "CMD-2"))
                 .isInstanceOf(ClientCampay.OperateurRefuse.class);
     }
+@Test
+    @DisplayName("⚠️ le bac a sable plafonne AUSSI a 100 FCFA")
+    void leBacASablePlafonneAussi() {
+        // ⚠️ Minimum 100, et maximum 100 en demonstration : le SEUL montant
+        //    valide en bac a sable est exactement 100 FCFA. Un essai a 500 y
+        //    echoue tout autant qu un essai a 20 — pour la raison inverse.
+        //
+        //    Ce test ne verifie pas le plafond (il appartient a l operateur,
+        //    pas a nous) : il fige la constante pour que la valeur reste
+        //    lisible depuis le code, et non seulement dans une documentation
+        //    externe qu on ne relit pas.
+        assertThat(ClientCampay.MONTANT_MINIMUM).isEqualTo(100);
+    }
 }
