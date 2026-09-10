@@ -50,6 +50,8 @@ class ServiceCommandeTest {
 
     @Autowired ServicePanier panier;
     @Autowired ServiceCommande commandes;
+    @Autowired com.garah.api.serviceclient.domaine.ServiceConversation discussions;
+    @Autowired com.garah.api.serviceclient.domaine.ServiceNegociation negociation;
     @Autowired ServiceCatalogue catalogue;
     @Autowired ServiceTarification tarification;
     @Autowired ServiceStock stock;
@@ -113,6 +115,9 @@ class ServiceCommandeTest {
     void nettoyer() {
         jdbc.update("DELETE FROM ligne_commande WHERE commande_id IN (SELECT id FROM commande WHERE numero LIKE 'CMD-%')");
         jdbc.update("DELETE FROM commande WHERE client_id IN (SELECT id FROM client WHERE code_client = 'CLI-CMD-1')");
+        // Apres les lignes de commande, qui referencent les propositions ;
+        // propositions et messages suivent la conversation en cascade.
+        jdbc.update("DELETE FROM conversation WHERE client_id IN (SELECT id FROM client WHERE code_client = 'CLI-CMD-1')");
         jdbc.update("DELETE FROM ligne_panier WHERE panier_id IN (SELECT p.id FROM panier p JOIN client c ON c.id = p.client_id WHERE c.code_client = 'CLI-CMD-1')");
         jdbc.update("DELETE FROM panier WHERE client_id IN (SELECT id FROM client WHERE code_client = 'CLI-CMD-1')");
         jdbc.update("""
@@ -367,20 +372,86 @@ class ServiceCommandeTest {
     }
 
     @Test
-    @DisplayName("une commande retirée ne peut plus changer d'état")
-    void retireeEstTerminal() {
+    @DisplayName("la commande suit sa logistique : en avant, et marche par marche")
+    void suitLaLogistique() {
         panier.ajouter(clientId, varianteId, 1);
         Long id = commandes.passer(clientId, pointRetraitId, "fr").id();
 
-        commandes.changerStatut(id, StatutCommande.PAYEE);
-        commandes.changerStatut(id, StatutCommande.EN_PREPARATION);
-        commandes.changerStatut(id, StatutCommande.PRETE);
-        commandes.changerStatut(id, StatutCommande.EXPEDIEE);
-        commandes.changerStatut(id, StatutCommande.DISPONIBLE);
-        commandes.changerStatut(id, StatutCommande.RETIREE);
+        // Impayee : il n'y a rien a suivre. Rien ne part avant le paiement.
+        commandes.suivreLaLogistique(id, com.garah.api.logistique.domaine.AvancementCommande.EXPEDIEE);
+        assertThat(commandes.detail(id).statut()).isEqualTo("EN_ATTENTE_PAIEMENT");
 
-        assertThatThrownBy(() -> commandes.changerStatut(id, StatutCommande.EXPEDIEE))
-                .isInstanceOf(ConflitEtat.class);
+        jdbc.update("UPDATE commande SET statut = 'PAYEE' WHERE id = ?", id);
+
+        // Un depart enregistre d'emblee : la commande franchit TOUTES les
+        // marches, chacune verifiee par la table des transitions.
+        commandes.suivreLaLogistique(id, com.garah.api.logistique.domaine.AvancementCommande.EXPEDIEE);
+        assertThat(commandes.detail(id).statut()).isEqualTo("EXPEDIEE");
+
+        // ⚠️ On ne recule JAMAIS : un colis bloque apres son depart ne remet
+        //    pas la commande « en preparation ».
+        commandes.suivreLaLogistique(id, com.garah.api.logistique.domaine.AvancementCommande.EN_PREPARATION);
+        assertThat(commandes.detail(id).statut()).isEqualTo("EXPEDIEE");
+
+        commandes.suivreLaLogistique(id, com.garah.api.logistique.domaine.AvancementCommande.REMISE);
+        assertThat(commandes.detail(id).statut()).isEqualTo("RETIREE");
+    }
+
+    @Test
+    @DisplayName("⚠️ un prix négocié et accepté est celui qu'on paie — une seule fois")
+    void prixNegocie() {
+        // 🎯 CE QUE CE TEST DEFEND
+        //
+        //    Un client acceptait 12 000 au lieu de 15 000 dans une discussion,
+        //    puis payait 15 000 en commandant : rien ne reliait l'accord a la
+        //    commande. `consommer` existait, et personne ne l'appelait.
+        Long conversationId = discussions.ouvrir(clientId, "Remise", "Et à deux ?").getId();
+        var proposition = negociation.proposer(conversationId, varianteId, 2,
+                new BigDecimal("12000.00"), clientId,
+                com.garah.api.serviceclient.domaine.SensProposition.CLIENT, null);
+        negociation.accepter(proposition.getId());
+
+        // Le prix se voit DES LE PANIER, et l'ecran sait pourquoi il differe.
+        panier.ajouter(clientId, varianteId, 2);
+        assertThat(panier.contenu(clientId).lignes()).singleElement().satisfies(l -> {
+            assertThat(l.prixUnitaire()).isEqualByComparingTo("12000.00");
+            assertThat(l.prixNegocie()).isTrue();
+        });
+
+        Long id = commandes.passer(clientId, pointRetraitId, "fr").id();
+        assertThat(commandes.detail(id).lignes()).singleElement()
+                .satisfies(l -> assertThat(l.prixUnitaire()).isEqualByComparingTo("12000.00"));
+
+        // La ligne dit d'ou vient son prix, et l'accord est consomme.
+        assertThat(jdbc.queryForObject(
+                "SELECT proposition_prix_id FROM ligne_commande WHERE commande_id = ?", Long.class, id))
+                .isEqualTo(proposition.getId());
+        assertThat(negociation.fil(conversationId).getFirst().getStatut())
+                .isEqualTo(com.garah.api.serviceclient.domaine.StatutProposition.CONSOMMEE);
+
+        // ⚠️ UNE SEULE FOIS : la commande suivante revient au tarif.
+        panier.ajouter(clientId, varianteId, 2);
+        assertThat(panier.contenu(clientId).lignes()).singleElement().satisfies(l -> {
+            assertThat(l.prixUnitaire()).isEqualByComparingTo("15000.00");
+            assertThat(l.prixNegocie()).isFalse();
+        });
+    }
+
+    @Test
+    @DisplayName("un prix négocié ne vaut que pour la quantité négociée")
+    void prixNegociePourSaQuantite() {
+        // Un prix accorde pour deux unites n'est pas un prix pour trois.
+        Long conversationId = discussions.ouvrir(clientId, "Remise", "Et à deux ?").getId();
+        var proposition = negociation.proposer(conversationId, varianteId, 2,
+                new BigDecimal("12000.00"), clientId,
+                com.garah.api.serviceclient.domaine.SensProposition.CLIENT, null);
+        negociation.accepter(proposition.getId());
+
+        panier.ajouter(clientId, varianteId, 3);
+        assertThat(panier.contenu(clientId).lignes()).singleElement().satisfies(l -> {
+            assertThat(l.prixUnitaire()).isEqualByComparingTo("15000.00");
+            assertThat(l.prixNegocie()).isFalse();
+        });
     }
 
     @Test

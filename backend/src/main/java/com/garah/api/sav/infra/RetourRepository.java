@@ -74,4 +74,30 @@ public interface RetourRepository extends JpaRepository<Retour, Long> {
              GROUP BY l.retour.id
             """)
     List<Object[]> totauxPar(@Param("ids") Collection<Long> ids);
+
+    /**
+     * Combien d'unités de cette ligne ont été REMISES au client.
+     *
+     * <p>Se lit dans les colis remis. En SQL natif : {@code sav} n'a pas à
+     * dépendre de {@code logistique} pour une somme.</p>
+     */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT COALESCE(SUM(lc.quantite), 0) FROM ligne_colis lc
+              JOIN colis c ON c.id = lc.colis_id
+             WHERE lc.ligne_commande_id = :ligneId AND c.statut = 'REMIS'
+            """, nativeQuery = true)
+    long quantiteRemise(@org.springframework.data.repository.query.Param("ligneId") Long ligneId);
+
+    /**
+     * Combien d'unités de cette ligne font déjà l'objet d'un retour.
+     *
+     * <p>⚠️ Même définition que le trigger I-40 : un retour REFUSÉ ne compte
+     * pas — l'article est resté chez le client, il peut le redemander.</p>
+     */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT COALESCE(SUM(lr.quantite), 0) FROM ligne_retour lr
+              JOIN retour r ON r.id = lr.retour_id
+             WHERE lr.ligne_commande_id = :ligneId AND r.statut <> 'REFUSE'
+            """, nativeQuery = true)
+    long quantiteDejaRetournee(@org.springframework.data.repository.query.Param("ligneId") Long ligneId);
 }

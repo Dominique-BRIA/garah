@@ -104,6 +104,8 @@ public class ServiceRetour {
                     "Un retour doit porter sur au moins un article.");
         }
 
+        verifierDejaRemis(commandeId, lignes);
+
         Retour retour = new Retour(genererNumero(), commandeId, clientId, motif);
         retours.save(retour);
 
@@ -350,5 +352,42 @@ public class ServiceRetour {
     public VueRetour vue(Long retourId) {
         return VueRetour.complete(retours.findById(retourId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Retour", retourId)));
+    }
+
+    /**
+     * On ne retourne que ce qu'on a reçu.
+     *
+     * <h2>🎯 Le défaut que ceci ferme</h2>
+     *
+     * <p>Rien n'empêchait un client de demander le retour d'articles qu'il
+     * n'avait pas encore récupérés — voire qui n'étaient pas encore partis.
+     * Le trigger I-40 compare au COMMANDÉ, pas au REMIS.</p>
+     *
+     * <p>Les quantités d'une même ligne sont additionnées sur toute la
+     * demande : deux fois 3 unités de la même ligne en font 6.</p>
+     *
+     * <p>⚠️ Seules les lignes de CETTE commande sont vérifiées ici. Une ligne
+     * étrangère est refusée plus loin, comme telle — la vérifier ici
+     * donnerait à lire la désignation de l'article de quelqu'un d'autre.</p>
+     */
+    private void verifierDejaRemis(Long commandeId, List<DemandeLigne> lignes) {
+        Map<Long, Integer> demandees = new java.util.HashMap<>();
+        lignes.forEach(d -> demandees.merge(d.ligneCommandeId(), Math.max(d.quantite(), 0), Integer::sum));
+
+        for (Map.Entry<Long, Integer> demande : demandees.entrySet()) {
+            LigneCommande ligne = lignesCommande.findById(demande.getKey()).orElse(null);
+            if (ligne == null || !ligne.getCommande().getId().equals(commandeId)) {
+                continue;
+            }
+            long remis = retours.quantiteRemise(ligne.getId());
+            long deja = retours.quantiteDejaRetournee(ligne.getId());
+            if (deja + demande.getValue() > remis) {
+                throw new RegleMetierViolee("ARTICLE_NON_REMIS", remis == 0
+                        ? "« " + ligne.getDesignation() + " » ne vous a pas encore été remis : "
+                          + "il ne peut pas être retourné."
+                        : "Au plus " + Math.max(remis - deja, 0) + " unité(s) de « "
+                          + ligne.getDesignation() + " » peuvent encore être retournées.");
+            }
+        }
     }
 }

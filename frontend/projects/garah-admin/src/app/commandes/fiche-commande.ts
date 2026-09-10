@@ -100,21 +100,6 @@ export class FicheCommande {
     queueMicrotask(() => this.charger());
   }
 
-  /**
-   * Les statuts vers lesquels cette commande peut aller.
-   *
-   * <p>L'annulation en est retirée : elle a sa propre permission et son propre
-   * bouton, parce qu'annuler une commande payée entraîne un remboursement —
-   * ce n'est pas du même ordre que de la faire avancer d'un cran.</p>
-   */
-  protected readonly suites = computed<readonly StatutCommande[]>(() => {
-    const c = this.commande();
-    if (!c) {
-      return [];
-    }
-    return TRANSITIONS_COMMANDE[c.statut].filter((s) => s !== 'ANNULEE');
-  });
-
   protected readonly annulable = computed(() => {
     const c = this.commande();
     return !!c && TRANSITIONS_COMMANDE[c.statut].includes('ANNULEE');
@@ -262,27 +247,6 @@ export class FicheCommande {
   // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------
-
-  protected avancer(statut: StatutCommande): void {
-    if (this.action()) {
-      return;
-    }
-    this.action.set('statut');
-    this.erreur.set(null);
-
-    this.http
-      .post<DetailCommande>(`/api/commandes/${this.id()}/statut`, { statut })
-      .subscribe({
-        next: (c) => {
-          this.action.set(null);
-          this.commande.set(c);
-        },
-        error: (e: unknown) => {
-          this.action.set(null);
-          this.erreur.set(messageErreur(e, 'Le statut n’a pas pu être changé.'));
-        },
-      });
-  }
 
   protected annuler(): void {
     if (this.action()) {

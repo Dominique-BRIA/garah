@@ -35,15 +35,18 @@ public class ServicePanier {
     private final com.garah.api.commun.audit.JournalParcours parcours;
     private final VarianteRepository variantes;
     private final ServiceTarification tarification;
+    private final com.garah.api.serviceclient.domaine.ServiceNegociation negociation;
     private final ServiceStock stock;
 
     public ServicePanier(com.garah.api.commun.audit.JournalParcours parcours,
                          PanierRepository paniers, VarianteRepository variantes,
-                         ServiceTarification tarification, ServiceStock stock) {
+                         ServiceTarification tarification, ServiceStock stock,
+                         com.garah.api.serviceclient.domaine.ServiceNegociation negociation) {
         this.parcours = parcours;
         this.paniers = paniers;
         this.variantes = variantes;
         this.tarification = tarification;
+        this.negociation = negociation;
         this.stock = stock;
     }
 
@@ -234,7 +237,13 @@ public class ServicePanier {
         for (LignePanier ligne : panier.getLignes()) {
             InfoVenteVariante info = infoVente(ligne.getVarianteId());
 
-            BigDecimal prix = prixOuZero(ligne.getVarianteId(), ligne.getQuantite());
+            // 🎯 Le prix negocie se voit DES LE PANIER : le client doit lire
+            //    le prix qu'il paiera avant de cliquer, pas le decouvrir apres.
+            var negocie = negociation.prixNegocie(
+                    panier.getClientId(), ligne.getVarianteId(), ligne.getQuantite());
+            BigDecimal prix = negocie
+                    .map(com.garah.api.serviceclient.domaine.PrixNegocie::prixUnitaire)
+                    .orElseGet(() -> prixOuZero(ligne.getVarianteId(), ligne.getQuantite()));
             BigDecimal montant = prix.multiply(BigDecimal.valueOf(ligne.getQuantite()));
             int disponible = disponibleOuZero(ligne.getVarianteId());
             boolean vendable = info.estVendable() && disponible >= ligne.getQuantite();
@@ -244,7 +253,8 @@ public class ServicePanier {
             }
 
             lignes.add(new ContenuPanier.Ligne(ligne.getVarianteId(), info.designation(),
-                    ligne.getQuantite(), prix, montant, disponible, vendable));
+                    ligne.getQuantite(), prix, montant, disponible, vendable,
+                    negocie.isPresent()));
 
             total = total.add(montant);
             articles += ligne.getQuantite();

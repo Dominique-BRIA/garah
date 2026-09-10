@@ -24,19 +24,12 @@
     <div class="actions">
       <span class="gu-badge" [class]="badge(c.statut)">{{ libelle(c.statut) }}</span>
 
-      <!-- Seules les transitions POSSIBLES sont proposées. Le serveur refuse
-           les autres, mais un bouton « Expédier » sur une commande impayée
-           ferait cliquer pour rien. -->
-      @if (session.peut('COMMANDE_PREPARER')) {
-        @for (suite of suites(); track suite) {
-          <button type="button" class="gu-btn gu-btn--primaire"
-                  (click)="avancer(suite)" [disabled]="action() !== null">
-            @if (action() === 'statut') {
-              <gu-icone nom="circle-notch" tourne />
-            }
-            Passer à « {{ libelle(suite) }} »
-          </button>
-        }
+      <!-- ⚠️ PLUS DE BOUTON « Passer à … ». Le statut suit les colis : il
+           avance tout seul quand un départ, une arrivée ou une remise est
+           enregistré sur l'expédition. Le cliquer ici, à côté, laissait le
+           client lire « Payée » pendant que son colis roulait. -->
+      @if (c.statut !== 'EN_ATTENTE_PAIEMENT' && c.statut !== 'ANNULEE' && c.statut !== 'RETIREE') {
+        <span class="statut-auto">Avance avec les colis</span>
       }
 
       @if (annulable() && session.peut('COMMANDE_ANNULER') && !formAnnulation()) {

@@ -27,7 +27,13 @@ public record ContenuPanier(
             BigDecimal prixUnitaire,
             BigDecimal montantLigne,
             int disponible,
-            boolean vendable) {
+            boolean vendable,
+            /*
+             * Vrai si le prix vient d'une negociation acceptee, et non du
+             * tarif. Dit a l'ecran POURQUOI le prix differe de la fiche
+             * produit — sans quoi le client croirait a une erreur.
+             */
+            boolean prixNegocie) {
     }
 
     public static ContenuPanier vide() {

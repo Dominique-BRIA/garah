@@ -49,4 +49,20 @@ public final class EvenementsExpedition {
      */
     public record MarchandiseDisponible(Long clientId, Long commandeId, String pointRecuperation) {
     }
+
+    /**
+     * Quelque chose a bougé dans la logistique de cette commande : une
+     * expédition créée, un colis rempli, un départ, une arrivée, une remise.
+     *
+     * <p>🎯 C'est ce qui permet au statut de la commande de SUIVRE ses colis
+     * au lieu d'être cliqué à la main. L'événement ne dit pas où en est la
+     * commande — il dit seulement « relis » : la règle de lecture vit à un
+     * seul endroit, {@code ServiceExpedition.avancement}.</p>
+     *
+     * <p>⚠️ Publié et écouté DANS la transaction : le statut de la commande
+     * est une photo des colis, et ce qui doit être vrai ensemble s'écrit
+     * ensemble.</p>
+     */
+    public record LogistiqueAvancee(Long commandeId) {
+    }
 }

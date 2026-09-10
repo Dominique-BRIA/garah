@@ -2228,3 +2228,97 @@ serait perdu en chemin.
 > ⚠️ `garah.me` redirige en 308 vers `www.garah.me`. Les deux origines sont
 > autorisées, mais le lien vaut mieux avec `www` : c'est celle qui sert
 > réellement l'application, sans détour.
+
+---
+
+## D-43 — Le statut d'une commande suit ses colis, et le code naît à l'arrivée
+
+**Le défaut.** Au-delà de *Payée*, le statut d'une commande ne bougeait que si
+quelqu'un cliquait « Passer à … » sur sa fiche. Pendant ce temps, un autre
+agent enregistrait les départs et les arrivées **ailleurs**, sur l'expédition.
+Rien ne reliait les deux.
+
+| Ce qui se passait réellement | Ce que lisait le client |
+|---|---|
+| Le colis part de Douala | *Payée* |
+| Le colis arrive à Bangui | *Payée* |
+| Le client l'emporte | *Payée* |
+
+> ⚠️ C'était contraire à la règle du projet : **ce qui est engendré n'est
+> jamais saisi**. Le statut d'une commande est une photo de ses colis.
+
+**La règle.** À chaque fait logistique — expédition créée, colis rempli,
+départ, arrivée, remise — la commande relit où en est sa marchandise
+(`ServiceExpedition.avancement`) et avance d'elle-même :
+
+```
+une expédition existe              → En préparation
+tout est en colis                  → Prête
+tout est parti                     → En route
+tout est au comptoir               → À retirer
+tout est remis                     → Retirée
+```
+
+- **Au rythme du moins avancé**, comme l'expédition envers ses colis. Un colis
+  parti sur deux, ce n'est pas « en route ».
+- **« Parti » se lit dans le journal**, pas dans le statut du colis : un colis
+  bloqué avant tout départ et un colis bloqué en route sont tous deux
+  `BLOQUE`, seuls les événements les distinguent.
+- **Un colis vide ne compte pas** : il ne partira jamais et bloquerait tout.
+- **En avant seulement, marche par marche** : chaque étape passe par la table
+  des transitions et s'écrit au journal. On ne recule jamais.
+- **Dans la même transaction** que le fait logistique.
+
+**Les boutons « Passer à … » ont disparu** du back-office, et la route
+`POST /api/commandes/{id}/statut` avec eux. Les garder, c'était garder la
+possibilité d'écrire un statut que les colis démentent.
+
+**Le code de retrait naît à l'arrivée.** Il fallait qu'un agent pense à
+« Préparer le retrait » ; tant qu'il n'y pensait pas, le client n'avait ni
+code ni nouvelle. Dès que tout est au comptoir, le retrait est préparé et le
+client prévenu, dans la même transaction que l'arrivée. Le bouton reste pour
+les envois arrivés avant ce changement, et le cliquer rend désormais le
+retrait existant au lieu d'une erreur.
+
+---
+
+## D-44 — Un prix négocié et accepté est celui qu'on paie
+
+**Le défaut.** Un client pouvait négocier dans une discussion, accepter
+12 000 au lieu de 15 000 — et payer 15 000 en commandant. L'accord était bien
+enregistré, mais **rien ne le reliait à la commande** : `consommer()`
+existait, et personne ne l'appelait.
+
+**La règle.**
+
+- Un prix accepté s'applique **pour la quantité exacte négociée**, tant qu'il
+  n'a pas expiré. Un prix accordé pour deux unités n'est pas un prix pour
+  trois — ni pour cinquante.
+- Il se voit **dès le panier**, marqué « prix négocié » : le client doit lire
+  le prix qu'il paiera avant de cliquer, et comprendre pourquoi il diffère de
+  la fiche produit.
+- À la commande, la ligne porte `proposition_prix_id` — elle dit d'où vient
+  son prix — et l'accord est **consommé**, dans la même transaction. Il ne
+  sert qu'une fois.
+
+> ⚠️ **Limite connue.** Une commande annulée, ou expirée faute de paiement,
+> ne rend pas l'accord : il reste consommé, et le client doit renégocier.
+
+---
+
+## D-45 — Deux règles qui ne vivaient que dans l'écran
+
+**On n'expédie pas une commande impayée.** Le back-office cachait le bouton,
+mais le serveur ne vérifiait rien : tout autre chemin que cet écran pouvait
+préparer l'envoi d'une marchandise jamais payée. `ServiceExpedition.creer`
+refuse désormais tout ce qui n'est pas payé et pas encore entièrement parti.
+
+**On ne retourne que ce qu'on a reçu.** Le trigger I-40 compare le retourné
+au **commandé**, pas au **remis** : rien n'empêchait de demander le retour
+d'articles jamais récupérés, voire jamais partis. Le service compare
+maintenant au remis — les colis `REMIS` —, retours précédents compris, et la
+boutique ne propose « Retourner des articles » qu'une fois la commande
+retirée.
+
+> ⚠️ Le trigger I-40 **reste**, et un test le prouve en passant à côté du
+> service : il garde la base de tout ce qui n'emprunterait pas ce chemin.

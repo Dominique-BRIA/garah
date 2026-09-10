@@ -143,4 +143,52 @@ public interface ExpeditionRepository extends JpaRepository<Expedition, Long> {
              ORDER BY e.dateCreation DESC
             """)
     List<ResumeExpedition> resumesParCommande(@Param("commandeId") Long commandeId);
+
+    /**
+     * Le statut d'une commande, en texte.
+     *
+     * <p>⚠️ En SQL natif et en texte : {@code StatutCommande} vit dans
+     * {@code commerce}, qui dépend déjà de {@code logistique}. L'importer
+     * fermerait un cycle que le test d'architecture refuse.</p>
+     */
+    @Query(value = "SELECT statut FROM commande WHERE id = :commandeId", nativeQuery = true)
+    Optional<String> statutDeCommande(@Param("commandeId") Long commandeId);
+
+    /**
+     * De quoi dire où en est la marchandise d'une commande, en UNE requête.
+     *
+     * <pre>
+     * [0] expéditions
+     * [1] lignes de commande pas entièrement mises en colis
+     * [2] colis non vides jamais partis
+     * [3] colis non vides pas encore au comptoir
+     * [4] colis non vides pas encore remis
+     * </pre>
+     *
+     * <p>« Parti » se lit dans les ÉVÉNEMENTS, pas dans le statut : un colis
+     * bloqué avant tout départ est BLOQUE, exactement comme un colis bloqué
+     * en route. Seul le journal distingue les deux.</p>
+     */
+    @Query(value = """
+            SELECT
+              (SELECT count(*) FROM expedition e WHERE e.commande_id = :commandeId),
+              (SELECT count(*) FROM ligne_commande l
+                WHERE l.commande_id = :commandeId
+                  AND l.quantite > (SELECT COALESCE(SUM(lc.quantite), 0)
+                                      FROM ligne_colis lc WHERE lc.ligne_commande_id = l.id)),
+              (SELECT count(*) FROM colis c JOIN expedition e ON e.id = c.expedition_id
+                WHERE e.commande_id = :commandeId
+                  AND EXISTS (SELECT 1 FROM ligne_colis lc WHERE lc.colis_id = c.id)
+                  AND NOT EXISTS (SELECT 1 FROM evenement_expedition ev
+                                   WHERE ev.colis_id = c.id AND ev.type = 'DEPART')),
+              (SELECT count(*) FROM colis c JOIN expedition e ON e.id = c.expedition_id
+                WHERE e.commande_id = :commandeId
+                  AND EXISTS (SELECT 1 FROM ligne_colis lc WHERE lc.colis_id = c.id)
+                  AND c.statut NOT IN ('DISPONIBLE', 'REMIS')),
+              (SELECT count(*) FROM colis c JOIN expedition e ON e.id = c.expedition_id
+                WHERE e.commande_id = :commandeId
+                  AND EXISTS (SELECT 1 FROM ligne_colis lc WHERE lc.colis_id = c.id)
+                  AND c.statut <> 'REMIS')
+            """, nativeQuery = true)
+    List<Object[]> avancement(@Param("commandeId") Long commandeId);
 }

@@ -128,12 +128,16 @@ public class ServiceCommande {
      */
     private final JournalParcours parcours;
 
+    /** Pour appliquer un prix accepté dans une discussion. */
+    private final com.garah.api.serviceclient.domaine.ServiceNegociation negociation;
+
     public ServiceCommande(CommandeRepository commandes, PanierRepository paniers,
                            VarianteRepository variantes, ServiceTarification tarification,
                            ServiceCommission commissions, ServiceStock stock,
                            LieuRepository lieux, ServiceVerificationEmail verification,
                            ServiceClient clients, JournalActions journal,
                            JournalParcours parcours,
+                           com.garah.api.serviceclient.domaine.ServiceNegociation negociation,
                            @org.springframework.beans.factory.annotation.Value(
                                "${GARAH_DELAI_PAIEMENT_MINUTES:" + DELAI_PAIEMENT_DEFAUT + "}")
                            long delaiPaiementMinutes) {
@@ -157,6 +161,7 @@ public class ServiceCommande {
         this.lieux = lieux;
         this.verification = verification;
         this.clients = clients;
+        this.negociation = negociation;
     }
 
     /**
@@ -238,12 +243,32 @@ public class ServiceCommande {
                     "« " + info.designation() + " » n'est plus proposé à la vente.");
         }
 
-        BigDecimal prix = tarification.prixUnitaire(ligne.getVarianteId(), ligne.getQuantite());
+        // 🎯 LE PRIX NEGOCIE S'APPLIQUE.
+        //
+        //    Un client pouvait accepter 12 000 au lieu de 15 000 dans une
+        //    discussion, puis payer 15 000 en commandant : rien ne reliait
+        //    l'accord a la commande. Il s'applique desormais — pour la
+        //    quantite EXACTE negociee, tant qu'il n'a pas expire.
+        var negocie = negociation.prixNegocie(
+                commande.getClientId(), ligne.getVarianteId(), ligne.getQuantite());
+        BigDecimal prix = negocie
+                .map(com.garah.api.serviceclient.domaine.PrixNegocie::prixUnitaire)
+                .orElseGet(() -> tarification.prixUnitaire(ligne.getVarianteId(), ligne.getQuantite()));
         BigDecimal tauxCommission = commissions.tauxPour(info.marchandId(), info.categorieProduitId());
 
-        return new LigneCommande(commande, ligne.getVarianteId(), info.marchandId(),
+        LigneCommande nouvelle = new LigneCommande(commande, ligne.getVarianteId(), info.marchandId(),
                 info.designation(), null, ligne.getQuantite(),
                 prix, info.tauxTva(), tauxCommission);
+
+        // ⚠️ La ligne dit D'OU vient son prix, et l'accord ne sert qu'UNE
+        //    fois : sans cela, un prix accorde pour une commande vaudrait pour
+        //    toutes les suivantes. Dans la meme transaction : si la commande
+        //    echoue, l'accord reste utilisable.
+        negocie.ifPresent(n -> {
+            nouvelle.setPropositionPrixId(n.propositionId());
+            negociation.consommer(n.propositionId());
+        });
+        return nouvelle;
     }
 
     /**
@@ -344,21 +369,62 @@ public class ServiceCommande {
         return DetailCommande.de(commande);
     }
 
+    /**
+     * La commande suit ses colis — elle ne se clique plus.
+     *
+     * <h2>🎯 Le défaut que ceci ferme</h2>
+     *
+     * <p>Au-delà de PAYEE, le statut ne bougeait que si quelqu'un cliquait,
+     * sur la fiche de la commande, pendant qu'un autre enregistrait les
+     * départs et les arrivées ailleurs. Rien ne reliait les deux : le client
+     * lisait « Payée » alors que son colis roulait, était arrivé, ou était
+     * déjà dans ses mains.</p>
+     *
+     * <h2>⚠️ En avant seulement, et marche par marche</h2>
+     *
+     * <p>On passe par CHAQUE étape intermédiaire, chacune vérifiée par la
+     * table des transitions et journalisée : un départ enregistré d'emblée
+     * fait PAYEE → EN_PREPARATION → PRETE → EXPEDIEE, et le journal le dit.</p>
+     *
+     * <p>On ne recule jamais : un colis bloqué après être parti ne remet pas
+     * la commande « en préparation ». Et une commande hors de la chaîne —
+     * impayée, annulée — n'a rien à suivre.</p>
+     */
     @Transactional
-    public DetailCommande changerStatut(Long commandeId, StatutCommande nouveau) {
-        if (nouveau == StatutCommande.ANNULEE) {
-            return annuler(commandeId, null);
+    public void suivreLaLogistique(Long commandeId,
+                                   com.garah.api.logistique.domaine.AvancementCommande avancement) {
+        StatutCommande cible = switch (avancement) {
+            case RIEN -> null;
+            case EN_PREPARATION -> StatutCommande.EN_PREPARATION;
+            case PRETE -> StatutCommande.PRETE;
+            case EXPEDIEE -> StatutCommande.EXPEDIEE;
+            case DISPONIBLE -> StatutCommande.DISPONIBLE;
+            case REMISE -> StatutCommande.RETIREE;
+        };
+        if (cible == null) {
+            return;
         }
+
         Commande commande = charger(commandeId);
-        StatutCommande ancien = commande.getStatut();
-        verifierTransition(commande, nouveau);
-        commande.changerStatut(nouveau);
+        int ici = CHAINE_LOGISTIQUE.indexOf(commande.getStatut());
+        int la = CHAINE_LOGISTIQUE.indexOf(cible);
+        if (ici < 0 || la <= ici) {
+            return;
+        }
 
-        journal.changement("COMMANDE_STATUT", "commande", commandeId,
-                "statut", ancien, nouveau);
-
-        return DetailCommande.de(commande);
+        for (StatutCommande suivant : CHAINE_LOGISTIQUE.subList(ici + 1, la + 1)) {
+            StatutCommande ancien = commande.getStatut();
+            verifierTransition(commande, suivant);
+            commande.changerStatut(suivant);
+            journal.changement("COMMANDE_STATUT", "commande", commandeId,
+                    "statut", ancien, suivant);
+        }
     }
+
+    /** Les statuts que la logistique fait parcourir, dans l'ordre. */
+    private static final java.util.List<StatutCommande> CHAINE_LOGISTIQUE = java.util.List.of(
+            StatutCommande.PAYEE, StatutCommande.EN_PREPARATION, StatutCommande.PRETE,
+            StatutCommande.EXPEDIEE, StatutCommande.DISPONIBLE, StatutCommande.RETIREE);
 
     /**
      * Le travail périodique qui libère les commandes jamais payées.

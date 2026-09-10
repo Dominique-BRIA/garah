@@ -226,4 +226,23 @@ public class ServiceNegociation {
         return charger(propositionId).getConversationId();
     }
 
+
+    /**
+     * Le prix négocié qui s'applique, s'il y en a un.
+     *
+     * <h2>🎯 Un accord qui ne servait à rien</h2>
+     *
+     * <p>Un client pouvait négocier, accepter 10 000 au lieu de 12 000 — et
+     * payer 12 000 en commandant. Rien ne reliait l'accord à la commande :
+     * {@link #consommer} existait, et personne ne l'appelait.</p>
+     *
+     * <p>Le plus récent l'emporte : c'est le dernier mot de la négociation.</p>
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<PrixNegocie> prixNegocie(Long clientId, Long varianteId, int quantite) {
+        return propositions.utilisablesPour(clientId, varianteId, quantite, Instant.now())
+                .stream()
+                .findFirst()
+                .map(p -> new PrixNegocie(p.getId(), p.getPrixUnitairePropose()));
+    }
 }

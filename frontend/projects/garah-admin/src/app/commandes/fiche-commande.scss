@@ -208,3 +208,10 @@
   display: flex;
   flex-direction: column;
 }
+
+// Ce qui remplace les boutons de statut : dire que le statut n'est plus un
+// geste, mais la suite des colis.
+.statut-auto {
+  font-size: 0.75rem;
+  color: var(--gu-texte-attenue, var(--texte-attenue));
+}

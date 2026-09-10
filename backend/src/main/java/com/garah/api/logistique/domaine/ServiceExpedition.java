@@ -34,6 +34,10 @@ public class ServiceExpedition {
     private static final SecureRandom ALEA = new SecureRandom();
     private static final String ALPHABET = "ACDEFGHJKLMNPQRSTUVWXYZ2345679";
 
+    /** Ce qui peut encore partir : payé, et pas encore tout expédié. */
+    private static final java.util.Set<String> STATUTS_EXPEDIABLES =
+            java.util.Set.of("PAYEE", "EN_PREPARATION", "PRETE", "EXPEDIEE");
+
     private final ExpeditionRepository expeditions;
     private final ColisRepository colis;
     private final EvenementExpeditionRepository evenements;
@@ -85,6 +89,23 @@ public class ServiceExpedition {
     @Transactional
     public Expedition creer(Long commandeId, Long lieuDepartId, Long pointRecuperationId,
                             Long itineraireId) {
+        // ⚠️ LA REGLE VIT ICI, PAS DANS L'ECRAN.
+        //
+        //    Le back-office cachait deja le bouton sur une commande impayee.
+        //    Mais le serveur, lui, ne verifiait rien : tout autre chemin que
+        //    cet ecran pouvait preparer l'envoi d'une marchandise jamais
+        //    payee. Une protection qui ne tient que dans l'interface n'en est
+        //    pas une.
+        String statut = expeditions.statutDeCommande(commandeId)
+                .orElseThrow(() -> new RegleMetierViolee("COMMANDE_INTROUVABLE",
+                        "Cette commande n'existe pas : impossible de savoir où livrer."));
+        if (!STATUTS_EXPEDIABLES.contains(statut)) {
+            throw new ConflitEtat("COMMANDE_NON_EXPEDIABLE",
+                    "EN_ATTENTE_PAIEMENT".equals(statut)
+                            ? "Cette commande n'est pas encore payée : rien ne part avant le paiement."
+                            : "Cette commande est close : il n'y a plus rien à envoyer.");
+        }
+
         Lieu depart = charger(lieuDepartId);
         Lieu arrivee = charger(pointRecuperationId);
 
@@ -101,7 +122,9 @@ public class ServiceExpedition {
                 lieuDepartId, pointRecuperationId);
         expedition.setItineraireId(itineraireId);   // facultatif (A9)
 
-        return expeditions.save(expedition);
+        Expedition creee = expeditions.save(expedition);
+        journal.publishEvent(new EvenementsExpedition.LogistiqueAvancee(commandeId));
+        return creee;
     }
 
     @Transactional
@@ -132,7 +155,11 @@ public class ServiceExpedition {
             throw new RegleMetierViolee("QUANTITE_INVALIDE",
                     "Un colis contient au moins une unité.");
         }
-        return chargerColis(colisId).ajouterLigne(ligneCommandeId, quantite);
+        Colis paquet = chargerColis(colisId);
+        LigneColis ligne = paquet.ajouterLigne(ligneCommandeId, quantite);
+        journal.publishEvent(new EvenementsExpedition.LogistiqueAvancee(
+                paquet.getExpedition().getCommandeId()));
+        return ligne;
     }
 
     /**
@@ -188,6 +215,23 @@ public class ServiceExpedition {
         if (premierDepart) {
             prevenirDuDepart(paquet);
         }
+
+        // 🎯 LE CODE DE RETRAIT NAIT A L'ARRIVEE — sans que personne y pense.
+        //
+        //    Il fallait qu'un agent clique « Préparer le retrait » une fois la
+        //    marchandise arrivée. Tant qu'il n'y pensait pas, le client
+        //    n'avait ni code ni nouvelle : son colis l'attendait au comptoir,
+        //    et il l'ignorait. Venu quand même, on ne pouvait rien lui remettre.
+        //
+        // ⚠️ Dans la MEME transaction que l'arrivée : « tout est au comptoir »
+        //    et « le client peut venir le chercher » sont vrais ensemble.
+        Expedition envoi = paquet.getExpedition();
+        if (envoi.getStatut() == StatutExpedition.DISPONIBLE
+                && retraits.findByExpeditionId(envoi.getId()).isEmpty()) {
+            preparerRetrait(envoi.getId());
+        }
+
+        journal.publishEvent(new EvenementsExpedition.LogistiqueAvancee(envoi.getCommandeId()));
 
         return evenement;
     }
@@ -253,9 +297,13 @@ public class ServiceExpedition {
     public RetraitMarchandise preparerRetrait(Long expeditionId, Long clientId) {
         Expedition expedition = chargerExpedition(expeditionId);
 
-        if (retraits.findByExpeditionId(expeditionId).isPresent()) {
-            throw new ConflitEtat("RETRAIT_DEJA_PREPARE",
-                    "Un retrait a déjà été préparé pour cette expédition.");
+        // ⚠️ IDEMPOTENT : le retrait se prepare desormais TOUT SEUL a
+        //    l'arrivee. Le bouton du back-office reste, pour les envois
+        //    arrives avant ce changement — et le cliquer apres coup doit
+        //    rendre le retrait existant, pas une erreur.
+        var existant = retraits.findByExpeditionId(expeditionId);
+        if (existant.isPresent()) {
+            return existant.get();
         }
         if (expedition.getStatut() != StatutExpedition.DISPONIBLE) {
             throw new ConflitEtat("EXPEDITION_NON_ARRIVEE",
@@ -566,5 +614,42 @@ public class ServiceExpedition {
                                 .map(VueEvenement::de)
                                 .toList()))
                 .toList();
+    }
+
+    /**
+     * Où en est la marchandise de cette commande.
+     *
+     * <p>🎯 LA règle de lecture, écrite une seule fois. La commande en déduit
+     * son statut — elle ne le reçoit plus d'un clic.</p>
+     *
+     * <p>⚠️ Vide la session AVANT de compter : la requête est en SQL natif,
+     * et le départ ou la mise en colis qu'on vient d'enregistrer n'est encore
+     * qu'en mémoire. Sans ce vidage, on compterait l'état d'avant.</p>
+     */
+    @Transactional
+    public AvancementCommande avancement(Long commandeId) {
+        expeditions.flush();
+        Object[] l = expeditions.avancement(commandeId).getFirst();
+
+        if (nombre(l[0]) == 0) {
+            return AvancementCommande.RIEN;
+        }
+        if (nombre(l[1]) > 0) {
+            return AvancementCommande.EN_PREPARATION;
+        }
+        if (nombre(l[2]) > 0) {
+            return AvancementCommande.PRETE;
+        }
+        if (nombre(l[3]) > 0) {
+            return AvancementCommande.EXPEDIEE;
+        }
+        if (nombre(l[4]) > 0) {
+            return AvancementCommande.DISPONIBLE;
+        }
+        return AvancementCommande.REMISE;
+    }
+
+    private static long nombre(Object valeur) {
+        return ((Number) valeur).longValue();
     }
 }

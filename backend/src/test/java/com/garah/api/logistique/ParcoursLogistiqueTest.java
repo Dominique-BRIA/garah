@@ -667,6 +667,7 @@ class ParcoursLogistiqueTest {
     @Test
     @DisplayName("la liste des retours nomme le client et la commande")
     void listeDesRetours() {
+        toutRemettre();
         Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
         Retour retour = retours.demander(commande.id(), clientId, "Taille incorrecte", List.of(
                 new ServiceRetour.DemandeLigne(ligneId, 2, EtatArticle.NEUF),
@@ -750,6 +751,7 @@ class ParcoursLogistiqueTest {
     @Test
     @DisplayName("un retour partiel : 3 unités sur 10, dont 1 abîmée")
     void retourPartiel() {
+        toutRemettre();
         Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
         assertThat(stock.etat(varianteId).disponible()).isEqualTo(20);
 
@@ -785,6 +787,7 @@ class ParcoursLogistiqueTest {
     @Test
     @DisplayName("le grand livre marchand suit tout le cycle")
     void grandLivreDeBoutEnBout() {
+        toutRemettre();
         // Le paiement a déjà été confirmé dans la préparation du test :
         // 10 × 15 000 = 150 000, sans règle de commission (donc 0 %).
         BigDecimal apresVente = jdbc.queryForObject("""
@@ -818,18 +821,122 @@ class ParcoursLogistiqueTest {
     @Test
     @DisplayName("on ne retourne pas plus qu'on n'a acheté")
     void triggerQuantiteRetour() {
+        toutRemettre();
         Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
 
-        // I-40, porté par un TRIGGER, et qui tient compte des retours
-        // PRÉCÉDENTS : 2 en mars puis 2 en avril sur 3 achetés doit échouer.
+        // Le service refuse d'abord : on ne retourne pas plus qu'on n'a RECU.
         assertThatThrownBy(() -> retours.demander(commande.id(), clientId, "Trop", List.of(
                 new ServiceRetour.DemandeLigne(ligneId, 12, EtatArticle.NEUF))))
+                .isInstanceOf(com.garah.api.commun.erreur.RegleMetierViolee.class);
+
+        // ⚠️ Et le trigger I-40 tient TOUJOURS, pour tout ce qui passerait a
+        //    cote du service. Il tient compte des retours PRECEDENTS : 10
+        //    retournes sur 10 achetes, puis 2 de plus, doit echouer.
+        Retour retour = retours.demander(commande.id(), clientId, "Tout", List.of(
+                new ServiceRetour.DemandeLigne(ligneId, 10, EtatArticle.NEUF)));
+        assertThatThrownBy(() -> jdbc.update("""
+                INSERT INTO ligne_retour (retour_id, ligne_commande_id, quantite, etat_article)
+                VALUES (?, ?, 2, 'NEUF')
+                """, retour.getId(), ligneId))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("⚠️ on ne retourne pas ce qu'on n'a pas encore reçu")
+    void pasDeRetourAvantLaRemise() {
+        // 🎯 Rien n'empechait de demander le retour d'articles jamais
+        //    recuperes — voire jamais partis. Le trigger I-40 compare au
+        //    COMMANDE, pas au REMIS.
+        Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
+        assertThatThrownBy(() -> retours.demander(commande.id(), clientId, "Trop tôt", List.of(
+                new ServiceRetour.DemandeLigne(ligneId, 1, EtatArticle.NEUF))))
+                .isInstanceOf(com.garah.api.commun.erreur.RegleMetierViolee.class)
+                .hasMessageContaining("pas encore été remis");
+    }
+
+    @Test
+    @DisplayName("⚠️ le statut de la commande suit ses colis — au rythme du moins avancé")
+    void leStatutSuitLesColis() {
+        // 🎯 CE QUE CE TEST DEFEND
+        //
+        //    L'agent enregistrait les departs dans l'expedition, et quelqu'un
+        //    devait aller cliquer « Expediee » sur la commande, ailleurs.
+        //    Personne n'y pensait : le client lisait « Payee » pendant que son
+        //    colis roulait, arrivait, et meme apres l'avoir emporte.
+        Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
+
+        Expedition envoi = expeditions.creer(commande.id(), entrepotId, pointRetraitId, null);
+        assertThat(statutCommande()).isEqualTo("EN_PREPARATION");
+
+        // Deux colis, et la moitie de la marchandise seulement : pas pret.
+        Colis premier = expeditions.ajouterColis(envoi.getId(), null);
+        expeditions.remplir(premier.getId(), ligneId, 4);
+        assertThat(statutCommande()).isEqualTo("EN_PREPARATION");
+
+        Colis second = expeditions.ajouterColis(envoi.getId(), null);
+        expeditions.remplir(second.getId(), ligneId, 6);
+        assertThat(statutCommande()).as("tout est en colis").isEqualTo("PRETE");
+
+        // ⚠️ AU RYTHME DU MOINS AVANCE : un colis parti sur deux, ce n'est
+        //    pas « en route » — la moitie de la commande est encore la.
+        expeditions.enregistrer(premier.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        assertThat(statutCommande()).isEqualTo("PRETE");
+        expeditions.enregistrer(second.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        assertThat(statutCommande()).isEqualTo("EXPEDIEE");
+
+        // Un seul colis arrive : pas de code, sinon le client viendrait
+        // chercher la moitie de sa commande.
+        expeditions.enregistrer(premier.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+        assertThat(statutCommande()).isEqualTo("EXPEDIEE");
+        assertThat(expeditions.mesRetraits(commande.id(), clientId).getFirst().codeRetrait()).isNull();
+
+        // 🎯 Le dernier arrive : le CODE NAIT TOUT SEUL, sans qu'un agent ait
+        //    a y penser, et le client est prevenu.
+        expeditions.enregistrer(second.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+        assertThat(statutCommande()).isEqualTo("DISPONIBLE");
+        String code = expeditions.mesRetraits(commande.id(), clientId).getFirst().codeRetrait();
+        assertThat(code).isNotNull();
+        assertThat(evenementsPublies.stream(EvenementsExpedition.MarchandiseDisponible.class)).hasSize(1);
+
+        expeditions.confirmerRetrait(code, responsableId);
+        assertThat(statutCommande()).isEqualTo("RETIREE");
+    }
+
+    @Test
+    @DisplayName("⚠️ le serveur refuse d'expédier une commande impayée")
+    void pasDExpeditionSansPaiement() {
+        // Le back-office cachait deja le bouton. Mais une protection qui ne
+        // tient que dans l'ecran n'en est pas une : c'est le serveur qui dit non.
+        panier.ajouter(clientId, varianteId, 1);
+        DetailCommande impayee = commandes.passer(clientId, pointRetraitId, "fr");
+
+        assertThatThrownBy(() -> expeditions.creer(impayee.id(), entrepotId, pointRetraitId, null))
+                .isInstanceOf(com.garah.api.commun.erreur.ConflitEtat.class)
+                .hasMessageContaining("pas encore payée");
+    }
+
+    /** Le statut de la commande, tel que le client le lit. */
+    private String statutCommande() {
+        return commandes.detail(commande.id()).statut();
+    }
+
+    /**
+     * Toute la commande part, arrive, et est remise au client.
+     *
+     * <p>⚠️ Prealable a tout retour : on ne retourne que ce qu'on a recu.</p>
+     */
+    private void toutRemettre() {
+        Colis colis = colisPret();
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+        String code = expeditions.mesRetraits(commande.id(), clientId).getFirst().codeRetrait();
+        expeditions.confirmerRetrait(code, responsableId);
     }
 
     @Test
     @DisplayName("le remboursement ne part qu'après contrôle physique")
     void pasDeRemboursementAvantValidation() {
+        toutRemettre();
         Long ligneId = lignesCommande.findByCommandeId(commande.id()).getFirst().getId();
         Retour retour = retours.demander(commande.id(), clientId, "Erreur", List.of(
                 new ServiceRetour.DemandeLigne(ligneId, 1, EtatArticle.NEUF)));

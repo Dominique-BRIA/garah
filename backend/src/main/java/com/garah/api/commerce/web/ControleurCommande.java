@@ -137,21 +137,6 @@ public class ControleurCommande {
     }
 
     /**
-     * Fait avancer une commande dans son cycle de vie.
-     *
-     * <p>Une seule route pour toutes les transitions, parce que la machine à
-     * états vit dans le service et nulle part ailleurs. Cinq routes
-     * ({@code /preparation}, {@code /pret}, ...) dupliqueraient la question
-     * « d'où peut-on venir ? » à cinq endroits.</p>
-     */
-    @PostMapping("/{id}/statut")
-    @PreAuthorize("hasAuthority('COMMANDE_PREPARER')")
-    public DetailCommande changerStatut(@PathVariable Long id,
-                                        @Valid @RequestBody DemandeStatut demande) {
-        return commandes.changerStatut(id, demande.statut());
-    }
-
-    /**
      * L'annulation a sa propre permission.
      *
      * <p>Annuler une commande payée entraîne un remboursement : ce n'est pas du
@@ -195,10 +180,6 @@ public class ControleurCommande {
             String langue) {
     }
 
-    public record DemandeStatut(
-            @NotNull(message = "Le statut visé est obligatoire.")
-            StatutCommande statut) {
-    }
 
     public record DemandeAnnulation(
             /*
