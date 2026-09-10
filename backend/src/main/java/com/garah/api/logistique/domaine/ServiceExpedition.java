@@ -4,6 +4,7 @@ import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.logistique.infra.*;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,15 +39,18 @@ public class ServiceExpedition {
     private final EvenementExpeditionRepository evenements;
     private final RetraitMarchandiseRepository retraits;
     private final LieuRepository lieux;
+    private final ApplicationEventPublisher journal;
 
     public ServiceExpedition(ExpeditionRepository expeditions, ColisRepository colis,
                              EvenementExpeditionRepository evenements,
-                             RetraitMarchandiseRepository retraits, LieuRepository lieux) {
+                             RetraitMarchandiseRepository retraits, LieuRepository lieux,
+                             ApplicationEventPublisher journal) {
         this.expeditions = expeditions;
         this.colis = colis;
         this.evenements = evenements;
         this.retraits = retraits;
         this.lieux = lieux;
+        this.journal = journal;
     }
 
     /**
@@ -149,6 +153,15 @@ public class ServiceExpedition {
         Colis paquet = chargerColis(colisId);
         Lieu lieu = charger(lieuId);
 
+        // ⚠️ Se lit AVANT `appliquer`, qui écrase le statut.
+        //
+        //    Un colis n'est CREE que jusqu'à son premier départ. C'est donc la
+        //    seule façon de distinguer « il part » de « il repart » — un colis
+        //    débloqué, ou relancé depuis une étape intermédiaire, ne doit pas
+        //    annoncer une seconde fois au client que sa commande est partie.
+        boolean premierDepart = type == TypeEvenement.DEPART
+                && paquet.getStatut() == StatutColis.CREE;
+
         if (paquet.getStatut() == StatutColis.REMIS) {
             throw new ConflitEtat("COLIS_DEJA_REMIS",
                     "Ce colis a déjà été remis au client.");
@@ -170,6 +183,10 @@ public class ServiceExpedition {
         if (type == TypeEvenement.DEPART
                 && paquet.getExpedition().getDateExpedition() == null) {
             paquet.getExpedition().marquerExpediee();
+        }
+
+        if (premierDepart) {
+            prevenirDuDepart(paquet);
         }
 
         return evenement;
@@ -245,7 +262,33 @@ public class ServiceExpedition {
                     "La marchandise n'est pas encore disponible au point de récupération.");
         }
 
-        return retraits.save(new RetraitMarchandise(expeditionId, clientId, genererCode()));
+        RetraitMarchandise retrait =
+                retraits.save(new RetraitMarchandise(expeditionId, clientId, genererCode()));
+
+        // Le NOM du point, pas son identifiant : « point 12 » n'a jamais
+        // conduit personne quelque part.
+        String point = lieux.findById(expedition.getPointRecuperationId())
+                .map(Lieu::getNom)
+                .orElse(null);
+        journal.publishEvent(new EvenementsExpedition.MarchandiseDisponible(
+                clientId, expedition.getCommandeId(), point));
+
+        return retrait;
+    }
+
+    /**
+     * Annoncer le départ au client, avec son numéro de suivi.
+     *
+     * <p>⚠️ Le propriétaire de la commande peut manquer — une expédition
+     * rattachée à une commande effacée, par exemple. On se tait alors, plutôt
+     * que d'empêcher un colis de partir : la notification est un service rendu
+     * au client, jamais une condition de l'acheminement.</p>
+     */
+    private void prevenirDuDepart(Colis paquet) {
+        Long commandeId = paquet.getExpedition().getCommandeId();
+        expeditions.proprietaireDe(commandeId).ifPresent(clientId ->
+                journal.publishEvent(new EvenementsExpedition.ColisParti(
+                        clientId, commandeId, paquet.getNumeroSuivi())));
     }
 
     /**
@@ -349,12 +392,18 @@ public class ServiceExpedition {
             throw RessourceIntrouvable.de("Commande", commandeId);
         }
 
-        // Vide tant que rien n'est parti, ou tant que l'agent n'a pas préparé
-        // le retrait. Ce n'est pas une erreur : c'est l'état normal d'une
-        // commande qu'on vient de payer, et l'écran doit savoir le dire.
+        // Vide tant que RIEN N'EST PARTI. Ce n'est pas une erreur : c'est
+        // l'état normal d'une commande qu'on vient de payer, et l'écran doit
+        // savoir le dire.
+        //
+        // ⚠️ Ce qui suit partait auparavant des RETRAITS, préparés bien plus
+        //    tard par un agent du comptoir. Un envoi en cours de route ne
+        //    remontait donc pas, et le client n'avait aucun numéro de suivi
+        //    tant que son colis n'était pas arrivé. On part maintenant des
+        //    EXPÉDITIONS : le retrait vient s'y ajouter quand il existe.
         return expeditions.findByCommandeId(commandeId).stream()
-                .flatMap(e -> retraits.findByExpeditionId(e.getId()).stream()
-                        .map(r -> MonRetrait.de(r, e)))
+                .map(e -> MonRetrait.de(e,
+                        retraits.findByExpeditionId(e.getId()).stream().findFirst().orElse(null)))
                 .toList();
     }
 

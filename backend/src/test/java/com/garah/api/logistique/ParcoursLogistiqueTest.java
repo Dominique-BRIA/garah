@@ -34,6 +34,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -51,8 +53,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * casse en vrai.</p>
  */
 @SpringBootTest
+@RecordApplicationEvents
 @DisplayName("Parcours logistique et SAV")
 class ParcoursLogistiqueTest {
+
+    @Autowired ApplicationEvents evenementsPublies;
 
     private static final String CODE_MARCHAND = "M-LOG-1";
     private static final String EMAIL = "client.log@garah.cm";
@@ -407,17 +412,35 @@ class ParcoursLogistiqueTest {
     }
 
     @Test
-    @DisplayName("le client lit son code, et personne d'autre")
+    @DisplayName("le client lit son suivi pendant le trajet, et son code à l'arrivée")
     void monRetrait() {
+        // 🎯 CE QUE CE TEST DEFEND
+        //
+        //    La boutique propose « Suivre un colis ». Ce guichet demande le
+        //    numéro de suivi d'un COLIS. Or le client ne recevait que le
+        //    numéro d'ENVOI — et seulement une fois le retrait préparé,
+        //    c'est-à-dire une fois le colis ARRIVÉ.
+        //
+        // ⚠️ Le suivi n'existait donc pour le client qu'au moment où il ne
+        //    sert plus à rien. « Où est mon colis » se demande PENDANT le
+        //    trajet, et pendant le trajet l'écran ne montrait rien.
         Colis colis = colisPret();
         Long expeditionId = colis.getExpedition().getId();
 
-        // Rien n'est encore parti : la liste est VIDE, et ce n'est pas une
-        // erreur. Un 404 ici ferait croire à une commande perdue le jour même
-        // où elle vient d'être payée.
-        assertThat(expeditions.mesRetraits(commande.id(), clientId)).isEmpty();
-
+        // Parti, pas encore arrivé : le client a son numéro de suivi TOUT DE
+        // SUITE, et pas de code — il n'y a rien à retirer.
         expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        assertThat(expeditions.mesRetraits(commande.id(), clientId)).singleElement()
+                .satisfies(m -> {
+                    assertThat(m.numerosSuivi())
+                            .as("le numéro que le guichet public sait lire")
+                            .containsExactly(colis.getNumeroSuivi());
+                    assertThat(m.codeRetrait()).isNull();
+                    assertThat(m.statut())
+                            .as("nul : aucun retrait n'est préparé — ce n'est pas « en attente »")
+                            .isNull();
+                });
+
         expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
         RetraitMarchandise retrait = expeditions.preparerRetrait(expeditionId);
 
@@ -426,6 +449,9 @@ class ParcoursLogistiqueTest {
                 .satisfies(m -> {
                     assertThat(m.codeRetrait()).isEqualTo(retrait.getCodeRetrait());
                     assertThat(m.statut()).isEqualTo("EN_ATTENTE");
+                    // Le suivi ne disparaît pas à l'arrivée : le client relit
+                    // son trajet aussi APRÈS, notamment sur réclamation.
+                    assertThat(m.numerosSuivi()).containsExactly(colis.getNumeroSuivi());
                 });
 
         // ⚠️ La commande d'un autre répond « introuvable », jamais
@@ -443,6 +469,62 @@ class ParcoursLogistiqueTest {
                     assertThat(m.codeRetrait()).isNull();
                     assertThat(m.statut()).isEqualTo("CONFIRME");
                 });
+    }
+
+    @Test
+    @DisplayName("⚠️ une commande payée dont rien n'est parti rend une liste vide")
+    void rienNEstParti() {
+        // Le pendant du test précédent : partir des expéditions ne doit PAS
+        // faire apparaître une ligne là où il n'y a rien. Un envoi fantôme
+        // ferait chercher un colis qui n'a jamais été constitué.
+        //
+        // Et surtout : vide n'est pas une erreur. Un 404 ferait croire à une
+        // commande perdue le jour même où elle vient d'être payée.
+        assertThat(expeditions.mesRetraits(commande.id(), clientId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("⚠️ le départ est ANNONCÉ au client, numéro de suivi compris")
+    void leDepartEstAnnonce() {
+        // 🎯 CE QUE CE TEST DEFEND
+        //
+        //    Toute la logistique etait MUETTE vers l'exterieur. Un colis
+        //    partait, un retrait etait prepare, et le client ne l'apprenait
+        //    qu'en rouvrant l'ecran de sa commande — donc en y pensant.
+        //
+        // ⚠️ `marchandiseArrivee` existait pourtant, ecrite et documentee dans
+        //    le module notification. AUCUN code ne l'appelait. Une methode
+        //    publique que personne n'invoque ne se distingue en rien d'une
+        //    notification qui n'existe pas, et rien ne le signalait.
+        Colis colis = colisPret();
+
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+
+        assertThat(evenementsPublies.stream(EvenementsExpedition.ColisParti.class))
+                .as("le depart s'annonce, et il porte le numero que le guichet public sait lire")
+                .singleElement()
+                .satisfies(e -> {
+                    assertThat(e.clientId()).isEqualTo(clientId);
+                    assertThat(e.numeroSuivi()).isEqualTo(colis.getNumeroSuivi());
+                });
+
+        // ⚠️ Un colis qui REPART — debloque, ou relance depuis une etape
+        //    intermediaire — ne doit pas annoncer une seconde fois que la
+        //    commande est partie. Deux notifications identiques pour un seul
+        //    depart apprennent au client a les ignorer.
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        assertThat(evenementsPublies.stream(EvenementsExpedition.ColisParti.class))
+                .as("le second depart du meme colis ne reannonce rien")
+                .hasSize(1);
+
+        // Et l'arrivee au comptoir s'annonce a son tour — SANS le code, qu'une
+        // banniere afficherait sur un ecran verrouille.
+        expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+        expeditions.preparerRetrait(colis.getExpedition().getId());
+
+        assertThat(evenementsPublies.stream(EvenementsExpedition.MarchandiseDisponible.class))
+                .singleElement()
+                .satisfies(e -> assertThat(e.clientId()).isEqualTo(clientId));
     }
 
     @Test

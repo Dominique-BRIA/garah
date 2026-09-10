@@ -1,5 +1,6 @@
 package com.garah.api.notification.domaine;
 
+import com.garah.api.logistique.domaine.EvenementsExpedition;
 import com.garah.api.messagerie.domaine.MessageInterneEnvoye;
 import com.garah.api.serviceclient.domaine.EvenementsConversation;
 import org.springframework.stereotype.Component;
@@ -21,8 +22,8 @@ import java.util.Map;
  *
  * <h2>⚠️ Le sens de la dépendance</h2>
  *
- * <p>{@code notification} écoute {@code serviceclient} et {@code messagerie},
- * et <b>jamais l'inverse</b>. Un appel direct depuis ces modules aurait fait
+ * <p>{@code notification} écoute {@code serviceclient}, {@code messagerie} et
+ * {@code logistique}, et <b>jamais l'inverse</b>. Un appel direct depuis ces modules aurait fait
  * dépendre les deux l'un de l'autre, et le test de cycles aurait refusé la
  * compilation. C'est aussi ce qui garantit qu'une panne de Firebase
  * n'empêche pas d'enregistrer un message.</p>
@@ -153,6 +154,27 @@ public class EcouteurNotifications {
     }
 
     /**
+     * Prévenir du départ, en donnant le numéro de suivi.
+     *
+     * <p>🎯 <b>Le client n'apprenait le départ nulle part.</b> Il devait
+     * rouvrir l'écran de sa commande pour découvrir qu'elle était partie —
+     * c'est-à-dire y penser. Et le numéro de suivi, celui que le guichet
+     * public sait lire, ne lui parvenait par aucun canal.</p>
+     *
+     * <p>Le numéro EST dans le message, et c'est voulu : contrairement au code
+     * de retrait, il ne permet à personne d'emporter la marchandise. Le lire
+     * par-dessus une épaule n'apprend qu'une chose — où est un colis.</p>
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void surColisParti(EvenementsExpedition.ColisParti e) {
+        notifications.prevenir(
+                e.clientId(),
+                "Votre commande est partie",
+                "Suivez-la avec le numéro " + e.numeroSuivi() + ".",
+                Map.of("type", "COMMANDE", "id", String.valueOf(e.commandeId())));
+    }
+
+    /**
      * Prévenir de la marchandise arrivée.
      *
      * <p>🎯 <b>Le moment qui compte le plus.</b> C'est là qu'un code de retrait
@@ -160,19 +182,25 @@ public class EcouteurNotifications {
      * rater : sans elle, la marchandise attend au comptoir et le client se
      * demande où elle est.</p>
      *
-     * <p>⚠️ Le code lui-même n'est <b>jamais</b> dans la notification. Une
+     * <p>⚠️ Elle était pourtant écrite ici, documentée, et <b>aucun code ne
+     * l'appelait</b> : une méthode publique que personne n'invoque ne se
+     * distingue en rien d'une notification qui n'existe pas. Elle écoute
+     * désormais un événement, ce qui la rattache à un fait réel.</p>
+     *
+     * <p>⚠️ Le code de retrait n'est <b>jamais</b> dans la notification. Une
      * bannière s'affiche sur un écran verrouillé, à la vue de qui passe : le
      * code suffit à emporter la marchandise. On dit qu'elle est arrivée, on ne
      * dit pas comment la prendre.</p>
      */
-    public void marchandiseArrivee(Long clientId, Long commandeId, String pointRetrait) {
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void surMarchandiseDisponible(EvenementsExpedition.MarchandiseDisponible e) {
         notifications.prevenir(
-                clientId,
+                e.clientId(),
                 "Votre commande est arrivée",
-                pointRetrait == null
+                e.pointRecuperation() == null
                         ? "Elle vous attend à votre point de récupération."
-                        : "Elle vous attend à " + pointRetrait + ".",
-                Map.of("type", "COMMANDE", "id", String.valueOf(commandeId)));
+                        : "Elle vous attend à " + e.pointRecuperation() + ".",
+                Map.of("type", "COMMANDE", "id", String.valueOf(e.commandeId())));
     }
 
     /** Le signal d'équipe pour ce qui attend depuis trop longtemps. */
