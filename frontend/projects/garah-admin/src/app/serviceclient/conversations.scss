@@ -174,3 +174,8 @@
 }
 
 .panneau .boutons { margin-top: 1rem; }
+
+// Les précisions de l'en-tête d'une conversation : qui l'a prise, qui l'a
+// close. ⚠️ Elles s'enroulent au lieu de déborder — sur un écran étroit, deux
+// noms complets dépassent largement la largeur du panneau.
+.aide__part { white-space: nowrap; }

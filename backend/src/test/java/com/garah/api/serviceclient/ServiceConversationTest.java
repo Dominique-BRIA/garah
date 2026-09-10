@@ -200,6 +200,39 @@ class ServiceConversationTest {
     }
 
     @Test
+    @DisplayName("⚠️ la vue rend les NOMS, pas seulement les identifiants")
+    void laVueRendLesNoms() {
+        // 🎯 Sans cette résolution, l'écran recevait « prisPar: 7 » et n'avait
+        //    aucun moyen d'en tirer un nom. La question « qui a clos ? »
+        //    serait restée sans réponse alors que la donnée était là.
+        Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
+        Long agent = responsableIds.getFirst();
+        conversations.prendre(convId, agent);
+        conversations.fermer(convId, agent);
+
+        var vue = conversations.vue(convId);
+
+        assertThat(vue.prisPar()).isEqualTo(agent);
+        assertThat(vue.prisParNom()).isNotBlank();
+        assertThat(vue.closPar()).isEqualTo(agent);
+        assertThat(vue.closParNom()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("une conversation jamais prise ne nomme personne, sans tomber")
+    void jamaisPriseNeNommePersonne() {
+        // ⚠️ `Map.of()` refuse une clé nulle même en LECTURE : c'est ce qui
+        //    faisait tomber la liste dès qu'une conversation attendait.
+        Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();
+
+        var vue = conversations.vue(convId);
+
+        assertThat(vue.prisPar()).isNull();
+        assertThat(vue.prisParNom()).isNull();
+        assertThat(vue.closParNom()).isNull();
+    }
+
+    @Test
     @DisplayName("⚠️ on sait QUI a clos, pas seulement quand")
     void onSaitQuiAClos() {
         Long convId = conversations.ouvrir(clientId, "Sujet", "Bonjour").getId();

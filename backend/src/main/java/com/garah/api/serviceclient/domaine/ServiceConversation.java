@@ -442,8 +442,18 @@ public class ServiceConversation {
      */
     @Transactional(readOnly = true)
     public VueConversation vue(Long conversationId) {
-        return VueConversation.complete(conversations.findById(conversationId)
-                .orElseThrow(() -> RessourceIntrouvable.de("Conversation", conversationId)));
+        Conversation c = conversations.findById(conversationId)
+                .orElseThrow(() -> RessourceIntrouvable.de("Conversation", conversationId));
+
+        // ⚠️ Les NOMS, pas les identifiants. Sans cette resolution, l'ecran
+        //    recevait bien `prisPar: 7` et `closPar: 7` — et n'avait aucun
+        //    moyen d'en tirer un nom. La question « qui a clos ? » serait
+        //    restee sans reponse alors que la donnee etait la.
+        Map<Long, String> noms = nomsInternes(
+                Stream.of(c.getPrisPar(), c.getClosPar()).filter(Objects::nonNull).toList());
+
+        return VueConversation.complete(c,
+                nomDe(noms, c.getPrisPar()), nomDe(noms, c.getClosPar()));
     }
 
     /**

@@ -42,7 +42,23 @@ export interface ResumeConversation {
   readonly clientCode: string | null;
   /** Nul si le compte a disparu. La conversation, elle, reste. */
   readonly clientNom: string | null;
-  readonly responsableId: number | null;
+  /**
+   * Qui a pris la conversation. ⚠️ Le champ s'appelait `responsableId` : depuis
+   * V33 un ADMIN ou un SUPER_ADMIN peut prendre, et le nom désignait un type
+   * d'acteur là où quatre sont possibles.
+   */
+  readonly prisPar: number | null;
+  /** Le NOM de celui qui a pris. Nul si le compte a disparu. */
+  readonly prisParNom: string | null;
+  /**
+   * Qui a clos, et non pas seulement quand.
+   *
+   * ⚠️ Nul pour les conversations closes AVANT V33 : la base ne l'a jamais su.
+   * L'écran doit donc savoir dire « on ne sait pas » — et non afficher un vide
+   * qui se lit comme « personne ».
+   */
+  readonly closPar: number | null;
+  readonly closParNom: string | null;
   readonly sujet: string;
   readonly statut: StatutConversation;
   readonly nombreMessages: number;
@@ -59,7 +75,23 @@ export interface ResumeConversation {
 export interface Conversation {
   readonly id: number;
   readonly clientId: number;
-  readonly responsableId: number | null;
+  /**
+   * Qui a pris la conversation. ⚠️ Le champ s'appelait `responsableId` : depuis
+   * V33 un ADMIN ou un SUPER_ADMIN peut prendre, et le nom désignait un type
+   * d'acteur là où quatre sont possibles.
+   */
+  readonly prisPar: number | null;
+  /** Le NOM de celui qui a pris. Nul si le compte a disparu. */
+  readonly prisParNom: string | null;
+  /**
+   * Qui a clos, et non pas seulement quand.
+   *
+   * ⚠️ Nul pour les conversations closes AVANT V33 : la base ne l'a jamais su.
+   * L'écran doit donc savoir dire « on ne sait pas » — et non afficher un vide
+   * qui se lit comme « personne ».
+   */
+  readonly closPar: number | null;
+  readonly closParNom: string | null;
   readonly sujet: string;
   readonly statut: StatutConversation;
   readonly dateCreation: string;

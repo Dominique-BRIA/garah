@@ -128,7 +128,26 @@
       <header class="fil__entete">
         <div>
           <h2>{{ fil.sujet }}</h2>
-          <p class="aide">Ouverte le {{ dateHeure(fil.dateCreation) }}</p>
+          <p class="aide">
+            Ouverte le {{ dateHeure(fil.dateCreation) }}
+
+            <!-- ⚠️ QUI a pris, et QUI a clos. Les deux manquaient : on savait
+                 QUAND une conversation avait été close, jamais par qui — et
+                 c'est exactement la question qu'on pose en la relisant. -->
+            @if (fil.prisParNom) {
+              <span class="aide__part">· prise par {{ fil.prisParNom }}</span>
+            }
+            @if (fil.statut === 'CLOSED') {
+              @if (fil.closParNom) {
+                <span class="aide__part">· close par {{ fil.closParNom }}</span>
+              } @else {
+                <!-- ⚠️ On DIT qu'on ne sait pas. Un vide se lirait « close par
+                     personne », ce qui est faux : la base ne l'a pas su, voilà
+                     tout. Le cas disparaîtra de lui-même. -->
+                <span class="aide__part attenue">· close avant que l’auteur ne soit retenu</span>
+              }
+            }
+          </p>
         </div>
         <span class="gu-badge" [class]="badge(fil.statut)">{{ libelle(fil.statut) }}</span>
       </header>

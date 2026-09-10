@@ -320,11 +320,72 @@ export class Conversations {
       });
   }
 
+  /**
+   * Clôt la conversation, après DEUX confirmations.
+   *
+   * <h2>🎯 Pourquoi deux, et pas une</h2>
+   *
+   * <p>Clore est <b>sans retour</b> : {@code WAITING → ASSIGNED → CLOSED}, et
+   * aucune route ne rouvre. Le client ne peut plus répondre dans ce fil — il
+   * doit en ouvrir un nouveau, en réexpliquant tout.</p>
+   *
+   * <h2>⚠️ Le second rappel APPREND quelque chose</h2>
+   *
+   * <p>Deux boîtes identiques n'apprennent qu'à cliquer deux fois. Celle-ci
+   * dit ce que la première ne pouvait pas dire : <b>combien de messages du
+   * client n'ont jamais été ouverts</b>. Clore sur un message non lu est
+   * précisément l'erreur qu'on veut attraper — le client a écrit, personne
+   * n'a lu, et on ferme la porte.</p>
+   *
+   * <p>Quand tout a été lu, le second rappel le dit aussi : c'est une
+   * information, pas une formalité. On confirme en sachant que rien n'attend.</p>
+   *
+   * <p>⚠️ {@code confirm} est laid, mais il BLOQUE — c'est la convention du
+   * projet pour ce qui ne se rattrape pas. À remplacer par une boîte de
+   * dialogue maison, jamais par rien.</p>
+   */
   protected clore(): void {
     const fil = this.ouverte();
     if (!fil || this.action()) {
       return;
     }
+
+    // ⚠️ Le nom vient de la LISTE : le détail d'une conversation ne le porte
+    //    pas, il n'a que l'identifiant du client. Nommer la personne dans une
+    //    confirmation sans retour vaut le détour — « clore la conversation
+    //    avec ce client » se lit sans se relire.
+    const client = this.liste().find((c) => c.id === fil.id)?.clientNom ?? 'ce client';
+
+    // Premier rappel : la CONSÉQUENCE, dite en clair.
+    const premier =
+      `Clore la conversation avec ${client} ?
+
+`
+      + 'Elle ne pourra plus recevoir de réponse, ni de sa part ni de la '
+      + 'vôtre. Pour reprendre l’échange, il devra en ouvrir une nouvelle et '
+      + 'tout réexpliquer.';
+    if (!confirm(premier)) {
+      return;
+    }
+
+    // Second rappel : ce que la première boîte ne pouvait pas dire.
+    const nonLus = fil.messages.filter(
+      (m) => !m.lu && !this.deLEquipe(m.expediteurId),
+    ).length;
+
+    const second = nonLus > 0
+      ? `⚠️ ${nonLus} message(s) de ${client} n’ont jamais été ouverts.
+
+`
+        + 'Clore maintenant, c’est fermer sans les avoir lus. Confirmez-vous ?'
+      : `Tous les messages de ${client} ont été lus.
+
+`
+        + 'Confirmez-vous la clôture définitive ?';
+    if (!confirm(second)) {
+      return;
+    }
+
     this.action.set('cloture');
     this.erreurFil.set(null);
 
