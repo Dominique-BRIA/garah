@@ -83,6 +83,11 @@ export class Clients {
   protected readonly telephone = signal('');
   protected readonly langue = signal('fr');
 
+  // --- Écrire comme Assistance GARAH ---
+  protected readonly redactionAssistance = signal(false);
+  protected readonly messageAssistance = signal('');
+  protected readonly assistanceEnvoyee = signal(false);
+
   protected readonly libelleStatut = computed(() => {
     const code = this.statut();
     return code ? libelleStatutClient(code) : null;
@@ -161,6 +166,10 @@ export class Clients {
     this.fiche.set(null);
     this.risque.set(null);
     this.formEdition.set(false);
+    // Un brouillon ne passe pas d'un client à l'autre : le message écrit pour
+    // l'un partirait chez le suivant.
+    this.annulerAssistance();
+    this.assistanceEnvoyee.set(false);
 
     this.http.get<FicheClient>(`/api/clients/${c.id}`).subscribe({
       next: (f) => {
@@ -200,6 +209,8 @@ export class Clients {
     this.erreurFiche.set(null);
     this.formEdition.set(false);
     this.chargementFiche.set(false);
+    this.annulerAssistance();
+    this.assistanceEnvoyee.set(false);
   }
 
   // -------------------------------------------------------------------------
@@ -268,6 +279,47 @@ export class Clients {
       error: (e: unknown) => {
         this.action.set(null);
         this.erreurFiche.set(messageErreur(e, 'Le statut n’a pas pu être changé.'));
+      },
+    });
+  }
+
+  protected ouvrirAssistance(): void {
+    this.assistanceEnvoyee.set(false);
+    this.erreurFiche.set(null);
+    this.redactionAssistance.set(true);
+  }
+
+  protected annulerAssistance(): void {
+    this.redactionAssistance.set(false);
+    this.messageAssistance.set('');
+  }
+
+  /**
+   * Écrit au client, dans sa discussion « Assistance GARAH ».
+   *
+   * <p>⚠️ Le message ne prend pas la conversation : celui qui annonce une
+   * offre n'est pas forcément celui qui traitera la réponse.</p>
+   */
+  protected envoyerAssistance(): void {
+    const f = this.fiche();
+    const contenu = this.messageAssistance().trim();
+    if (!f || !contenu || this.action()) {
+      return;
+    }
+    this.action.set('assistance');
+    this.erreurFiche.set(null);
+
+    this.http.post(`/api/conversations/assistance/clients/${f.id}/messages`, { contenu }).subscribe({
+      next: () => {
+        this.action.set(null);
+        this.annulerAssistance();
+        this.assistanceEnvoyee.set(true);
+      },
+      error: (e: unknown) => {
+        this.action.set(null);
+        // Le texte est GARDÉ : le perdre ferait réécrire un avertissement
+        // soigneusement formulé.
+        this.erreurFiche.set(messageErreur(e, 'Le message n’a pas pu être envoyé.'));
       },
     });
   }

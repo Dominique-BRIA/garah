@@ -459,6 +459,11 @@ export class Conversations {
   protected closable(): boolean {
     // ⚠️ Ni close, ni INFORMATION : une annonce du systeme n'a ete prise par
     //    personne, et il n'y a rien a y clore — le serveur le refuserait.
+    // ⚠️ Ni l'Assistance GARAH : elle reste ouverte pour toujours — c'est le
+    //    canal permanent entre GARAH et le client. Le serveur le refuse aussi.
+    if (this.ouverte()?.assistance) {
+      return false;
+    }
     const statut = this.ouverte()?.statut;
     return statut !== 'CLOSED' && statut !== 'INFORMATION'
       && this.session.peut('CONVERSATION_FERMER');

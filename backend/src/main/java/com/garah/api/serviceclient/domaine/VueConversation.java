@@ -23,7 +23,9 @@ public record VueConversation(
         Instant dateCreation,
         Instant dateAffectation,
         Instant dateCloture,
-        List<VueMessage> messages) {
+        List<VueMessage> messages,
+        // Vrai pour l'Assistance GARAH : épinglée chez le client, jamais close.
+        boolean assistance) {
 
     /**
      * ⚠️ Les NOMS sont facultatifs : les routes qui n'ont pas de quoi les
@@ -39,7 +41,7 @@ public record VueConversation(
         return new VueConversation(c.getId(), c.getClientId(),
                 c.getPrisPar(), prisParNom, c.getClosPar(), closParNom,
                 c.getSujet(), c.getStatut().name(), c.getDateCreation(),
-                c.getDateAffectation(), c.getDateCloture(), List.of());
+                c.getDateAffectation(), c.getDateCloture(), List.of(), c.estAssistance());
     }
 
     public static VueConversation complete(Conversation c) {
@@ -51,6 +53,6 @@ public record VueConversation(
                 c.getPrisPar(), prisParNom, c.getClosPar(), closParNom,
                 c.getSujet(), c.getStatut().name(), c.getDateCreation(),
                 c.getDateAffectation(), c.getDateCloture(),
-                c.getMessages().stream().map(VueMessage::de).toList());
+                c.getMessages().stream().map(VueMessage::de).toList(), c.estAssistance());
     }
 }

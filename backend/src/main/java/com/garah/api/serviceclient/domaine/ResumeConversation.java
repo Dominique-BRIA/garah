@@ -40,7 +40,9 @@ public record ResumeConversation(
         Instant dernierMessageLe,
         Instant dateCreation,
         Instant dateAffectation,
-        Instant dateCloture) {
+        Instant dateCloture,
+        // Vrai pour l'Assistance GARAH : le back-office n'offre pas de la clore.
+        boolean assistance) {
 
     public static ResumeConversation de(Conversation c, NomClient client,
                                         long nombreMessages, long nonLus,
@@ -59,6 +61,6 @@ public record ResumeConversation(
                 c.getPrisPar(), prisParNom, c.getClosPar(), closParNom,
                 c.getSujet(), c.getStatut().name(),
                 nombreMessages, nonLus, dernierMessageLe,
-                c.getDateCreation(), c.getDateAffectation(), c.getDateCloture());
+                c.getDateCreation(), c.getDateAffectation(), c.getDateCloture(), c.estAssistance());
     }
 }

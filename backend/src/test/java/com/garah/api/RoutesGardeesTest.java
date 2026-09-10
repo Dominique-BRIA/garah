@@ -124,6 +124,9 @@ class RoutesGardeesTest {
             "ControleurConversation.ouvrir", "ControleurConversation.fil",
             "ControleurConversation.miennes", "ControleurConversation.repondre",
             "ControleurConversation.evaluer",
+            // L'Assistance du client connecté : sa propriété tient au jeton, et
+            // la route refuse tout porteur qui n'est pas client.
+            "ControleurConversation.ecrireALAssistance",
 
             // ⚠️ Les propositions de prix restent ouvertes au client sur SA
             //    conversation. Depuis D-39 le prix est ferme et aucune

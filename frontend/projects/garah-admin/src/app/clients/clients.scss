@@ -123,3 +123,8 @@
 }
 
 .panneau .boutons { margin-top: 1rem; }
+
+// --- Assistance GARAH --------------------------------------------------------
+.assistance { margin: 1rem 0; }
+.assistance__formulaire { display: flex; flex-direction: column; gap: 0.6rem; }
+.assistance__envoye { margin: 0 0 0.6rem; font-size: 0.82rem; color: var(--success); }

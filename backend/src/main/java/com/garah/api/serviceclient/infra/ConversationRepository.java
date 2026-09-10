@@ -54,6 +54,28 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
             """)
     Optional<Conversation> chargerAvecMessages(Long id);
 
+    /** L'Assistance GARAH d'un client, si elle existe. */
+    Optional<Conversation> findByClientIdAndAssistanceTrue(Long clientId);
+
+    /**
+     * Crée l'Assistance GARAH d'un client, si elle n'existe pas encore.
+     *
+     * <p>⚠️ UNE REQUÊTE, et non « chercher puis enregistrer ». Deux premiers
+     * messages simultanés — deux onglets, un double appui — auraient tous deux
+     * trouvé « rien » et tenté de créer : l'index unique aurait refusé le
+     * second, et sa transaction serait tombée avec. {@code ON CONFLICT DO
+     * NOTHING} laisse la base trancher, sans erreur.</p>
+     *
+     * <p>Elle naît INFORMATION : ouverte, mais hors de la file de l'équipe.</p>
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO conversation (client_id, sujet, statut, assistance, date_creation)
+            VALUES (:clientId, :sujet, 'INFORMATION', TRUE, now())
+            ON CONFLICT (client_id) WHERE assistance DO NOTHING
+            """, nativeQuery = true)
+    int creerAssistanceSiAbsente(@Param("clientId") Long clientId, @Param("sujet") String sujet);
+
     /**
      * La liste du back-office.
      *

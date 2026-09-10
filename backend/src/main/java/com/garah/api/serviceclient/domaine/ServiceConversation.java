@@ -1,5 +1,6 @@
 package com.garah.api.serviceclient.domaine;
 
+import com.garah.api.commun.audit.JournalActions;
 import com.garah.api.commun.erreur.ConflitEtat;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.List;
@@ -46,18 +48,23 @@ public class ServiceConversation {
     private final com.garah.api.iam.infra.UtilisateurRepository utilisateurs;
     private final org.springframework.context.ApplicationEventPublisher evenements;
 
+    /** Qui a écrit comme Assistance GARAH : le client lit « GARAH », le journal garde le nom. */
+    private final JournalActions journal;
+
     public ServiceConversation(com.garah.api.iam.infra.UtilisateurRepository utilisateurs,
                                ConversationRepository conversations,
                                AffectationConversationRepository affectations,
                                EvaluationConversationRepository evaluations,
                                ServiceClient clients,
-                               org.springframework.context.ApplicationEventPublisher evenements) {
+                               org.springframework.context.ApplicationEventPublisher evenements,
+                               JournalActions journal) {
         this.conversations = conversations;
         this.affectations = affectations;
         this.evaluations = evaluations;
         this.clients = clients;
         this.utilisateurs = utilisateurs;
         this.evenements = evenements;
+        this.journal = journal;
     }
 
     @Transactional
@@ -292,11 +299,109 @@ public class ServiceConversation {
      * SECONDE fermeture ne réécrit pas l'auteur : celui qui a fermé est celui
      * qui a fermé le premier.</p>
      */
+    // -------------------------------------------------------------------------
+    // L'Assistance GARAH
+    // -------------------------------------------------------------------------
+
+    /**
+     * L'Assistance GARAH du client — créée si elle n'existe pas encore.
+     *
+     * <p>⚠️ Appelée seulement quand un message part, jamais à la simple
+     * ouverture d'un écran. La liste « Toutes » du back-office montre aussi
+     * les conversations INFORMATION : chaque client qui aurait touché la carte
+     * « Assistance GARAH » sans rien écrire y aurait laissé un dossier vide.</p>
+     */
+    @Transactional
+    public Conversation assistance(Long clientId) {
+        Optional<Conversation> existante = conversations.findByClientIdAndAssistanceTrue(clientId);
+        if (existante.isPresent()) {
+            return existante.get();
+        }
+        conversations.creerAssistanceSiAbsente(clientId, Conversation.SUJET_ASSISTANCE);
+        return conversations.findByClientIdAndAssistanceTrue(clientId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "L'assistance du client " + clientId + " aurait dû exister."));
+    }
+
+    /**
+     * Le client écrit à l'Assistance GARAH.
+     *
+     * <p>🎯 La même logique que « Contacter » sur un produit : la conversation
+     * entre dans la file, un conseiller la prend. C'est {@link #repondre} qui
+     * fait tout — le passage de INFORMATION à WAITING, le signal à l'équipe,
+     * la diffusion en direct. On ne recopie rien de sa logique ici.</p>
+     */
+    @Transactional
+    public VueMessage ecrireALAssistance(Long clientId, String contenu) {
+        Conversation conversation = assistance(clientId);
+        Message message = repondre(conversation.getId(), clientId, contenu);
+        return VueMessage.de(message, conversation.getId());
+    }
+
+    /**
+     * Écrire à un client comme Assistance GARAH — une offre, une information,
+     * un rappel des règles.
+     *
+     * <p>⚠️ CE MESSAGE NE PREND PAS LA CONVERSATION, contrairement à
+     * {@link #repondre}. Celui qui annonce une offre ou signale un manquement
+     * n'est pas forcément celui qui traitera la réponse : le rendre
+     * responsable du dossier lui enverrait toutes les réponses du client, et
+     * les retirerait à l'équipe. Le statut ne bouge donc pas — une annonce
+     * reste une annonce, une conversation suivie reste suivie.</p>
+     *
+     * <p>⚠️ Le client lit « GARAH », jamais le nom de l'auteur. Le nom, lui,
+     * est gardé deux fois : l'expéditeur du message est l'auteur réel, et le
+     * journal des actions trace l'envoi. Un avertissement de manquement doit
+     * pouvoir s'expliquer — et savoir QUI l'a envoyé en fait partie.</p>
+     */
+    @Transactional
+    public VueMessage ecrireCommeAssistance(Long clientId, Long auteurId, String contenu) {
+        if (contenu == null || contenu.isBlank()) {
+            throw new RegleMetierViolee("MESSAGE_VIDE", "Un message ne peut pas être vide.");
+        }
+        // Un client inconnu : on le dit, plutôt que de laisser la clé étrangère
+        // répondre par une erreur que personne ne saurait lire.
+        if (!clients.nomsPar(List.of(clientId)).containsKey(clientId)) {
+            throw RessourceIntrouvable.de("Client", clientId);
+        }
+
+        Conversation conversation = assistance(clientId);
+        Message message = conversation.ajouterMessage(auteurId, contenu);
+
+        // ⚠️ VIDER AVANT DE PUBLIER : l'identifiant du message n'existe qu'après
+        //    le vidage, et la diffusion en direct en a besoin.
+        conversations.flush();
+
+        journal.creation("ASSISTANCE_ECRIRE", "conversation", conversation.getId(),
+                JournalActions.cliche("client", clientId, "message", extrait(contenu)));
+
+        VueMessage vue = VueMessage.de(message, conversation.getId());
+        // Vers le client : il le reçoit en direct s'il est connecté, et une
+        // notification sinon — exactement comme une réponse d'un conseiller.
+        evenements.publishEvent(new EvenementsConversation.MessageDansConversation(
+                conversation.getId(),
+                clientId,
+                conversation.getPrisPar(),
+                auteurId,
+                extrait(contenu),
+                true,
+                vue));
+        return vue;
+    }
+
     @Transactional
     public Conversation fermer(Long conversationId, Long parQui) {
         Conversation conversation = charger(conversationId);
         if (conversation.estFermee()) {
             return conversation;
+        }
+        if (conversation.estAssistance()) {
+            // ⚠️ L'ASSISTANCE NE SE CLÔT JAMAIS. C'est le canal permanent entre
+            //    GARAH et le client : la clore couperait le seul chemin par
+            //    lequel on peut le prévenir d'une offre ou d'un manquement. La
+            //    base le refuse aussi (V35).
+            throw new ConflitEtat("ASSISTANCE_PERMANENTE",
+                    "La discussion « Assistance GARAH » reste toujours ouverte : on ne peut pas la clore.");
         }
         if (conversation.getStatut() == StatutConversation.INFORMATION) {
             // Personne ne l a prise, et il n y a rien a traiter : la clore

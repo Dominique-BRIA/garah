@@ -188,6 +188,58 @@
       }
 
       <!-- ================================================================ -->
+      <!-- Écrire comme Assistance GARAH                                     -->
+      <!-- ================================================================ -->
+      <!-- 🎯 Écrire au client depuis sa fiche : une offre, une information, un
+           rappel des règles. Le message arrive dans sa discussion « Assistance
+           GARAH », qui ne se clôt jamais.
+
+           ⚠️ Réservé à ceux qui en ont la permission : écrire à un client de
+              sa propre initiative n'est pas répondre à sa question. -->
+      @if (session.peut('CLIENT_ASSISTANCE_ECRIRE')) {
+        <section class="assistance">
+          <p class="gu-libelle">Assistance GARAH</p>
+
+          @if (redactionAssistance()) {
+            <form class="assistance__formulaire" (ngSubmit)="envoyerAssistance()" novalidate>
+              <label class="gu-libelle" for="assistance-message">Message au client</label>
+              <textarea id="assistance-message" name="assistance" class="gu-champ" rows="4"
+                        maxlength="5000" placeholder="Une offre, une information, un rappel des règles…"
+                        [ngModel]="messageAssistance()"
+                        (ngModelChange)="messageAssistance.set($event)"></textarea>
+
+              <!-- ⚠️ On DIT qui signe et ce qui est tracé : sans cette phrase,
+                   on hésite à écrire un avertissement, ou on l'écrit comme si
+                   personne ne devait le relire. -->
+              <p class="aide">
+                Le client lit « GARAH », jamais votre nom. L’envoi est tracé à
+                votre nom dans le journal des actions.
+              </p>
+
+              <div class="boutons">
+                <button type="submit" class="gu-btn gu-btn--primaire"
+                        [disabled]="!messageAssistance().trim() || action() !== null">
+                  @if (action() === 'assistance') { <gu-icone nom="circle-notch" tourne /> }
+                  Envoyer
+                </button>
+                <button type="button" class="gu-btn gu-btn--secondaire"
+                        (click)="annulerAssistance()">Annuler</button>
+              </div>
+            </form>
+          } @else {
+            @if (assistanceEnvoyee()) {
+              <p class="assistance__envoye" role="status">
+                Message envoyé. Il apparaît dans « Assistance GARAH », chez le client.
+              </p>
+            }
+            <button type="button" class="gu-btn gu-btn--secondaire" (click)="ouvrirAssistance()">
+              <gu-icone nom="comments" /> Écrire au client
+            </button>
+          }
+        </section>
+      }
+
+      <!-- ================================================================ -->
       <!-- Le risque                                                         -->
       <!-- ================================================================ -->
       @if (session.peut('SURVEILLANCE_CONSULTER_RISQUE')) {

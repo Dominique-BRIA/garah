@@ -14,6 +14,7 @@ import jakarta.validation.constraints.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -72,6 +73,27 @@ public class ControleurConversation {
                                   @AuthenticationPrincipal Jwt jeton) {
         return VueConversation.resume(
                 conversations.ouvrir(utilisateur(jeton), demande.sujet(), demande.premierMessage()));
+    }
+
+    /**
+     * Le client écrit à l'Assistance GARAH — elle naît de ce premier message.
+     *
+     * <p>🎯 Écrire à GARAH sans passer par un produit : jusqu'ici, une
+     * discussion ne naissait que du bouton « Contacter » d'une fiche. Les
+     * messages suivants passent par la route ordinaire,
+     * {@code /{id}/messages}.</p>
+     *
+     * <p>⚠️ Réservée aux clients. Un membre de l'équipe qui l'appellerait se
+     * créerait une « assistance » à son propre nom, qui n'aurait aucun sens.</p>
+     */
+    @PostMapping("/assistance/messages")
+    @ResponseStatus(HttpStatus.CREATED)
+    public VueMessage ecrireALAssistance(@Valid @RequestBody DemandeMessage demande,
+                                         @AuthenticationPrincipal Jwt jeton) {
+        if (!estClient(jeton)) {
+            throw new AccessDeniedException("L’Assistance GARAH est la discussion d’un client.");
+        }
+        return conversations.ecrireALAssistance(utilisateur(jeton), demande.contenu());
     }
 
     /**
@@ -227,6 +249,22 @@ public class ControleurConversation {
      * rien ne disait qui — et c est la seule question qu on pose en relisant
      * une conversation close sur litige.
      */
+    /**
+     * Écrire à un client comme Assistance GARAH, depuis sa fiche.
+     *
+     * <p>⚠️ La permission est DÉDIÉE, et non celle de répondre dans le service
+     * client : écrire à un client de sa propre initiative — une offre, un
+     * avertissement — n'est pas répondre à sa question.</p>
+     */
+    @PostMapping("/assistance/clients/{clientId}/messages")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('CLIENT_ASSISTANCE_ECRIRE')")
+    public VueMessage ecrireCommeAssistance(@PathVariable Long clientId,
+                                            @Valid @RequestBody DemandeMessage demande,
+                                            @AuthenticationPrincipal Jwt jeton) {
+        return conversations.ecrireCommeAssistance(clientId, utilisateur(jeton), demande.contenu());
+    }
+
     @PostMapping("/{id}/fermeture")
     @PreAuthorize("hasAuthority('CONVERSATION_FERMER')")
     public VueConversation fermer(@PathVariable Long id,

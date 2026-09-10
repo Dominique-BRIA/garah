@@ -67,6 +67,8 @@ export interface ResumeConversation {
   readonly closParNom: string | null;
   readonly sujet: string;
   readonly statut: StatutConversation;
+  /** L'Assistance GARAH du client : épinglée chez lui, jamais close. */
+  readonly assistance: boolean;
   readonly nombreMessages: number;
   /** Ce qui n'a jamais ete ouvert. C'est LUI qui trie la file. */
   readonly nonLus: number;
@@ -100,6 +102,8 @@ export interface Conversation {
   readonly closParNom: string | null;
   readonly sujet: string;
   readonly statut: StatutConversation;
+  /** L'Assistance GARAH du client : épinglée chez lui, jamais close. */
+  readonly assistance: boolean;
   readonly dateCreation: string;
   readonly dateAffectation: string | null;
   readonly dateCloture: string | null;

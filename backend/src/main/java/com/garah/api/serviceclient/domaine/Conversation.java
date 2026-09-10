@@ -72,6 +72,21 @@ public class Conversation {
     @Column(name = "commande_id")
     private Long commandeId;
 
+    /**
+     * La discussion « Assistance GARAH » du client.
+     *
+     * <p>🎯 UNE par client — un index unique partiel le garantit (V35) — et
+     * JAMAIS close — une contrainte le garantit aussi. C'est le canal
+     * permanent entre GARAH et le client : il y pose une question sans passer
+     * par un produit, et l'équipe y écrit une offre, une information, un
+     * rappel des règles.</p>
+     */
+    @Column(nullable = false)
+    private boolean assistance;
+
+    /** Le sujet de l'Assistance, tel que le client le lit. */
+    public static final String SUJET_ASSISTANCE = "Assistance GARAH";
+
     @OneToMany(mappedBy = "conversation", fetch = FetchType.LAZY,
                cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Message> messages = new ArrayList<>();
@@ -179,5 +194,6 @@ public class Conversation {
     public Instant getDateCloture() { return dateCloture; }
     public Long getClosPar() { return closPar; }
     public Long getCommandeId() { return commandeId; }
+    public boolean estAssistance() { return assistance; }
     public List<Message> getMessages() { return messages; }
 }

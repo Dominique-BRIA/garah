@@ -1,6 +1,7 @@
 package com.garah.api.serviceclient;
 
 import com.garah.api.commun.erreur.ConflitEtat;
+import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.iam.domaine.*;
 import com.garah.api.iam.infra.ClientRepository;
@@ -422,5 +423,70 @@ class ServiceConversationTest {
                 .filter(c -> c.id().equals(convId))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    // -------------------------------------------------------------------------
+    // L'Assistance GARAH
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("l'assistance est unique par client, et naît hors de la file")
+    void assistanceUniqueEtHorsFile() {
+        Long premiere = conversations.assistance(clientId).getId();
+        Long seconde = conversations.assistance(clientId).getId();
+
+        // Deux demandes ne créent pas deux assistances.
+        assertThat(seconde).isEqualTo(premiere);
+
+        VueConversation vue = conversations.vue(premiere);
+        assertThat(vue.assistance()).isTrue();
+        // ⚠️ INFORMATION et non WAITING : tant que le client n'a rien demandé,
+        //    personne n'attend personne, et la file de l'équipe reste vide.
+        assertThat(vue.statut()).isEqualTo("INFORMATION");
+    }
+
+    @Test
+    @DisplayName("le client écrit : elle entre dans la file, on y répond, on ne peut pas la clore")
+    void assistanceSuitLaFileMaisNeSeClotPas() {
+        Long id = conversations.ecrireALAssistance(clientId,
+                "Bonjour, j'ai une question sur ma livraison.").conversationId();
+        assertThat(conversations.vue(id).statut()).isEqualTo("WAITING");
+
+        Long agent = responsableIds.getFirst();
+        conversations.repondre(id, agent, "Bonjour, je regarde.");
+        assertThat(conversations.vue(id).statut()).isEqualTo("ASSIGNED");
+
+        // 🎯 La règle qui la distingue de toutes les autres discussions.
+        assertThatThrownBy(() -> conversations.fermer(id, agent))
+                .isInstanceOf(ConflitEtat.class);
+    }
+
+    @Test
+    @DisplayName("écrire comme Assistance ne prend pas la conversation")
+    void ecrireCommeAssistanceNePrendPas() {
+        Long marketing = responsableIds.get(1);
+
+        VueMessage envoye = conversations.ecrireCommeAssistance(
+                clientId, marketing, "Cette semaine, -10 % sur les chaussures.");
+
+        VueConversation vue = conversations.vue(envoye.conversationId());
+        // Une annonce reste une annonce : pas de responsable, pas de file.
+        assertThat(vue.statut()).isEqualTo("INFORMATION");
+        assertThat(vue.prisPar()).isNull();
+        // L'auteur réel est gardé : le client lit « GARAH », pas son nom.
+        assertThat(vue.messages()).singleElement()
+                .satisfies(m -> assertThat(m.expediteurId()).isEqualTo(marketing));
+
+        // Le client répond : là, quelqu'un attend vraiment.
+        conversations.ecrireALAssistance(clientId, "Merci, c'est valable en boutique ?");
+        assertThat(conversations.vue(vue.id()).statut()).isEqualTo("WAITING");
+    }
+
+    @Test
+    @DisplayName("écrire à un client inconnu est refusé proprement")
+    void assistanceClientInconnu() {
+        assertThatThrownBy(() -> conversations.ecrireCommeAssistance(
+                -42L, responsableIds.getFirst(), "Bonjour"))
+                .isInstanceOf(RessourceIntrouvable.class);
     }
 }
