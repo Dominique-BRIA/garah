@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
@@ -113,6 +114,35 @@ public class ClientCampay {
      * sens. Un {@code 500} dirait « bug », et le support chercherait au mauvais
      * endroit.</p>
      */
+    /**
+     * L'opérateur a <b>répondu</b>, et il a refusé.
+     *
+     * <h2>🎯 Ce que cette classe sépare</h2>
+     *
+     * <p>Tout échec d'appel devenait « le service de paiement est
+     * momentanément injoignable ». C'était faux la moitié du temps : un
+     * {@code 400} signifie que Campay a répondu parfaitement, pour dire
+     * <b>non</b> — montant trop faible, numéro invalide, opérateur qui ne
+     * correspond pas au préfixe.</p>
+     *
+     * <p>⚠️ Le coût du mélange : on cherche une panne réseau pendant que la
+     * réponse était sur la table. Un paiement de 20 FCFA était refusé parce
+     * que Campay exige un minimum, et l'écran annonçait une indisponibilité.</p>
+     *
+     * <p>{@code 422} et non {@code 503} : rien n'est en panne, et réessayer à
+     * l'identique donnera le même refus.</p>
+     */
+    public static class OperateurRefuse extends ErreurMetier {
+        public OperateurRefuse(String message) {
+            super("OPERATEUR_REFUSE", message);
+        }
+
+        @Override
+        public HttpStatus getStatut() {
+            return HttpStatus.UNPROCESSABLE_ENTITY;
+        }
+    }
+
     public static class OperateurIndisponible extends ErreurMetier {
         public OperateurIndisponible(String message) {
             super("OPERATEUR_INDISPONIBLE", message);
@@ -162,11 +192,41 @@ public class ClientCampay {
      *                         qui permet de rapprocher les deux systèmes le
      *                         jour d'un litige
      */
+    /**
+     * Le plus petit montant que l'opérateur accepte, en FCFA.
+     *
+     * <h2>🎯 Pourquoi il est vérifié ICI, avant l'appel</h2>
+     *
+     * <p>Campay refuse en dessous, par un {@code 400}. Sans ce contrôle, le
+     * client déclenchait une demande de paiement, attendait, et recevait un
+     * message d'erreur — pour une raison connue d'avance.</p>
+     *
+     * <p>C'est la règle du projet : <b>dire ce qui manque AVANT le clic</b>.
+     * Le serveur refuserait de toute façon ; l'utilisateur ne doit pas
+     * découvrir par une erreur ce que l'on savait déjà.</p>
+     *
+     * <p>⚠️ C'est une contrainte de l'opérateur, pas une règle GARAH. Elle
+     * vit donc dans le client Campay, et non dans le domaine : le jour où l'on
+     * ajoute un second opérateur, chacun apportera la sienne.</p>
+     */
+    public static final int MONTANT_MINIMUM = 100;
+
     public Collecte encaisser(BigDecimal montant, String telephone,
                               String description, String referenceExterne) {
+        // ⚠️ LE MONTANT D'ABORD, avant même de regarder si l'on peut joindre
+        //    quelqu'un : c'est une propriété de la DEMANDE, pas du serveur.
+        //    Une demande malformée se refuse sans se demander qui l'aurait
+        //    reçue.
+        if (montant == null || montant.compareTo(BigDecimal.valueOf(MONTANT_MINIMUM)) < 0) {
+            throw new OperateurRefuse(
+                    "Le montant minimum accepté par l'opérateur est de "
+                    + MONTANT_MINIMUM + " FCFA.");
+        }
+
         exigerConfiguration();
 
         // ⚠️ Le XAF n'a PAS de centimes, et Campay refuse « 5000.00 ».
+
         // setScale(0, UNNECESSARY) lève si le montant a une partie décimale
         // non nulle — c'est voulu : mieux vaut une erreur ici qu'un débit
         // silencieusement arrondi.
@@ -291,11 +351,44 @@ public class ClientCampay {
                     .body(CARTE);
         } catch (OperateurIndisponible e) {
             throw e;
+        } catch (HttpClientErrorException refus) {
+            throw refusDe(chemin, refus);
         } catch (RestClientException e) {
-            log.error("Appel Campay {} en echec : {}", chemin, e.getClass().getSimpleName());
+            log.error("Appel Campay {} injoignable : {}", chemin, e.getClass().getSimpleName());
             throw new OperateurIndisponible(
                     "Le service de paiement est momentanément injoignable.");
         }
+    }
+
+    /**
+     * Traduit un refus de l'opérateur en message lisible.
+     *
+     * <p>⚠️ Le corps EST journalisé ici, contrairement à l'appel au jeton : une
+     * requête de collecte ne contient aucun identifiant, et sans cette trace on
+     * ne sait jamais pourquoi Campay a dit non.</p>
+     *
+     * <p>⚠️ On ne recopie pas le corps brut à l'écran : il est en anglais et
+     * technique. On en tire ce qu'on sait nommer, et on retombe sur une phrase
+     * générale sinon — mais une phrase qui dit bien « refusé », pas
+     * « injoignable ».</p>
+     */
+    private OperateurRefuse refusDe(String chemin, HttpClientErrorException refus) {
+        String corps = refus.getResponseBodyAsString();
+        log.warn("Appel Campay {} refuse ({}) : {}", chemin, refus.getStatusCode(), corps);
+
+        String bas = corps == null ? "" : corps.toLowerCase(java.util.Locale.ROOT);
+
+        if (bas.contains("amount")) {
+            return new OperateurRefuse(
+                    "Le montant n'est pas accepté par l'opérateur. "
+                    + "Le minimum est de " + MONTANT_MINIMUM + " FCFA.");
+        }
+        if (bas.contains("phone") || bas.contains("number") || bas.contains("from")) {
+            return new OperateurRefuse(
+                    "Ce numéro n'est pas accepté par l'opérateur. Vérifiez-le.");
+        }
+        return new OperateurRefuse(
+                "L'opérateur a refusé ce paiement. Vérifiez le numéro et le montant.");
     }
 
     /**
@@ -317,8 +410,10 @@ public class ClientCampay {
                     .body(CARTE);
         } catch (OperateurIndisponible e) {
             throw e;
+        } catch (HttpClientErrorException refus) {
+            throw refusDe(chemin, refus);
         } catch (RestClientException e) {
-            log.error("Appel Campay {} en echec : {}", chemin, e.getClass().getSimpleName());
+            log.error("Appel Campay {} injoignable : {}", chemin, e.getClass().getSimpleName());
             throw new OperateurIndisponible(
                     "Le service de paiement est momentanément injoignable.");
         }
