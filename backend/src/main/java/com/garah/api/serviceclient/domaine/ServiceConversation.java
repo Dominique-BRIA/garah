@@ -188,6 +188,16 @@ public class ServiceConversation {
         boolean estLeClient = expediteurId.equals(conversation.getClientId());
         boolean prise = !estLeClient && conversation.prendreSiLibre(expediteurId);
 
+        // 🎯 LE CLIENT REPOND A UNE ANNONCE : il attend desormais quelqu un.
+        //
+        //    Tant qu elle ne contenait que l annonce, la conversation restait
+        //    hors de la file — personne n attendait rien. Sa reponse change
+        //    cela, et c est le seul moment ou l equipe doit l apprendre.
+        if (estLeClient && conversation.attendreUnConseiller()) {
+            evenements.publishEvent(new EvenementsConversation.ConversationOuverte(
+                    conversationId, conversation.getClientId(), conversation.getSujet()));
+        }
+
         if (prise) {
             // ⚠️ Journalisée SEULEMENT quand la prise a lieu : une ligne par
             //    réponse remplirait l'historique de doublons.
@@ -225,6 +235,42 @@ public class ServiceConversation {
     }
 
     /**
+     * Le systeme ecrit au client, dans ses discussions.
+     *
+     * <h2>🎯 Pourquoi une discussion, et pas seulement une notification</h2>
+     *
+     * <p>Une notification s efface d un geste et ne se relit pas. Le numero de
+     * suivi, lui, sert pendant des jours : on le recopie, on le transmet a
+     * celui qui ira retirer. Il doit donc etre la ou le client relit ce qu on
+     * lui a dit — et d ou il peut repondre s il a une question.</p>
+     *
+     * <h2>⚠️ Une NOUVELLE transaction, obligatoirement</h2>
+     *
+     * <p>Cette methode est appelee APRES la validation de celle qui a
+     * enregistre le depart. Sans {@code REQUIRES_NEW}, elle s y joindrait —
+     * a une transaction deja terminee — et ses ecritures ne seraient jamais
+     * validees. Sans erreur, sans trace : l annonce disparaitrait.</p>
+     *
+     * <p>Les annonces d une meme commande se suivent dans un seul fil, tant
+     * qu il n est pas clos.</p>
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public Message annoncer(Long clientId, Long commandeId, String contenu) {
+        Conversation conversation = conversations
+                .findFirstByCommandeIdAndStatutNotOrderByDateCreationDesc(
+                        commandeId, StatutConversation.CLOSED)
+                .orElseGet(() -> conversations.save(Conversation.annonce(
+                        clientId, commandeId,
+                        conversations.numeroDeCommande(commandeId)
+                                .map(n -> "Commande " + n)
+                                .orElse("Votre commande"))));
+
+        Message message = conversation.annoncer(contenu);
+        conversations.flush();
+        return message;
+    }
+
+    /**
      * Les premiers mots du message, pour la bannière de notification.
      *
      * <p>⚠️ Un extrait, jamais le message entier : une notification affiche
@@ -251,6 +297,13 @@ public class ServiceConversation {
         Conversation conversation = charger(conversationId);
         if (conversation.estFermee()) {
             return conversation;
+        }
+        if (conversation.getStatut() == StatutConversation.INFORMATION) {
+            // Personne ne l a prise, et il n y a rien a traiter : la clore
+            // n aurait pas de sens, et la base la refuserait (une conversation
+            // close l a forcement ete apres avoir ete prise).
+            throw new ConflitEtat("CONVERSATION_SANS_ECHANGE",
+                    "Cette discussion ne contient qu’une information : il n’y a rien à clore.");
         }
 
         affectations.findByConversationIdAndDateFinIsNull(conversationId)

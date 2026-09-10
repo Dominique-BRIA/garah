@@ -457,11 +457,20 @@ export class Conversations {
   }
 
   protected closable(): boolean {
-    return this.ouverte()?.statut !== 'CLOSED' && this.session.peut('CONVERSATION_FERMER');
+    // ⚠️ Ni close, ni INFORMATION : une annonce du systeme n'a ete prise par
+    //    personne, et il n'y a rien a y clore — le serveur le refuserait.
+    const statut = this.ouverte()?.statut;
+    return statut !== 'CLOSED' && statut !== 'INFORMATION'
+      && this.session.peut('CONVERSATION_FERMER');
   }
 
-  /** Le message vient-il de l'équipe ? On aligne les bulles là-dessus. */
-  protected deLEquipe(expediteurId: number): boolean {
+  /**
+   * Le message vient-il de notre cote ? On aligne les bulles la-dessus.
+   *
+   * Une annonce du systeme (expediteur nul) est rangee de notre cote : c'est
+   * GARAH qui parle au client, pas le client qui parle.
+   */
+  protected deLEquipe(expediteurId: number | null): boolean {
     return expediteurId !== this.ouverte()?.clientId;
   }
 

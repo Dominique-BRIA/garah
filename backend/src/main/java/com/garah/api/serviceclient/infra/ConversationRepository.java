@@ -22,6 +22,27 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     Page<Conversation> findByClientIdOrderByDateCreationDesc(Long clientId, Pageable pagination);
 
+    /**
+     * La conversation encore ouverte a propos d une commande.
+     *
+     * <p>🎯 Les annonces d une meme commande se suivent dans UN fil : deux
+     * colis partis font deux messages, pas deux discussions. Une conversation
+     * close ne se rouvre pas — la suivante en ouvre une nouvelle.</p>
+     */
+    Optional<Conversation> findFirstByCommandeIdAndStatutNotOrderByDateCreationDesc(
+            Long commandeId, StatutConversation statut);
+
+    /**
+     * Le numero d une commande, pour titrer la conversation qui en parle.
+     *
+     * <p>⚠️ {@code Commande} est nommee dans la requete et JAMAIS importee :
+     * {@code commerce} peut dependre de {@code serviceclient}, et l importer
+     * risquerait un cycle que le test d architecture refuse. C est le procede
+     * de {@code ExpeditionRepository.proprietaireDe}.</p>
+     */
+    @Query("SELECT c.numero FROM Commande c WHERE c.id = :commandeId")
+    Optional<String> numeroDeCommande(@Param("commandeId") Long commandeId);
+
     Page<Conversation> findByPrisParAndStatut(Long prisPar,
                                                     StatutConversation statut,
                                                     Pageable pagination);

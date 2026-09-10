@@ -242,3 +242,11 @@
   gap: 0.6rem;
   margin-top: 1.25rem;
 }
+
+// Le nom de qui parle, quand ce n'est personne : une annonce du systeme.
+.bulle__auteur {
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--texte-attenue);
+}

@@ -7,14 +7,19 @@
 // l'ait precede.
 // =============================================================================
 
-export type StatutConversation = 'WAITING' | 'ASSIGNED' | 'CLOSED';
+export type StatutConversation = 'INFORMATION' | 'WAITING' | 'ASSIGNED' | 'CLOSED';
 
 /**
  * Ce que chaque statut veut dire, et ce qu'il APPELLE comme geste.
  *
- *   WAITING ──prise par un responsable──▶ ASSIGNED ──cloture──▶ CLOSED
- *      ▲                                     │
- *      └──────── retrait par un Admin ───────┘
+ *   INFORMATION ──le client repond──▶ WAITING ──prise──▶ ASSIGNED ──cloture──▶ CLOSED
+ *        │                              ▲                   │
+ *        │                              └── retrait Admin ──┘
+ *        └──────────── un conseiller ecrit ──────────────▶ ASSIGNED
+ *
+ * INFORMATION : ouverte par le SYSTEME (un colis parti). Personne n'attend
+ * rien, et elle n'entre donc PAS dans la file — elle y entre des que le
+ * client repond.
  */
 export const STATUTS_CONVERSATION: readonly {
   readonly code: StatutConversation;
@@ -26,6 +31,7 @@ export const STATUTS_CONVERSATION: readonly {
   { code: 'WAITING', libelle: 'En attente', badge: 'gu-badge--alerte', agir: true },
   { code: 'ASSIGNED', libelle: 'En cours', badge: 'gu-badge--info', agir: true },
   { code: 'CLOSED', libelle: 'Fermée', badge: 'gu-badge--neutre', agir: false },
+  { code: 'INFORMATION', libelle: 'Information', badge: 'gu-badge--neutre', agir: false },
 ];
 
 /**
@@ -103,7 +109,8 @@ export interface Conversation {
 export interface MessageConversation {
   readonly id: number;
   readonly conversationId: number;
-  readonly expediteurId: number;
+  /** ⚠️ NUL quand c'est le SYSTEME qui ecrit (un colis parti) — V34. */
+  readonly expediteurId: number | null;
   readonly contenu: string;
   readonly lu: boolean;
   readonly dateEnvoi: string;

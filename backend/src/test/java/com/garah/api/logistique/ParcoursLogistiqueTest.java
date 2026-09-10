@@ -66,6 +66,7 @@ class ParcoursLogistiqueTest {
     @Autowired ServiceCommande commandes;
     @Autowired ServicePaiement paiements;
     @Autowired ServiceExpedition expeditions;
+    @Autowired com.garah.api.serviceclient.domaine.ServiceConversation discussions;
     @Autowired ServiceRetour retours;
     @Autowired ServiceReclamation reclamations;
     @Autowired ServiceCatalogue catalogue;
@@ -152,6 +153,10 @@ class ParcoursLogistiqueTest {
         jdbc.update("DELETE FROM ligne_colis WHERE colis_id IN (SELECT co.id FROM colis co JOIN expedition e ON e.id = co.expedition_id JOIN commande cm ON cm.id = e.commande_id JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM colis WHERE expedition_id IN (SELECT e.id FROM expedition e JOIN commande cm ON cm.id = e.commande_id JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM expedition WHERE commande_id IN (SELECT cm.id FROM commande cm JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
+        // ⚠️ AVANT la commande et le client : une annonce de depart les
+        //    reference tous les deux (V34). Messages et affectations suivent en
+        //    cascade.
+        jdbc.update("DELETE FROM conversation WHERE client_id IN (SELECT id FROM client WHERE code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM tentative_paiement WHERE paiement_id IN (SELECT p.id FROM paiement p JOIN commande cm ON cm.id = p.commande_id JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM paiement WHERE commande_id IN (SELECT cm.id FROM commande cm JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
         jdbc.update("DELETE FROM ligne_commande WHERE commande_id IN (SELECT cm.id FROM commande cm JOIN client cl ON cl.id = cm.client_id WHERE cl.code_client = 'CLI-LOG-1')");
@@ -508,6 +513,28 @@ class ParcoursLogistiqueTest {
                     assertThat(e.numeroSuivi()).isEqualTo(colis.getNumeroSuivi());
                 });
 
+        // 🎯 ET LE CLIENT LE LIT DANS « MES DISCUSSIONS ».
+        //
+        //    Une notification s'efface d'un geste ; le numero de suivi sert
+        //    pendant des jours. Il doit etre la ou le client relit ce qu'on
+        //    lui a dit — et d'ou il peut repondre.
+        var annonce = annonceDeLaCommande();
+        assertThat(annonce.statut())
+                .as("INFORMATION, pas WAITING : personne n'attend de reponse")
+                .isEqualTo("INFORMATION");
+        assertThat(annonce.messages()).singleElement().satisfies(m -> {
+            assertThat(m.expediteurId())
+                    .as("ecrit par le systeme, pas par l'agent qui a enregistre le depart")
+                    .isNull();
+            assertThat(m.contenu()).contains(colis.getNumeroSuivi());
+        });
+
+        // ⚠️ Et elle n'entre PAS dans la file de l'equipe : des agents
+        //    ouvriraient des dossiers ou il n'y a rien a faire.
+        assertThat(discussions.fileDAttente())
+                .extracting(com.garah.api.serviceclient.domaine.Conversation::getId)
+                .doesNotContain(annonce.id());
+
         // ⚠️ Un colis qui REPART — debloque, ou relance depuis une etape
         //    intermediaire — ne doit pas annoncer une seconde fois que la
         //    commande est partie. Deux notifications identiques pour un seul
@@ -515,6 +542,9 @@ class ParcoursLogistiqueTest {
         expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
         assertThat(evenementsPublies.stream(EvenementsExpedition.ColisParti.class))
                 .as("le second depart du meme colis ne reannonce rien")
+                .hasSize(1);
+        assertThat(annonceDeLaCommande().messages())
+                .as("ni dans les discussions")
                 .hasSize(1);
 
         // Et l'arrivee au comptoir s'annonce a son tour — SANS le code, qu'une
@@ -525,6 +555,45 @@ class ParcoursLogistiqueTest {
         assertThat(evenementsPublies.stream(EvenementsExpedition.MarchandiseDisponible.class))
                 .singleElement()
                 .satisfies(e -> assertThat(e.clientId()).isEqualTo(clientId));
+    }
+
+    @Test
+    @DisplayName("le client répond à l'annonce : quelqu'un attend désormais")
+    void leClientRepondALAnnonce() {
+        Colis colis = colisPret();
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        Long annonceId = annonceDeLaCommande().id();
+
+        // Personne ne l'a prise et il n'y a rien a y traiter : la clore n'a
+        // pas de sens — et la base la refuserait avec un message illisible.
+        assertThatThrownBy(() -> discussions.fermer(annonceId, responsableId))
+                .isInstanceOf(com.garah.api.commun.erreur.ConflitEtat.class);
+
+        // 🎯 Le client pose une question : a partir de la, il attend
+        //    vraiment. La conversation entre dans la file, et l'equipe
+        //    l'apprend — une fois.
+        discussions.repondre(annonceId, clientId, "Il arrive quand, à Bangui ?");
+
+        assertThat(discussions.parId(annonceId).getStatut())
+                .isEqualTo(com.garah.api.serviceclient.domaine.StatutConversation.WAITING);
+        assertThat(discussions.fileDAttente())
+                .extracting(com.garah.api.serviceclient.domaine.Conversation::getId)
+                .contains(annonceId);
+        assertThat(evenementsPublies.stream(
+                com.garah.api.serviceclient.domaine.EvenementsConversation.ConversationOuverte.class))
+                .singleElement()
+                .satisfies(e -> assertThat(e.conversationId()).isEqualTo(annonceId));
+    }
+
+    /** La discussion que le systeme a ouverte pour CETTE commande. */
+    private com.garah.api.serviceclient.domaine.VueConversation annonceDeLaCommande() {
+        var miennes = discussions.miennes(clientId, PageRequest.of(0, 50)).getContent().stream()
+                .filter(c -> ("Commande " + commande.numero()).equals(c.sujet()))
+                .toList();
+        assertThat(miennes)
+                .as("une seule discussion par commande, titree de son numero")
+                .hasSize(1);
+        return discussions.vue(miennes.getFirst().id());
     }
 
     @Test

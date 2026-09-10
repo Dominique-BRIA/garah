@@ -63,6 +63,15 @@ public class Conversation {
     @Column(name = "clos_par")
     private Long closPar;
 
+    /**
+     * La commande dont parle cette conversation, quand elle en parle.
+     *
+     * <p>⚠️ A ne pas confondre avec {@code commande.conversation_id}, qui dit
+     * de quelle conversation une commande est NEE. Voir V34.</p>
+     */
+    @Column(name = "commande_id")
+    private Long commandeId;
+
     @OneToMany(mappedBy = "conversation", fetch = FetchType.LAZY,
                cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Message> messages = new ArrayList<>();
@@ -73,6 +82,40 @@ public class Conversation {
     public Conversation(Long clientId, String sujet) {
         this.clientId = clientId;
         this.sujet = sujet;
+    }
+
+    /**
+     * Une conversation ouverte par le SYSTEME, a propos d une commande.
+     *
+     * <p>Elle nait {@link StatutConversation#INFORMATION} : personne n attend
+     * de reponse, et elle n entre donc pas dans la file de l equipe.</p>
+     */
+    static Conversation annonce(Long clientId, Long commandeId, String sujet) {
+        Conversation c = new Conversation(clientId, sujet);
+        c.statut = StatutConversation.INFORMATION;
+        c.commandeId = commandeId;
+        return c;
+    }
+
+    /** Un message ecrit par le systeme, et par personne. */
+    Message annoncer(String contenu) {
+        Message message = new Message(this, null, contenu);
+        messages.add(message);
+        return message;
+    }
+
+    /**
+     * Le client a repondu a une annonce : desormais, il attend quelqu un.
+     *
+     * <p>Rend {@code true} seulement si le passage a eu lieu, pour que
+     * l appelant ne previenne l equipe qu une fois.</p>
+     */
+    boolean attendreUnConseiller() {
+        if (statut != StatutConversation.INFORMATION) {
+            return false;
+        }
+        this.statut = StatutConversation.WAITING;
+        return true;
     }
 
     public Message ajouterMessage(Long expediteurId, String contenu) {
@@ -109,7 +152,11 @@ public class Conversation {
      * identiques.</p>
      */
     boolean prendreSiLibre(Long parQui) {
-        if (statut != StatutConversation.WAITING || parQui == null) {
+        // INFORMATION aussi : un conseiller qui ecrit dans une annonce la
+        // prend, exactement comme il prendrait une conversation en attente.
+        boolean libre = statut == StatutConversation.WAITING
+                || statut == StatutConversation.INFORMATION;
+        if (!libre || parQui == null) {
             return false;
         }
         this.prisPar = parQui;
@@ -131,5 +178,6 @@ public class Conversation {
     public Instant getDateAffectation() { return dateAffectation; }
     public Instant getDateCloture() { return dateCloture; }
     public Long getClosPar() { return closPar; }
+    public Long getCommandeId() { return commandeId; }
     public List<Message> getMessages() { return messages; }
 }

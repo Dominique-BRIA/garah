@@ -160,6 +160,11 @@
         <ol class="fil">
           @for (m of fil.messages; track m.id) {
             <li class="bulle" [class.bulle--equipe]="deLEquipe(m.expediteurId)">
+              @if (m.expediteurId === null) {
+                <!-- Personne ne l'a ecrit : le dire, sinon l'agent croirait
+                     qu'un collegue a deja repondu au client. -->
+                <p class="bulle__auteur">Message automatique</p>
+              }
               <p class="bulle__contenu">{{ m.contenu }}</p>
               <p class="bulle__date">{{ dateHeure(m.dateEnvoi) }}</p>
             </li>

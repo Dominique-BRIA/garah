@@ -18,13 +18,17 @@ public class Message {
     private Conversation conversation;
 
     /**
-     * L auteur, client ou responsable indifferemment.
+     * L auteur, client ou responsable indifferemment — ou PERSONNE.
      *
      * <p>On pointe vers {@code utilisateur} et non vers l un des deux : c est
      * la racine commune. Deux colonnes exclusives seraient plus precises et
      * beaucoup plus penibles a interroger.</p>
+     *
+     * <p>⚠️ {@code null} = une annonce du SYSTEME (V34). Tout code qui compare
+     * l expediteur doit le faire dans ce sens : {@code id.equals(expediteur)},
+     * jamais {@code expediteur.equals(id)}.</p>
      */
-    @Column(name = "expediteur_id", nullable = false)
+    @Column(name = "expediteur_id")
     private Long expediteurId;
 
     @Column(nullable = false, columnDefinition = "text")
