@@ -55,6 +55,50 @@ class ServiceCatalogueTest {
         return catalogue.creerProduit(marchandId, categorieId, "REF-CAT-001", "Chemise Oxford", null);
     }
 
+    @Test
+    @DisplayName("⚠️ une catégorie PARENTE montre les produits de ses enfants")
+    void uneCategorieParenteMontreSesEnfants() {
+        // 🎯 Le filtre testait une égalité stricte sur la catégorie. Cliquer
+        //    sur « Informatique » ne montrait AUCUN produit rangé dans
+        //    « Electronique », juste en dessous — et personne ne range un
+        //    produit dans la parente quand une sous-catégorie existe. Le
+        //    défaut se déclenchait donc dès la première sous-catégorie créée.
+        CategorieProduit parente = categories.findById(categorieId).orElseThrow();
+        Long enfantId = categories.save(new CategorieProduit("Chemises", parente)).getId();
+        em.flush();
+
+        DetailProduit p = catalogue.creerProduit(
+                marchandId, enfantId, "REF-CAT-ENFANT", "Chemise rangée dans l'enfant", null);
+        donnerUnPrix(p.id());
+        catalogue.ajouterMedia(p.id(), TypeMedia.PHOTO, "produits/x/photo.jpg", true);
+        catalogue.publier(p.id());
+        em.flush();
+
+        var parLaParente = catalogue.catalogue(categorieId, null, PageRequest.of(0, 10));
+        var parLEnfant = catalogue.catalogue(enfantId, null, PageRequest.of(0, 10));
+
+        assertThat(parLEnfant.getContent()).extracting(ResumeProduit::id).contains(p.id());
+        assertThat(parLaParente.getContent())
+                .as("la parente doit montrer ce que ses enfants contiennent")
+                .extracting(ResumeProduit::id).contains(p.id());
+    }
+
+    @Test
+    @DisplayName("sans catégorie demandée, la vitrine ne filtre rien")
+    void sansCategorieOnNeFiltreRien() {
+        // ⚠️ La requête lit `null` comme « pas de filtre ». Passer une liste
+        //    VIDE à la place ne rendrait plus aucun produit — et la vitrine
+        //    entière deviendrait blanche.
+        DetailProduit p = creerChemise();
+        donnerUnPrix(p.id());
+        catalogue.ajouterMedia(p.id(), TypeMedia.PHOTO, "produits/x/photo.jpg", true);
+        catalogue.publier(p.id());
+        em.flush();
+
+        assertThat(catalogue.catalogue(null, null, PageRequest.of(0, 10)).getContent())
+                .isNotEmpty();
+    }
+
     // -------------------------------------------------------------------------
     // Création
     // -------------------------------------------------------------------------

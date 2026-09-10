@@ -56,7 +56,7 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
               JOIN CategorieProduit c ON c.id = p.categorie.id
               JOIN Marchand m ON m.id = p.marchandId
              WHERE p.statut = :statut
-               AND (:categorieId IS NULL OR p.categorie.id = :categorieId)
+               AND (:categorieIds IS NULL OR p.categorie.id IN :categorieIds)
                AND (:recherche IS NULL
                     OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
                     OR LOWER(m.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
@@ -67,14 +67,24 @@ public interface ProduitRepository extends JpaRepository<Produit, Long> {
               JOIN CategorieProduit c ON c.id = p.categorie.id
               JOIN Marchand m ON m.id = p.marchandId
              WHERE p.statut = :statut
-               AND (:categorieId IS NULL OR p.categorie.id = :categorieId)
+               AND (:categorieIds IS NULL OR p.categorie.id IN :categorieIds)
                AND (:recherche IS NULL
                     OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
                     OR LOWER(m.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%'))
                     OR LOWER(c.nom) LIKE LOWER(CONCAT('%', CAST(:recherche AS string), '%')))
             """)
+    /**
+     * ⚠️ Une LISTE d'identifiants, et non un seul.
+     *
+     * <p>Le filtre testait `p.categorie.id = :categorieId` — une égalité
+     * stricte. Cliquer sur une catégorie PARENTE ne montrait donc AUCUN des
+     * produits rangés dans ses enfants : « Informatique » restait vide alors
+     * que « Electronique », juste en dessous, en contenait.</p>
+     *
+     * <p>L'appelant résout le sous-arbre et passe tous ses identifiants.</p>
+     */
     Page<Produit> vitrine(@Param("statut") StatutProduit statut,
-                          @Param("categorieId") Long categorieId,
+                          @Param("categorieIds") java.util.Collection<Long> categorieIds,
                           @Param("recherche") String recherche,
                           Pageable pagination);
 

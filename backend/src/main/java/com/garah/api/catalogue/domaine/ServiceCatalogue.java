@@ -742,7 +742,51 @@ public class ServiceCatalogue {
     public Page<ResumeProduit> catalogue(Long categorieId, String recherche, Pageable pagination) {
         String filtre = (recherche == null || recherche.isBlank()) ? null : recherche.strip();
 
-        return enrichir(produits.vitrine(StatutProduit.PUBLIE, categorieId, filtre, pagination));
+        return enrichir(produits.vitrine(
+                StatutProduit.PUBLIE, sousArbreDe(categorieId), filtre, pagination));
+    }
+
+    /**
+     * Une catégorie ET ses descendantes.
+     *
+     * <h2>🎯 Le défaut que cela ferme</h2>
+     *
+     * <p>Le filtre de la vitrine testait une <b>égalité stricte</b> sur la
+     * catégorie. Cliquer sur une catégorie parente ne montrait donc aucun des
+     * produits rangés dans ses enfants : « Informatique » restait vide alors
+     * qu'« Electronique », juste en dessous, en contenait.</p>
+     *
+     * <p>Personne ne range un produit dans une catégorie parente quand une
+     * sous-catégorie existe — c'est justement à cela qu'elles servent. Le
+     * défaut se déclenchait donc dès la première sous-catégorie créée.</p>
+     *
+     * <p>⚠️ L'arbre est parcouru en LARGEUR avec un garde-fou : une catégorie
+     * dont le parent serait, par accident de données, un de ses propres
+     * descendants ferait tourner la boucle sans fin. Le jeu des identifiants
+     * déjà vus l'en empêche.</p>
+     *
+     * @return {@code null} quand aucune catégorie n'est demandée — la requête
+     *         lit ce {@code null} comme « pas de filtre ».
+     */
+    private java.util.Collection<Long> sousArbreDe(Long racine) {
+        if (racine == null) {
+            return null;
+        }
+
+        java.util.Set<Long> vus = new java.util.LinkedHashSet<>();
+        java.util.Deque<Long> aVoir = new java.util.ArrayDeque<>();
+        aVoir.add(racine);
+
+        while (!aVoir.isEmpty()) {
+            Long id = aVoir.poll();
+            if (!vus.add(id)) {
+                continue;
+            }
+            for (CategorieProduit enfant : categories.findByParentIdOrderByOrdreAsc(id)) {
+                aVoir.add(enfant.getId());
+            }
+        }
+        return vus;
     }
 
     /**
