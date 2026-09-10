@@ -2322,3 +2322,40 @@ retirée.
 
 > ⚠️ Le trigger I-40 **reste**, et un test le prouve en passant à côté du
 > service : il garde la base de tout ce qui n'emprunterait pas ce chemin.
+
+---
+
+## D-46 — Les prix sont fixes : la négociation est fermée
+
+**La décision.** Comme en supermarché, on ne négocie pas les prix. Aucun
+écran de négociation n'est construit pour le conseiller, et l'application
+mobile continue de ne montrer aucune offre.
+
+**Pourquoi il a fallu toucher au serveur quand même.** Aucun écran ne
+permettait de négocier, mais le serveur restait joignable directement. Et il
+contenait une faille, rendue dangereuse par D-44 :
+
+1. un client ouvre une discussion ;
+2. il propose 10 FCFA pour un article — ses offres, contrairement à celles de
+   l'équipe, ne sont pas comparées au tarif ;
+3. il **accepte sa propre offre** — rien ne vérifiait que celui qui accepte
+   n'est pas celui qui a proposé.
+
+> ⚠️ Tant que le prix négocié ne s'appliquait pas à la commande, c'était sans
+> effet. Depuis D-44, sa commande passait à 10 FCFA. **La faille a été ouverte
+> par une correction**, et fermée le lendemain.
+
+**Ce qui change.**
+
+- `GARAH_NEGOCIATION_ACTIVE`, **fausse par défaut**. Fermée, la négociation
+  l'est partout : on ne propose plus, on n'accepte plus, et **aucun** prix
+  négocié ne s'applique au panier ni à la commande — pas même un accord conclu
+  avant la fermeture.
+- On n'accepte plus sa propre offre : le sens de celui qui accepte vient du
+  jeton, et doit différer de celui de la proposition. Cette règle vaut aussi
+  le jour où l'on rouvrira.
+
+> ⚠️ **Avant de rouvrir un jour**, il restera à faire exiger par le serveur
+> les droits `NEGOCIATION_CREER_PROPOSITION` et `NEGOCIATION_ACCEPTER`. Ils
+> existent au référentiel, mais aucune route ne les vérifie : tout compte de
+> l'équipe peut aujourd'hui accorder une remise, dans la limite du tarif.

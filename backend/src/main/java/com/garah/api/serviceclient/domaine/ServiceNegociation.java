@@ -40,11 +40,30 @@ public class ServiceNegociation {
      */
     private final JournalActions journal;
 
+    /**
+     * La négociation est-elle ouverte ? FERMÉE par défaut.
+     *
+     * <h2>🎯 Les prix sont fixes, comme en supermarché</h2>
+     *
+     * <p>Décision du 10/09/2026 : on ne négocie pas. Le réglage existe pour
+     * pouvoir rouvrir un jour sans rien réécrire —
+     * {@code GARAH_NEGOCIATION_ACTIVE=true} —, pas pour l'être aujourd'hui.</p>
+     *
+     * <p>⚠️ Fermée, elle l'est PARTOUT : on ne propose plus, on n'accepte
+     * plus, et aucun prix négocié ne s'applique au panier ni à la commande.
+     * Fermer seulement l'écran ne fermait rien : le serveur restait joignable
+     * directement.</p>
+     */
+    private final boolean negociationOuverte;
+
     public ServiceNegociation(PropositionPrixRepository propositions,
                               ConversationRepository conversations,
                               ServiceTarification tarification,
-                              JournalActions journal) {
+                              JournalActions journal,
+                              @org.springframework.beans.factory.annotation.Value(
+                                  "${GARAH_NEGOCIATION_ACTIVE:false}") boolean negociationOuverte) {
         this.journal = journal;
+        this.negociationOuverte = negociationOuverte;
         this.propositions = propositions;
         this.conversations = conversations;
         this.tarification = tarification;
@@ -62,6 +81,7 @@ public class ServiceNegociation {
     public PropositionPrix proposer(Long conversationId, Long varianteId, int quantite,
                                     BigDecimal prixPropose, Long auteurId,
                                     SensProposition sens, Duration validite) {
+        exigerNegociationOuverte();
         Conversation conversation = conversations.findById(conversationId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Conversation", conversationId));
 
@@ -113,6 +133,7 @@ public class ServiceNegociation {
     @Transactional
     public PropositionPrix contreProposer(Long propositionId, BigDecimal nouveauPrix,
                                           Long auteurId, SensProposition sens, Duration validite) {
+        exigerNegociationOuverte();
         PropositionPrix precedente = charger(propositionId);
         exigerNegociable(precedente);
 
@@ -135,10 +156,25 @@ public class ServiceNegociation {
      * courante, que {@code CHECK} ne sait pas lire (chapitre 05 §7).</p>
      */
     @Transactional
-    public PropositionPrix accepter(Long propositionId) {
+    public PropositionPrix accepter(Long propositionId, SensProposition celuiQuiAccepte) {
+        exigerNegociationOuverte();
         PropositionPrix proposition = charger(propositionId);
         exigerNegociable(proposition);
 
+        // ⚠️ ON N'ACCEPTE PAS SA PROPRE OFFRE.
+        //
+        //    Rien ne le verifiait. Un client pouvait proposer 10 FCFA — ses
+        //    offres ne sont pas comparees au tarif, seules celles de l'equipe
+        //    le sont — puis accepter LUI-MEME sa proposition, par trois appels
+        //    directs au serveur. Tant que le prix negocie ne s'appliquait pas
+        //    a la commande, c'etait sans effet ; depuis D-44, il payait 10 FCFA.
+        //
+        //    Un accord suppose DEUX parties : celle qui accepte n'est pas celle
+        //    qui a propose.
+        if (proposition.getSens() == celuiQuiAccepte) {
+            throw new ConflitEtat("PROPRE_PROPOSITION",
+                    "On ne peut pas accepter sa propre proposition.");
+        }
         proposition.accepter();
         return proposition;
     }
@@ -240,9 +276,19 @@ public class ServiceNegociation {
      */
     @Transactional(readOnly = true)
     public java.util.Optional<PrixNegocie> prixNegocie(Long clientId, Long varianteId, int quantite) {
+        if (!negociationOuverte) {
+            return java.util.Optional.empty();
+        }
         return propositions.utilisablesPour(clientId, varianteId, quantite, Instant.now())
                 .stream()
                 .findFirst()
                 .map(p -> new PrixNegocie(p.getId(), p.getPrixUnitairePropose()));
+    }
+
+    private void exigerNegociationOuverte() {
+        if (!negociationOuverte) {
+            throw new RegleMetierViolee("NEGOCIATION_FERMEE",
+                    "Les prix sont fixes : ils ne se négocient pas.");
+        }
     }
 }

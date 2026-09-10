@@ -409,7 +409,9 @@ class ServiceCommandeTest {
         var proposition = negociation.proposer(conversationId, varianteId, 2,
                 new BigDecimal("12000.00"), clientId,
                 com.garah.api.serviceclient.domaine.SensProposition.CLIENT, null);
-        negociation.accepter(proposition.getId());
+        // Le conseiller accepte l'offre du client — jamais le client la sienne.
+        negociation.accepter(proposition.getId(),
+                com.garah.api.serviceclient.domaine.SensProposition.RESPONSABLE);
 
         // Le prix se voit DES LE PANIER, et l'ecran sait pourquoi il differe.
         panier.ajouter(clientId, varianteId, 2);
@@ -445,7 +447,9 @@ class ServiceCommandeTest {
         var proposition = negociation.proposer(conversationId, varianteId, 2,
                 new BigDecimal("12000.00"), clientId,
                 com.garah.api.serviceclient.domaine.SensProposition.CLIENT, null);
-        negociation.accepter(proposition.getId());
+        // Le conseiller accepte l'offre du client — jamais le client la sienne.
+        negociation.accepter(proposition.getId(),
+                com.garah.api.serviceclient.domaine.SensProposition.RESPONSABLE);
 
         panier.ajouter(clientId, varianteId, 3);
         assertThat(panier.contenu(clientId).lignes()).singleElement().satisfies(l -> {

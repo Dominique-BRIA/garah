@@ -36,6 +36,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ServiceNegociationTest {
 
     @Autowired ServiceNegociation negociation;
+    @Autowired com.garah.api.serviceclient.infra.PropositionPrixRepository depotPropositions;
+    @Autowired com.garah.api.serviceclient.infra.ConversationRepository depotConversations;
+    @Autowired com.garah.api.commun.audit.JournalActions journalActions;
     @Autowired ServiceConversation conversations;
     @Autowired ServiceCatalogue catalogue;
     @Autowired ServiceTarification tarification;
@@ -170,7 +173,7 @@ class ServiceNegociationTest {
         // I-33. Sans ce contrôle, un client accepterait en octobre un prix
         // proposé en mars. Et ce ne peut PAS être une contrainte SQL : un
         // CHECK ne sait pas lire l'heure courante (chapitre 05 §7).
-        assertThatThrownBy(() -> negociation.accepter(p.getId()))
+        assertThatThrownBy(() -> negociation.accepter(p.getId(), SensProposition.RESPONSABLE))
                 .isInstanceOf(ConflitEtat.class)
                 .hasMessageContaining("expiré");
     }
@@ -192,7 +195,7 @@ class ServiceNegociationTest {
     void consommationUnique() {
         PropositionPrix p = negociation.proposer(conversationId, varianteId, 20,
                 new BigDecimal("12000.00"), clientId, SensProposition.CLIENT, null);
-        negociation.accepter(p.getId());
+        negociation.accepter(p.getId(), SensProposition.RESPONSABLE);
 
         negociation.consommer(p.getId());
         assertThat(p.getStatut()).isEqualTo(StatutProposition.CONSOMMEE);
@@ -234,5 +237,46 @@ class ServiceNegociationTest {
         // ne peut interpréter côté appelant.
         assertThatThrownBy(() -> conversations.prendre(conversationId, null))
                 .isInstanceOf(RegleMetierViolee.class);
+    }
+
+    @Test
+    @DisplayName("⚠️ on n'accepte pas sa propre offre")
+    void pasSaPropreOffre() {
+        // 🎯 LA FAILLE QUE CE TEST FERME.
+        //
+        //    Un client proposait 10 FCFA — ses offres ne sont pas comparees au
+        //    tarif — puis acceptait LUI-MEME sa proposition. Depuis que le prix
+        //    negocie s'applique a la commande (D-44), il payait 10 FCFA.
+        PropositionPrix p = negociation.proposer(conversationId, varianteId, 1,
+                new BigDecimal("10.00"), clientId, SensProposition.CLIENT, null);
+
+        assertThatThrownBy(() -> negociation.accepter(p.getId(), SensProposition.CLIENT))
+                .isInstanceOf(ConflitEtat.class)
+                .hasMessageContaining("propre proposition");
+        assertThat(negociation.fil(conversationId).getFirst().getStatut())
+                .isEqualTo(StatutProposition.PROPOSEE);
+    }
+
+    @Test
+    @DisplayName("⚠️ fermée, la négociation l'est partout : ni offre, ni acceptation, ni prix appliqué")
+    void negociationFermee() {
+        // Les prix sont fixes (D-46). Une offre acceptee AVANT la fermeture ne
+        // doit pas davantage s'appliquer : fermer l'ecran seul ne fermait rien.
+        PropositionPrix acceptee = negociation.proposer(conversationId, varianteId, 20,
+                new BigDecimal("12000.00"), clientId, SensProposition.CLIENT, null);
+        negociation.accepter(acceptee.getId(), SensProposition.RESPONSABLE);
+
+        ServiceNegociation fermee = new ServiceNegociation(
+                depotPropositions, depotConversations, tarification, journalActions, false);
+
+        assertThat(fermee.prixNegocie(clientId, varianteId, 20))
+                .as("aucun prix negocie ne s'applique")
+                .isEmpty();
+        assertThatThrownBy(() -> fermee.proposer(conversationId, varianteId, 1,
+                new BigDecimal("10.00"), clientId, SensProposition.CLIENT, null))
+                .isInstanceOf(com.garah.api.commun.erreur.RegleMetierViolee.class)
+                .hasMessageContaining("ne se négocient pas");
+        assertThatThrownBy(() -> fermee.accepter(acceptee.getId(), SensProposition.RESPONSABLE))
+                .isInstanceOf(com.garah.api.commun.erreur.RegleMetierViolee.class);
     }
 }

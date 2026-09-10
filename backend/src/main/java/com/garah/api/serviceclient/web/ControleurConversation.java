@@ -286,7 +286,9 @@ public class ControleurConversation {
     public VueProposition accepter(@PathVariable Long propositionId,
                                    @AuthenticationPrincipal Jwt jeton) {
         exigerAccesALaProposition(propositionId, jeton);
-        return VueProposition.de(negociation.accepter(propositionId));
+        // Le SENS de celui qui accepte vient du jeton, jamais du corps de la
+        // requete : c'est lui qui interdit d'accepter sa propre offre.
+        return VueProposition.de(negociation.accepter(propositionId, sens(jeton)));
     }
 
     @PostMapping("/propositions/{propositionId}/refus")
