@@ -2466,3 +2466,38 @@ appartenir déjà à un autre colis.
 
 Le formulaire a disparu : « Ajouter un colis » ajoute le colis en un clic.
 La route n'attend plus aucun corps, et le service n'accepte plus de numéro.
+
+---
+
+## D-50 — Un administrateur peut agir en logistique, et un colis vide ne part pas
+
+**Le défaut.** Depuis un compte administrateur, enregistrer le départ d'un
+colis échouait avec :
+
+> « Cette opération renvoie à un élément qui n'existe pas, ou qui a été
+> supprimé entre-temps. »
+
+Rien n'avait été supprimé. Trois colonnes qui notent **qui a agi**
+référençaient la table `responsable`, où un administrateur n'a pas de ligne :
+
+| Colonne | Geste |
+|---|---|
+| `evenement_expedition.responsable_id` | Enregistrer une étape d'un colis |
+| `retrait_marchandise.confirme_par` | Remettre la marchandise au comptoir |
+| `reclamation.responsable_id` | Prendre une réclamation en charge |
+
+C'est le même défaut que la messagerie interne (V32) et les conversations
+(V33), à trois autres endroits. V37 les repointe vers `utilisateur` : aucune
+donnée ne bouge, puisque `responsable.id` porte la même valeur que
+`utilisateur.id`.
+
+> ⚠️ **Il en reste une famille.** Ces colonnes ne sont découvertes qu'au
+> moment où un administrateur fait le geste. Toute nouvelle colonne « qui a
+> fait » doit référencer `utilisateur`, jamais `responsable` : `responsable`
+> désigne un **rôle**, pas un auteur.
+
+**Un colis vide ne part plus.** Son départ annonçait au client « votre
+commande est partie », avec un numéro de suivi, pour un colis qui ne
+contenait rien. Pendant ce temps, la commande, qui ignore les colis vides
+(D-43), restait « en préparation ». Le serveur refuse désormais : « Ce colis
+est vide : rangez-y d'abord les articles de la commande. »

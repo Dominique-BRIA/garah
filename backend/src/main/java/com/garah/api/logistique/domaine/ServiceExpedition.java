@@ -202,6 +202,17 @@ public class ServiceExpedition {
         boolean premierDepart = type == TypeEvenement.DEPART
                 && paquet.getStatut() == StatutColis.CREE;
 
+        // ⚠️ UN COLIS VIDE NE PART PAS.
+        //
+        //    Son depart annoncait au client « votre commande est partie », avec
+        //    un numero de suivi — pour un colis qui ne contenait rien. Pendant
+        //    ce temps la commande, qui ignore les colis vides, restait « en
+        //    preparation » : deux messages contradictoires le meme jour.
+        if (type == TypeEvenement.DEPART && paquet.getLignes().isEmpty()) {
+            throw new RegleMetierViolee("COLIS_VIDE",
+                    "Ce colis est vide : rangez-y d'abord les articles de la commande.");
+        }
+
         if (paquet.getStatut() == StatutColis.REMIS) {
             throw new ConflitEtat("COLIS_DEJA_REMIS",
                     "Ce colis a déjà été remis au client.");

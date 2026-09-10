@@ -178,7 +178,7 @@ class ParcoursLogistiqueTest {
         jdbc.update("DELETE FROM lieu WHERE nom IN ('Entrepôt Douala', 'Transit Bertoua', 'Bangui PK5')");
         jdbc.update("DELETE FROM client WHERE code_client = 'CLI-LOG-1'");
         jdbc.update("DELETE FROM responsable WHERE matricule = 'M-LOG-R1'");
-        jdbc.update("DELETE FROM utilisateur WHERE email IN (?, 'resp.log@garah.cm')", EMAIL);
+        jdbc.update("DELETE FROM utilisateur WHERE email IN (?, 'resp.log@garah.cm', 'admin.log@garah.cm')", EMAIL);
     }
 
     private Colis colisPret() {
@@ -209,6 +209,51 @@ class ParcoursLogistiqueTest {
         assertThatThrownBy(() -> expeditions.creer(commande.id(), entrepotId, transitId, null))
                 .isInstanceOf(RegleMetierViolee.class)
                 .hasMessageContaining("point de récupération");
+    }
+
+    @Test
+    @DisplayName("⚠️ un administrateur peut faire partir, remettre, et prendre une réclamation")
+    void unAdministrateurPeutAgir() {
+        // 🎯 LE DEFAUT QUE CE TEST FERME (D-50).
+        //
+        //    Depuis un compte ADMIN, enregistrer le depart d'un colis echouait :
+        //    « un element qui n'existe pas, ou qui a ete supprime ». Trois
+        //    colonnes qui notent QUI a agi referencaient `responsable`, ou un
+        //    administrateur n'a pas de ligne. Meme defaut que V32 et V33.
+        Long adminId = transactions.execute(t -> utilisateurs.save(new Utilisateur(
+                TypeUtilisateur.ADMIN, "Admin Log", "admin.log@garah.cm", "x")).getId());
+
+        Colis colis = colisPret();
+        expeditions.enregistrer(colis.getId(), entrepotId, adminId, TypeEvenement.DEPART, null);
+        expeditions.enregistrer(colis.getId(), pointRetraitId, adminId, TypeEvenement.ARRIVEE, null);
+
+        // Au comptoir : la remise note elle aussi qui l'a faite.
+        String code = expeditions.mesRetraits(commande.id(), clientId).getFirst().codeRetrait();
+        expeditions.confirmerRetrait(code, adminId);
+        assertThat(statutCommande()).isEqualTo("RETIREE");
+
+        // Et en apres-vente : prendre une reclamation en charge.
+        Reclamation reclamation = reclamations.ouvrir(clientId, commande.id(),
+                "ARTICLE_MANQUANT", "Il manque une chemise dans le colis.");
+        reclamations.prendreEnCharge(reclamation.getId(), adminId);
+    }
+
+    @Test
+    @DisplayName("⚠️ un colis vide ne part pas")
+    void unColisVideNePartPas() {
+        // Son depart annoncait au client « votre commande est partie », avec un
+        // numero de suivi, pour un colis qui ne contenait rien — pendant que la
+        // commande, qui ignore les colis vides, restait « en preparation ».
+        Expedition expedition = expeditions.creer(commande.id(), entrepotId, pointRetraitId, null);
+        Colis vide = expeditions.ajouterColis(expedition.getId());
+
+        assertThatThrownBy(() -> expeditions.enregistrer(
+                vide.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null))
+                .isInstanceOf(RegleMetierViolee.class)
+                .hasMessageContaining("vide");
+        assertThat(evenementsPublies.stream(EvenementsExpedition.ColisParti.class))
+                .as("aucune annonce pour un colis vide")
+                .isEmpty();
     }
 
     @Test
