@@ -87,8 +87,20 @@
   color: var(--texte);
 }
 
+// ⚠️ Le vert vient de --slogan et NON de --success : le vert vif tombe a 2,5
+//    contre 1 sur le fond clair, illisible. --slogan porte deux valeurs, une
+//    par theme.
+.slogan {
+  margin: 0.5rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--slogan);
+}
+
 .sous-titre {
-  margin: 0.55rem 0 1.35rem;
+  margin: 0.3rem 0 1.35rem;
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;

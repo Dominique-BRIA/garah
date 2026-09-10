@@ -17,7 +17,19 @@
 \documentclass[11pt,a4paper]{report}
 
 % =============================================================================
-%  ⚠️  SI OVERLEAF DIT « YOUR COMPILE TIMED OUT » : LISEZ CECI.
+%  ⚠️  DEUX CHOSES A SAVOIR AVANT DE COMPILER
+% =============================================================================
+%
+%  1. LE DOSSIER captures/ DOIT ETRE TELEVERSE AVEC CE FICHIER.
+%
+%     Cinq figures sont de VRAIES captures de l application. Elles vivent dans
+%     docs/captures/ a cote de ce .tex. Sur Overleaf, glissez le dossier entier
+%     dans le projet — sans lui, la compilation s arrete sur « File not found ».
+%
+%     Les autres figures sont des illustrations dessinees en TikZ : elles ne
+%     demandent aucun fichier.
+%
+%  2. SI OVERLEAF DIT « YOUR COMPILE TIMED OUT » : LISEZ CECI.
 % =============================================================================
 %
 %  Le plan gratuit d'Overleaf limite le temps de compilation. Les vingt
@@ -225,6 +237,44 @@
   \end{center}
 }
 
+
+% --- Une capture RÉELLE de l'application ------------------------------------
+%
+% #1 = fichier (sans extension)   #2 = repères TikZ, en coordonnées 0..1
+%
+% ⚠️ Les repères sont posés en coordonnées RELATIVES à l'image. Des
+%    coordonnées en centimètres se décaleraient dès qu'on change une marge ou
+%    la largeur de l'image.
+\newcommand{\capture}[2]{%
+  \begin{center}
+  \begin{tikzpicture}
+    \node[anchor=south west,inner sep=0,draw=garahBordure,line width=0.8pt]
+      (img) {\includegraphics[width=0.96\linewidth]{captures/#1}};
+    \begin{scope}[x={(img.south east)},y={(img.north west)}]
+      #2
+    \end{scope}
+  \end{tikzpicture}
+  \end{center}%
+}
+
+% --- La légende d'une VRAIE capture -----------------------------------------
+%
+% ⚠️ Elle ne dit PAS « illustration pédagogique » : celle-ci en est une vraie,
+%    et le lecteur doit pouvoir faire la différence d'un coup d'œil.
+\newcommand{\legendeCapture}[2]{%
+  \vspace{2pt}
+  \begin{center}
+  \begin{minipage}{0.93\linewidth}
+    \footnotesize\itshape
+    \textbf{Figure~#1 --- } #2
+    \par\vspace{2pt}
+    \textcolor{garahSlogan}{\scriptsize\bfseries Capture réelle de
+    l'application.}
+  \end{minipage}
+  \end{center}
+  \vspace{6pt}
+}
+
 % --- La légende d'une illustration pédagogique ------------------------------
 \newcommand{\legendeIllus}[2]{%
   % Sans les dessins, la légende resterait suspendue dans le vide : on pose un
@@ -394,10 +444,20 @@ Ce manuel utilise toujours les mêmes signes. Apprenez-les une fois :
 \section*{À propos des illustrations}
 
 \begin{attention}
-Les figures de ce manuel sont des \textbf{illustrations pédagogiques}. Elles
-reproduisent fidèlement la \emph{disposition} des écrans réels — l'ordre des
-menus, la place des boutons, les libellés — mais ce ne sont pas des captures
-d'écran.
+Ce manuel contient \textbf{deux sortes de figures}, et vous devez pouvoir les
+distinguer d'un coup d'œil.
+
+\medskip
+\textbf{Les captures réelles} portent la mention verte
+\textcolor{garahSlogan}{\bfseries « Capture réelle de l'application »}. Ce
+sont de véritables images de la plateforme en fonctionnement.
+
+\medskip
+\textbf{Les illustrations pédagogiques} portent une mention grise. Elles
+reproduisent fidèlement la \emph{disposition} d'un écran — l'ordre des menus,
+la place des boutons, les libellés — ou représentent un \emph{enchaînement
+d'états}, ce qu'aucune capture ne saurait montrer. Ce ne sont pas des photos
+de l'application.
 
 Là où une véritable capture apporterait davantage, un cadre en pointillés
 indique où l'insérer :
@@ -652,26 +712,15 @@ Sur la boutique, cliquez sur \textbf{« S'inscrire »} en haut à droite. Dans
 l'application Android, ouvrez l'onglet \textbf{Compte}, puis
 \textbf{« Créer un compte »}.
 
-\begin{illustration}
-\begin{center}
-\begin{tikzpicture}[x=1mm,y=1mm]
-  % La barre du site
-  \draw[fill=white,draw=garahBordure,line width=0.8pt,rounded corners=2pt]
-    (0,0) rectangle (150,14);
-  \node[font=\scriptsize\bfseries,text=garahEncre] at (14,7) {GARAH};
-  \node[font=\tiny,text=garahSlogan] at (16,3.4) {AU-DELÀ DES FRONTIÈRES};
-  \node[font=\tiny,text=garahAttenue] at (44,7) {Accueil};
-  \node[font=\tiny,text=garahAttenue] at (58,7) {Catalogue};
-  \node[font=\tiny,text=garahAttenue] at (76,7) {Suivre un colis};
-  \draw[fill=garahPrimaire,draw=none,rounded corners=2pt] (104,3) rectangle (124,11);
-  \node[font=\tiny,text=white] at (114,7) {Se connecter};
-  \draw[fill=white,draw=garahBordure,rounded corners=2pt] (126,3) rectangle (146,11);
-  \node[font=\tiny,text=garahEncre] at (136,7) {S'inscrire};
-  \node at (150,7) {\num{1}};
-\end{tikzpicture}
-\end{center}
-\end{illustration}
-\legendeIllus{2.1}{La barre du site. \num{1} le bouton « S'inscrire ».}
+\capture{accueil}{%
+  \node at (0.827,0.918) {\num{1}};
+  \node at (0.086,0.912) {\num{2}};
+  \node at (0.048,0.722) {\num{3}};
+}
+\legendeCapture{2.1}{L'accueil de la boutique.
+\num{1} le bouton « S'inscrire », en haut à droite.
+\num{2} la marque et son slogan, qui ramènent toujours à l'accueil.
+\num{3} les puces de catégories : un clic ouvre le catalogue déjà filtré.}
 
 \etape{Remplir le formulaire}
 
@@ -741,23 +790,11 @@ la recherche, et le catalogue complet.
 Sur l'accueil, les catégories sont présentées sous forme de puces. Touchez-en
 une : le catalogue s'ouvre \textbf{déjà filtré}.
 
-\begin{illustration}
-\begin{center}
-\begin{tikzpicture}[x=1mm,y=1mm]
-  \node[font=\scriptsize\bfseries,text=garahAttenue,anchor=west] at (0,26) {CATÉGORIES};
-  \foreach \x/\t [count=\i] in {0/Chaussure, 26/Vetements, 55/Cheveux et beaute,
-                                92/Informatique, 120/Electromenager} {
-    \draw[draw=garahBordure,fill=white,rounded corners=4pt,line width=0.7pt]
-      (\x,14) rectangle (\x+24,22);
-    \node[font=\tiny,text=garahEncre] at (\x+12,18) {\t};
-  }
-  \node at (38,10) {\num{1}};
-  \draw[-{Stealth[length=2mm]},garahPrimaire,line width=0.8pt] (38,12) -- (36,14);
-\end{tikzpicture}
-\end{center}
-\end{illustration}
-\legendeIllus{2.2}{Les puces de catégories sur l'accueil. \num{1} un clic filtre
-directement le catalogue.}
+\begin{astuce}
+Les puces de catégories sont visibles sur la figure~2.1, repère \num{3}. Un
+seul clic suffit : le catalogue s'ouvre \textbf{déjà filtré} sur la catégorie
+choisie.
+\end{astuce}
 
 \etape{Reconnaître le filtre actif}
 
@@ -774,6 +811,16 @@ puce de filtre}. Un catalogue filtré ressemble à un catalogue vide.
 La barre de recherche porte sur \textbf{le nom de l'article, le vendeur et la
 catégorie}. Elle ne cherche pas dans les références ni dans les numéros de
 commande.
+
+\capture{catalogue}{%
+  \node at (0.042,0.791) {\num{1}};
+  \node at (0.042,0.842) {\num{2}};
+  \node at (0.285,0.391) {\num{3}};
+}
+\legendeCapture{2.11}{Le catalogue complet.
+\num{1} la barre de recherche.
+\num{2} le nombre d'articles trouvés, sous le titre.
+\num{3} l'étiquette « PLUS QUE 5 » : le stock devient bas.}
 
 \begin{astuce}
 La recherche attend que vous ayez fini de taper avant d'interroger le serveur.
@@ -792,39 +839,23 @@ Comprendre les prix par palier, les déclinaisons, et le sous-total.
 Le prix baisse par tranches de quantité. La grille est affichée
 \textbf{avant} le bouton d'achat, et le palier qui s'applique est mis en avant.
 
-\begin{illustration}
-\begin{center}
-\begin{tikzpicture}[x=1mm,y=1mm]
-  \node[font=\scriptsize\bfseries,text=garahAttenue,anchor=west] at (0,32) {PRIX PAR QUANTITÉ};
-  % Palier actif
-  \draw[draw=garahPrimaire,fill=garahPrimaire!8,rounded corners=3pt,line width=1.1pt]
-    (0,10) rectangle (36,28);
-  \node[font=\tiny,text=garahAttenue] at (18,25) {1 -- 6};
-  \node[font=\scriptsize\bfseries,text=garahEncre] at (18,19) {2 000 FCFA};
-  \node[font=\tiny,text=garahAttenue] at (18,14) {la pièce};
-  % Autres paliers
-  \draw[draw=garahBordure,fill=white,rounded corners=3pt,line width=0.8pt]
-    (40,10) rectangle (76,28);
-  \node[font=\tiny,text=garahAttenue] at (58,25) {7 -- 10};
-  \node[font=\scriptsize\bfseries,text=garahEncre] at (58,19) {1 500 FCFA};
-  \node[font=\tiny,text=garahAttenue] at (58,14) {la pièce};
-  \draw[draw=garahBordure,fill=white,rounded corners=3pt,line width=0.8pt]
-    (80,10) rectangle (116,28);
-  \node[font=\tiny,text=garahAttenue] at (98,25) {11 et +};
-  \node[font=\scriptsize\bfseries,text=garahEncre] at (98,19) {1 000 FCFA};
-  \node[font=\tiny,text=garahAttenue] at (98,14) {la pièce};
-
-  \node[font=\tiny,text=garahAttenue,anchor=west] at (0,5)
-    {Encore \textbf{6} et le prix passe à \textbf{1 500 FCFA}.};
-  \node at (-6,19) {\num{1}};
-  \node at (122,19) {\num{2}};
-\end{tikzpicture}
-\end{center}
-\end{illustration}
-\legendeIllus{2.3}{La grille des paliers. \num{1} le palier qui s'applique à la
-quantité choisie, encadré. \num{2} les paliers suivants, atteignables en
-commandant davantage. La phrase du bas indique ce qu'il manque pour descendre
-d'un palier.}
+\capture{produit}{%
+  \node at (0.508,0.7) {\num{1}};
+  \node at (0.935,0.7) {\num{2}};
+  \node at (0.508,0.592) {\num{3}};
+  \node at (0.5,0.43) {\num{4}};
+  \node at (0.935,0.267) {\num{5}};
+  \node at (0.935,0.19) {\num{6}};
+  \node at (0.968,0.067) {\num{7}};
+}
+\legendeCapture{2.3}{La fiche d'un article, avec sa grille de paliers.
+\num{1} le palier qui s'applique à la quantité choisie, encadré.
+\num{2} les paliers suivants, atteignables en commandant davantage.
+\num{3} ce qu'il manque pour descendre d'un palier.
+\num{4} les déclinaisons ; les barrées sont épuisées.
+\num{5} la quantité, et le stock disponible juste dessous.
+\num{6} le sous-total --- \emph{hors} frais d'acheminement.
+\num{7} « Ajouter au panier ».}
 
 \etape{Choisir la déclinaison}
 
@@ -1039,6 +1070,15 @@ pouvez donc le transmettre à la personne qui viendra retirer à votre place.
 \etape{Saisir le numéro de suivi}
 
 Entrez le numéro. L'état du colis s'affiche.
+
+\capture{suivi}{%
+  \node at (0.05,0.315) {\num{1}};
+  \node at (0.958,0.315) {\num{2}};
+}
+\legendeCapture{2.10}{La page « Suivre un colis ».
+\num{1} le champ du numéro de suivi.
+\num{2} le bouton qui lance la recherche.
+Aucun compte n'est demandé.}
 
 \begin{illustration}
 \begin{center}
@@ -1355,6 +1395,19 @@ Vous avez confirmé votre adresse e-mail.
 
 Ouvrez l'adresse du back-office et saisissez votre adresse e-mail et votre mot
 de passe.
+
+\capture{connexion-admin}{%
+  \node at (0.318,0.399) {\num{1}};
+  \node at (0.318,0.291) {\num{2}};
+  \node at (0.318,0.204) {\num{3}};
+  \node at (0.91,0.952) {\num{4}};
+}
+\legendeCapture{3.6}{L'écran de connexion du back-office.
+\num{1} votre adresse e-mail.
+\num{2} votre mot de passe.
+\num{3} « Se connecter ».
+\num{4} la bascule clair / sombre --- elle est disponible \emph{avant} même
+d'être connecté.}
 
 \etape{Reconnaître le menu}
 
