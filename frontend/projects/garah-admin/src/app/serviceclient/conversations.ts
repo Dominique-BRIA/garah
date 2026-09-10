@@ -1,10 +1,11 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   badgeStatutConversation,
   badgeStatutProposition,
   Conversation,
+  MessageConversation,
   Icone,
   libelleStatutConversation,
   libelleStatutProposition,
@@ -15,9 +16,20 @@ import {
   Proposition,
   ResumeConversation,
   ServiceSession,
+  ServiceTempsReel,
   StatutConversation,
   STATUTS_CONVERSATION,
 } from 'garah-ui';
+
+/**
+ * La file personnelle des messages de conversation.
+ *
+ * ⚠️ Le prefixe /utilisateur est resolu par Spring vers la session de
+ *    l abonne. Une destination partagee aurait livre chaque message a tous
+ *    les connectes — y compris aux clients de la boutique, qui ouvrent le
+ *    meme WebSocket.
+ */
+const DESTINATION_CONVERSATIONS = '/utilisateur/file/conversations';
 
 const TAILLE_PAGE = 25;
 
@@ -54,6 +66,8 @@ const TAILLE_PAGE = 25;
 })
 export class Conversations {
   private readonly http = inject(HttpClient);
+  private readonly tempsReel = inject(ServiceTempsReel);
+  private readonly destruction = inject(DestroyRef);
   protected readonly session = inject(ServiceSession);
 
   protected readonly liste = signal<readonly ResumeConversation[]>([]);
@@ -105,6 +119,55 @@ export class Conversations {
       }
       this.charger();
     });
+
+    // ⚠️ On COUPE a la destruction. Sans cela, chaque passage sur cet ecran
+    //    laisserait un abonnement de plus derriere lui, et un message
+    //    arrivant en declencherait autant de rechargements de la liste.
+    this.destruction.onDestroy(
+      this.tempsReel.abonner<MessageConversation>(
+        DESTINATION_CONVERSATIONS,
+        (m) => this.surMessageRecu(m),
+      ),
+    );
+  }
+
+
+  /**
+   * L'arrivee d'un message, en direct.
+   *
+   * <h2>🎯 Il fallait recharger pour voir arriver une reponse</h2>
+   *
+   * <p>Le client ecrivait, l'agent ne voyait rien tant qu'il n'avait pas
+   * recharge. Sur une conversation vive, cela revenait a rafraichir toutes les
+   * vingt secondes pour savoir si l'autre avait parle.</p>
+   *
+   * <p>⚠️ LE MESSAGE EST AJOUTE, LE FIL N'EST PAS RELU. Redemander le fil
+   * entier a chaque phrase ferait une requete par message — exactement ce que
+   * le temps reel est cense eviter. La trame porte deja le message complet.</p>
+   *
+   * <p>⚠️ On se protege du DOUBLON. Le serveur pousse aux deux bouts, y
+   * compris a l'expediteur : quelqu'un peut avoir le meme dossier ouvert sur
+   * son telephone et ici. L'identifiant tranche.</p>
+   */
+  private surMessageRecu(message: MessageConversation): void {
+    // La liste change de toute facon : compteur de non lus, date du dernier
+    // message. Ces deux chiffres sont calcules par le serveur, et les deviner
+    // ici les ferait diverger.
+    this.charger();
+
+    const fil = this.ouverte();
+    if (!fil || message.conversationId !== fil.id) {
+      // Le message concerne un AUTRE dossier. La liste vient d'etre relue,
+      // c'est tout ce qu'il faut : ouvrir le fil de force arracherait l'agent
+      // a celui qu'il est en train de lire.
+      return;
+    }
+
+    if (fil.messages.some((m) => m.id === message.id)) {
+      return;
+    }
+
+    this.ouverte.set({ ...fil, messages: [...fil.messages, message] });
   }
 
   protected charger(): void {

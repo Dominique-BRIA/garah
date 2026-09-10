@@ -10,6 +10,7 @@
 export * from './lib/api/configuration-api';
 export * from './lib/api/intercepteur-api';
 export * from './lib/api/service-session';
+export * from './lib/api/temps-reel';
 
 // --- Les modeles, alignes sur les DTO du backend -----------------------------
 export * from './lib/modeles/authentification';
