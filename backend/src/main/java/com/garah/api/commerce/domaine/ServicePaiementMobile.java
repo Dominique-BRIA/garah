@@ -89,8 +89,35 @@ public class ServicePaiementMobile {
     }
 
     /** Ce qu'on renvoie au client pour qu'il termine sur son téléphone. */
-    public record DemandePaiement(Long paiementId, String reference, String codeUssd,
-                                  String operateur, String statut) {
+    /**
+     * L'état d'un paiement, tel que les écrans le lisent.
+     *
+     * <h2>🎯 Ce record ne portait pas les bons noms</h2>
+     *
+     * <p>Il annonçait {@code paiementId} et {@code reference} là où les deux
+     * applications lisent {@code id} et {@code referenceTransaction}. Le
+     * paiement partait donc correctement — l'opérateur poussait bien sa
+     * demande de code sur le téléphone — et l'écran <b>échouait au retour</b>,
+     * en lisant une réponse dont il ne reconnaissait aucun champ.</p>
+     *
+     * <p>⚠️ Le symptôme trompe : « une erreur inattendue » APRÈS que le
+     * téléphone a sonné. On cherche du côté de l'opérateur, qui a
+     * parfaitement fait son travail.</p>
+     *
+     * <p>⚠️ Et {@code operateur} portait <b>deux sens</b> selon la route :
+     * l'opérateur annoncé par Campay à la demande, notre propre moyen de
+     * paiement à la relecture. Un même champ, deux significations — donc un
+     * champ sur lequel on ne peut rien construire.</p>
+     *
+     * @param montant     ce que le client paie. Il manquait, et l'écran ne
+     *                    pouvait donc pas le rappeler au moment de valider.
+     * @param moyen       le nôtre : {@code MTN_MOMO} ou {@code ORANGE_MONEY}.
+     * @param codeUssd    à composer si la demande n'arrive pas d'elle-même.
+     *                    {@code null} en dehors de la demande initiale.
+     */
+    public record DemandePaiement(Long id, String statut, java.math.BigDecimal montant,
+                                  String moyen, String referenceTransaction,
+                                  String codeUssd) {
     }
 
     /**
@@ -150,8 +177,9 @@ public class ServicePaiementMobile {
         //    abouti ferait mentir le parcours sur ce qui compte le plus.
         parcours.paiement(commandeId, moyen.name(), null);
 
-        return new DemandePaiement(paiement.getId(), collecte.reference(),
-                collecte.codeUssd(), collecte.operateur(), StatutPaiement.EN_ATTENTE.name());
+        return new DemandePaiement(paiement.getId(), StatutPaiement.EN_ATTENTE.name(),
+                paiement.getMontant(), paiement.getMoyen().name(),
+                collecte.reference(), collecte.codeUssd());
     }
 
     /**
@@ -389,8 +417,11 @@ public class ServicePaiementMobile {
 
         verifierProprietaire(paiement.getCommandeId(), clientId);
 
-        return new DemandePaiement(paiement.getId(), paiement.getReferenceTransaction(),
-                null, paiement.getMoyen().name(), paiement.getStatut().name());
+        // ⚠️ Pas de code USSD ici : il n'est valable qu'au moment de la
+        //    demande. Le rendre à la relecture ferait composer un code périmé.
+        return new DemandePaiement(paiement.getId(), paiement.getStatut().name(),
+                paiement.getMontant(), paiement.getMoyen().name(),
+                paiement.getReferenceTransaction(), null);
     }
 
     /**
