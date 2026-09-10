@@ -48,6 +48,17 @@ public class ClientCampay {
 
     private static final Logger log = LoggerFactory.getLogger(ClientCampay.class);
 
+    /**
+     * ⚠️ Pour lire le CORPS D'ERREUR, que `RestClient` ne désérialise pas :
+     * sur un 4xx il lève avant. On relit donc la chaîne brute nous-mêmes.
+     */
+    private static final com.fasterxml.jackson.databind.ObjectMapper json =
+            new com.fasterxml.jackson.databind.ObjectMapper();
+
+    private static final com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>> CARTE_BRUTE =
+            new com.fasterxml.jackson.core.type.TypeReference<>() {
+            };
+
     private static final ParameterizedTypeReference<Map<String, Object>> CARTE =
             new ParameterizedTypeReference<>() {
             };
@@ -192,37 +203,25 @@ public class ClientCampay {
      *                         qui permet de rapprocher les deux systèmes le
      *                         jour d'un litige
      */
-    /**
-     * Le plus petit montant que l'opérateur accepte, en FCFA.
-     *
-     * <h2>🎯 Pourquoi il est vérifié ICI, avant l'appel</h2>
-     *
-     * <p>Campay refuse en dessous, par un {@code 400}. Sans ce contrôle, le
-     * client déclenchait une demande de paiement, attendait, et recevait un
-     * message d'erreur — pour une raison connue d'avance.</p>
-     *
-     * <p>C'est la règle du projet : <b>dire ce qui manque AVANT le clic</b>.
-     * Le serveur refuserait de toute façon ; l'utilisateur ne doit pas
-     * découvrir par une erreur ce que l'on savait déjà.</p>
-     *
-     * <p>⚠️ C'est une contrainte de l'opérateur, pas une règle GARAH. Elle
-     * vit donc dans le client Campay, et non dans le domaine : le jour où l'on
-     * ajoute un second opérateur, chacun apportera la sienne.</p>
-     */
-    public static final int MONTANT_MINIMUM = 100;
-
     public Collecte encaisser(BigDecimal montant, String telephone,
                               String description, String referenceExterne) {
-        // ⚠️ LE MONTANT D'ABORD, avant même de regarder si l'on peut joindre
-        //    quelqu'un : c'est une propriété de la DEMANDE, pas du serveur.
-        //    Une demande malformée se refuse sans se demander qui l'aurait
-        //    reçue.
-        if (montant == null || montant.compareTo(BigDecimal.valueOf(MONTANT_MINIMUM)) < 0) {
-            throw new OperateurRefuse(
-                    "Le montant minimum accepté par l'opérateur est de "
-                    + MONTANT_MINIMUM + " FCFA.");
-        }
-
+        // ⚠️ AUCUN CONTRÔLE DE MONTANT ICI, et c'est une correction.
+        //
+        //    Une version précédente refusait en dessous de 100 FCFA, sur la
+        //    foi d'une documentation tierce. C'était FAUX, deux fois :
+        //
+        //      · le minimum dépend de L'OPÉRATEUR — « Minimum amount for
+        //        Orange is 10.00 », répond Campay ;
+        //      · et le bac à sable PLAFONNE à 25 FCFA.
+        //
+        //    Le garde-fou fermait donc la seule fenêtre utilisable en
+        //    démonstration : rien ne pouvait plus passer, ni en dessous de
+        //    100 (nous refusions), ni au-dessus de 25 (Campay refusait).
+        //
+        //    La règle qui s'en dégage : Campay connaît ses seuils, ils
+        //    varient par opérateur et par environnement, et les recopier
+        //    revient à figer une valeur qui ne nous appartient pas. On lui
+        //    demande, et on RAPPORTE ce qu'il répond.
         exigerConfiguration();
 
         // ⚠️ Le XAF n'a PAS de centimes, et Campay refuse « 5000.00 ».
@@ -372,23 +371,54 @@ public class ClientCampay {
      * générale sinon — mais une phrase qui dit bien « refusé », pas
      * « injoignable ».</p>
      */
-    private OperateurRefuse refusDe(String chemin, HttpClientErrorException refus) {
+    private ErreurMetier refusDe(String chemin, HttpClientErrorException refus) {
         String corps = refus.getResponseBodyAsString();
         log.warn("Appel Campay {} refuse ({}) : {}", chemin, refus.getStatusCode(), corps);
 
-        String bas = corps == null ? "" : corps.toLowerCase(java.util.Locale.ROOT);
+        String message = messageDe(corps);
+        String bas = message.toLowerCase(java.util.Locale.ROOT);
 
-        if (bas.contains("amount")) {
-            return new OperateurRefuse(
-                    "Le montant n'est pas accepté par l'opérateur. "
-                    + "Le minimum est de " + MONTANT_MINIMUM + " FCFA.");
+        // ⚠️ UNE LIMITE DE CADENCE N'EST PAS UN REFUS : « Rate limit per Phone
+        //    number exceeded. Try again in a minute. » dit explicitement de
+        //    réessayer. La classer en 422 ferait croire que le paiement est
+        //    impossible, alors qu'il suffit d'attendre.
+        if (bas.contains("rate limit")) {
+            return new OperateurIndisponible(
+                    "Trop de tentatives sur ce numéro. Réessayez dans une minute.");
         }
-        if (bas.contains("phone") || bas.contains("number") || bas.contains("from")) {
-            return new OperateurRefuse(
-                    "Ce numéro n'est pas accepté par l'opérateur. Vérifiez-le.");
+
+        // ⚠️ On RAPPORTE ce que l'opérateur a dit, on ne le devine plus.
+        //
+        //    Une version précédente traduisait « le corps contient le mot
+        //    amount » en « le minimum est de 100 FCFA ». C'était une supposition
+        //    présentée comme un fait — et elle était fausse : Campay disait
+        //    « Minimum amount for Orange is 10.00 », ou « Maximum amount is
+        //    25.00 XAF » selon le cas. Deviner la raison prive de la seule
+        //    information utile : le chiffre exact, pour cet opérateur, dans cet
+        //    environnement.
+        return new OperateurRefuse(message.isBlank()
+                ? "L'opérateur a refusé ce paiement. Vérifiez le numéro et le montant."
+                : "L'opérateur a refusé : " + message);
+    }
+
+    /**
+     * Le message porté par une réponse d'erreur de Campay.
+     *
+     * <p>⚠️ Le corps peut ne pas être du JSON — une passerelle en amont peut
+     * renvoyer du HTML. On rend alors une chaîne vide plutôt que d'afficher
+     * une page web dans une bulle d'erreur.</p>
+     */
+    private String messageDe(String corps) {
+        if (corps == null || corps.isBlank()) {
+            return "";
         }
-        return new OperateurRefuse(
-                "L'opérateur a refusé ce paiement. Vérifiez le numéro et le montant.");
+        try {
+            Map<String, Object> lu = json.readValue(corps, CARTE_BRUTE);
+            Object message = lu.get("message");
+            return message == null ? "" : String.valueOf(message).strip();
+        } catch (Exception illisible) {
+            return "";
+        }
     }
 
     /**

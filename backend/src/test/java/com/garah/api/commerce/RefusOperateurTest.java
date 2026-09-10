@@ -5,57 +5,41 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
-import java.math.BigDecimal;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Un refus de l'opérateur n'est pas une panne.
+ * Un refus de l'opérateur n'est pas une panne — et sa raison lui appartient.
  *
- * <h2>🎯 Le défaut que ces tests ferment</h2>
+ * <h2>🎯 Deux défauts, corrigés l'un après l'autre</h2>
  *
- * <p>Tout échec d'appel à Campay devenait « le service de paiement est
- * momentanément injoignable ». C'était faux la moitié du temps : un
- * {@code 400} signifie que l'opérateur a <b>répondu</b>, parfaitement, pour
- * dire <b>non</b>.</p>
+ * <p><b>Le premier :</b> tout échec d'appel devenait « le service de paiement
+ * est momentanément injoignable ». C'était faux la moitié du temps — un
+ * {@code 400} signifie que Campay a répondu, parfaitement, pour dire non.</p>
  *
- * <p>Le cas rencontré : un paiement de moins de 20 FCFA. Campay impose un
- * minimum ; il refusait donc, et l'écran annonçait une indisponibilité. On
- * cherchait une panne réseau pendant que la réponse était sur la table.</p>
- *
- * <h2>⚠️ Deux natures, deux codes HTTP</h2>
+ * <p><b>Le second, introduit en corrigeant le premier :</b> on traduisait
+ * « le corps contient le mot <i>amount</i> » en « le minimum est de 100 FCFA ».
+ * Une supposition présentée comme un fait. Interrogé directement, Campay
+ * répond tout autre chose :</p>
  *
  * <pre>
- * injoignable   503   réessayer plus tard a du sens
- * refusé        422   réessayer à l'identique donnera le même refus
+ * Minimum amount for Orange is 10.00          le seuil dépend de L'OPÉRATEUR
+ * This is a demo system. Maximum amount is 25.00 XAF   et de L'ENVIRONNEMENT
+ * Rate limit per Phone number exceeded        et ce n'est pas toujours un refus
  * </pre>
  *
- * <p>Les confondre fait boucler le client sur un geste qui ne peut pas
- * réussir — et fait chercher le support du mauvais côté.</p>
+ * <p>⚠️ Le garde-fou « minimum 100 » fermait donc la seule fenêtre utilisable
+ * en démonstration : rien ne pouvait plus passer, ni en dessous de 100 (nous
+ * refusions), ni au-dessus de 25 (Campay refusait). Un essai à 20 FCFA,
+ * parfaitement valide, était bloqué par notre propre contrôle.</p>
  */
 @DisplayName("Refus de l'opérateur")
 class RefusOperateurTest {
 
     @Test
-    @DisplayName("⚠️ un montant sous le minimum est REFUSÉ, pas « injoignable »")
-    void sousLeMinimumEstUnRefus() {
-        // 🎯 LE CAS RENCONTRÉ. Moins de 20 FCFA : Campay refuse, et l'écran
-        //    disait « service injoignable ».
-        ClientCampay client = new ClientCampay("", "", "", org.springframework.web.client.RestClient.builder());
-
-        assertThatThrownBy(() ->
-                client.encaisser(new BigDecimal("20"), "699707810", "Test", "CMD-1"))
-                .isInstanceOf(ClientCampay.OperateurRefuse.class)
-                .hasMessageContaining(String.valueOf(ClientCampay.MONTANT_MINIMUM));
-    }
-
-    @Test
     @DisplayName("⚠️ le refus rend 422, jamais 503")
     void leRefusRend422() {
         // 503 dirait « réessayez plus tard ». Or réessayer à l'identique
-        // donnera exactement le même refus : le montant ne change pas tout
-        // seul. L'écran doit dire quoi corriger, pas quoi attendre.
+        // donnera le même refus : le montant ne change pas tout seul.
         var refus = new ClientCampay.OperateurRefuse("Montant trop faible.");
 
         assertThat(refus.getStatut()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -72,29 +56,21 @@ class RefusOperateurTest {
     }
 
     @Test
-    @DisplayName("le minimum est vérifié AVANT tout appel réseau")
-    void leMinimumEstVerifieAvantLAppel() {
-        // Le client est construit SANS configuration : s'il tentait un appel,
-        // il lèverait « non configuré ». Obtenir un refus de montant prouve
-        // donc que le contrôle passe en premier — la règle du projet, « dire
-        // ce qui manque avant le clic ».
-        ClientCampay client = new ClientCampay("", "", "", org.springframework.web.client.RestClient.builder());
-
-        assertThatThrownBy(() ->
-                client.encaisser(BigDecimal.ONE, "699707810", "Test", "CMD-2"))
-                .isInstanceOf(ClientCampay.OperateurRefuse.class);
-    }
-@Test
-    @DisplayName("⚠️ le bac a sable plafonne AUSSI a 100 FCFA")
-    void leBacASablePlafonneAussi() {
-        // ⚠️ Minimum 100, et maximum 100 en demonstration : le SEUL montant
-        //    valide en bac a sable est exactement 100 FCFA. Un essai a 500 y
-        //    echoue tout autant qu un essai a 20 — pour la raison inverse.
+    @DisplayName("⚠️ aucun seuil de montant n'est écrit chez nous")
+    void aucunSeuilNEstEcritChezNous() {
+        // 🎯 LE TEST QUI EMPÊCHE LA RECHUTE.
         //
-        //    Ce test ne verifie pas le plafond (il appartient a l operateur,
-        //    pas a nous) : il fige la constante pour que la valeur reste
-        //    lisible depuis le code, et non seulement dans une documentation
-        //    externe qu on ne relit pas.
-        assertThat(ClientCampay.MONTANT_MINIMUM).isEqualTo(100);
+        //    Les seuils appartiennent à l'opérateur : ils varient par
+        //    opérateur (Orange 10) et par environnement (démo : 25 maximum).
+        //    Les recopier revient à figer une valeur qui ne nous appartient
+        //    pas — et c'est exactement ce qui a bloqué un essai valide.
+        //
+        //    Ce test échoue si quelqu'un réintroduit une constante de seuil.
+        assertThat(ClientCampay.class.getDeclaredFields())
+                .as("aucun champ ne doit nommer un montant minimum ou maximum")
+                .noneMatch(f -> {
+                    String n = f.getName().toUpperCase(java.util.Locale.ROOT);
+                    return n.contains("MONTANT_MIN") || n.contains("MONTANT_MAX");
+                });
     }
 }
