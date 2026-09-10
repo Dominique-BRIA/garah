@@ -26,7 +26,7 @@
 <div class="messagerie">
   <!-- La colonne des fils. Ceux qui attendent une réponse sont en tête : on
        ouvre cet écran pour savoir QUI ATTEND, pas qui a parlé en dernier. -->
-  <aside class="fils">
+  <aside class="gu-carte fils">
     @if (chargement()) {
       <p class="vide">Chargement…</p>
     } @else if (fils().length === 0) {
@@ -51,24 +51,33 @@
     }
   </aside>
 
-  <section class="fil-ouvert">
+  <!-- ⚠️ HAUTEUR BORNÉE, et c'est ce qui manquait. Sans elle, la zone des
+       bulles s'étirait sur 55 % de la fenêtre même vide : le champ de saisie
+       se retrouvait à trois écrans du destinataire qu'on venait de choisir,
+       séparé de lui par un grand trou. -->
+  <section class="gu-carte fil-ouvert">
     @if (nouveau()) {
+      <!-- Le destinataire est un EN-TÊTE du panneau, pas un bloc flottant :
+           c'est la première chose à décider, et elle reste visible pendant
+           qu'on écrit. -->
       <div class="destinataire">
         <label class="gu-libelle" for="m-destinataire">À qui écrivez-vous ?</label>
         <select id="m-destinataire" name="destinataire" class="gu-champ"
                 [ngModel]="destinataire()"
                 (ngModelChange)="destinataire.set($event)">
           <option [ngValue]="null">Choisissez un collègue</option>
-          @for (c of collegues(); track c.responsableId) {
-            <option [ngValue]="c.responsableId">{{ c.nom }}</option>
+          @for (c of collegues(); track c.utilisateurId) {
+            <option [ngValue]="c.utilisateurId">{{ c.nom }}</option>
           }
         </select>
         <!-- ⚠️ La liste ne contient que les collègues JOIGNABLES : le serveur
              en retire ceux qui vous ont bloqué. Afficher tout le monde
              produirait des envois refusés sans qu'on comprenne pourquoi. -->
       </div>
-    } @else if (!ouvert()) {
-      <p class="vide">Choisissez une conversation à gauche.</p>
+    } @else if (ouvert(); as f) {
+      <div class="destinataire destinataire--fige">
+        <span class="destinataire__nom">{{ f.interlocuteurNom }}</span>
+      </div>
     }
 
     @if (ouvert() || nouveau()) {
@@ -79,8 +88,11 @@
             <span class="bulle__heure">{{ quand(m.dateEnvoi) }}</span>
           </div>
         }
-        @if (ouvert() && messages().length === 0) {
-          <p class="vide">Cette conversation est vide.</p>
+        @if (messages().length === 0) {
+          <p class="vide vide--centre">
+            @if (nouveau()) { Écrivez le premier message. }
+            @else { Cette conversation est vide. }
+          </p>
         }
       </div>
 
@@ -94,6 +106,11 @@
           {{ envoi() ? 'Envoi…' : 'Envoyer' }}
         </button>
       </div>
+    } @else {
+      <p class="vide vide--centre">
+        Choisissez une conversation à gauche,
+        <span class="vide__aide">ou « Nouveau message » pour en ouvrir une.</span>
+      </p>
     }
   </section>
 </div>

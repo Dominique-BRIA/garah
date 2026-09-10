@@ -16,7 +16,7 @@ public interface FilInterneRepository extends JpaRepository<FilInterne, Long> {
      * <p>La paire est rangee avant l appel ; cette requete la cherche telle
      * qu elle est stockee.</p>
      */
-    Optional<FilInterne> findByResponsableAAndResponsableB(Long a, Long b);
+    Optional<FilInterne> findByUtilisateurAAndUtilisateurB(Long a, Long b);
 
     /**
      * Mes fils, le plus recent d abord.
@@ -27,7 +27,7 @@ public interface FilInterneRepository extends JpaRepository<FilInterne, Long> {
      */
     @Query("""
             SELECT f FROM FilInterne f
-             WHERE f.responsableA = :moi OR f.responsableB = :moi
+             WHERE f.utilisateurA = :moi OR f.utilisateurB = :moi
              ORDER BY f.dateDernier DESC
             """)
     List<FilInterne> miens(@Param("moi") Long responsableId);

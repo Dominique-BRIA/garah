@@ -78,27 +78,25 @@ public class ServiceMessagerie {
                     "On ne s'écrit pas à soi-même.");
         }
 
-        // ⚠️ LES DEUX DOIVENT ÊTRE DES RESPONSABLES.
+        // ⚠️ LES DEUX DOIVENT ÊTRE DES COMPTES INTERNES.
         //
-        //    `message_interne.expediteur_id` et `fil_interne` référencent
-        //    `responsable`. Un ADMIN ou un SUPER_ADMIN n'a pas de ligne dans
-        //    cette table : sans ce contrôle, la clé étrangère refusait et le
-        //    gestionnaire d'erreurs traduisait cela en « cette opération
-        //    renvoie à un élément qui n'existe pas, ou qui a été supprimé
-        //    entre-temps ».
+        //    Cette vérification EXCLUAIT l'administration, et disait même à
+        //    l'écran qu'« un compte d'administration n'y a pas de place ».
+        //    C'était une contrainte de schéma déguisée en principe : les clés
+        //    étrangères pointaient vers `responsable`, où un ADMIN n'a pas de
+        //    ligne. V32 les fait pointer vers `utilisateur`.
         //
-        //    Le message était faux dans les deux moitiés de sa phrase : rien
-        //    n'avait été supprimé, et l'élément n'a jamais existé. On cherchait
-        //    une donnée disparue là où il fallait lire « ce compte n'est pas
-        //    concerné par cette fonctionnalité ».
-        if (!noms.existsResponsable(expediteurId)) {
-            throw new RegleMetierViolee("EXPEDITEUR_NON_RESPONSABLE",
-                    "La messagerie interne relie les membres de l'équipe entre eux. "
-                    + "Un compte d'administration n'y a pas de place.");
+        //    Un CLIENT reste exclu, et c'est la seule exclusion voulue : cette
+        //    messagerie est INTERNE. La base ne sait pas l'exprimer — la table
+        //    `utilisateur` porte les quatre types — donc c'est ici que ça se
+        //    vérifie.
+        if (!noms.estCompteInterne(expediteurId)) {
+            throw new RegleMetierViolee("EXPEDITEUR_NON_INTERNE",
+                    "La messagerie interne est réservée aux comptes de la maison.");
         }
-        if (!noms.existsResponsable(destinataireId)) {
-            throw new RegleMetierViolee("DESTINATAIRE_NON_RESPONSABLE",
-                    "Cette personne n'est pas un membre de l'équipe.");
+        if (!noms.estCompteInterne(destinataireId)) {
+            throw new RegleMetierViolee("DESTINATAIRE_NON_INTERNE",
+                    "Cette personne n'est pas un membre de la maison.");
         }
 
         // ⚠️ Le sens du test compte : le DESTINATAIRE m'a-t-il bloqué ? Tester
@@ -110,7 +108,7 @@ public class ServiceMessagerie {
         }
 
         FilInterne fil = fils
-                .findByResponsableAAndResponsableB(
+                .findByUtilisateurAAndUtilisateurB(
                         Math.min(expediteurId, destinataireId),
                         Math.max(expediteurId, destinataireId))
                 .orElseGet(() -> fils.save(new FilInterne(expediteurId, destinataireId)));
@@ -182,8 +180,8 @@ public class ServiceMessagerie {
     }
 
     @Transactional(readOnly = true)
-    public long totalNonLus(Long responsableId) {
-        return messages.totalNonLus(responsableId);
+    public long totalNonLus(Long utilisateurId) {
+        return messages.totalNonLus(utilisateurId);
     }
 
     /**
@@ -194,19 +192,19 @@ public class ServiceMessagerie {
      * cesser de la regarder.</p>
      */
     @Transactional
-    public List<VueMessageInterne> ouvrir(Long filId, Long responsableId) {
+    public List<VueMessageInterne> ouvrir(Long filId, Long utilisateurId) {
         FilInterne fil = fils.findById(filId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Fil", filId));
 
         // « Introuvable », jamais « interdit » : un 403 confirmerait que le fil
         // existe, et parcourir les identifiants dirait qui parle à qui.
-        if (!fil.concerne(responsableId)) {
+        if (!fil.concerne(utilisateurId)) {
             throw RessourceIntrouvable.de("Fil", filId);
         }
 
         List<MessageInterne> lus = messages.findByFilIdOrderByDateEnvoiAsc(filId);
         lus.stream()
-                .filter(m -> !m.getExpediteurId().equals(responsableId))
+                .filter(m -> !m.getExpediteurId().equals(utilisateurId))
                 .forEach(MessageInterne::lu);
         return lus.stream().map(VueMessageInterne::de).toList();
     }

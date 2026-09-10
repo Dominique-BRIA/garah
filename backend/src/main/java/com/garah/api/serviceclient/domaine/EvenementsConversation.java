@@ -37,10 +37,18 @@ public final class EvenementsConversation {
      *                     dernier moment.
      * @param responsableId celui qui suit le dossier. Nul tant que personne ne
      *                      l a pris : le message part alors a l equipe.
+     * @param extrait       les premiers mots, POUR LA NOTIFICATION. Une
+     *                      banniere affiche deux lignes ; y mettre le message
+     *                      entier ne ferait que gonfler l envoi.
+     * @param message       le message ENTIER, pour la diffusion temps reel.
+     *                      L ecran d en face l affiche tel quel, sans
+     *                      redemander le fil — ce qui serait une requete de
+     *                      plus a chaque phrase echangee.
      */
     public record MessageDansConversation(Long conversationId, Long clientId,
                                           Long responsableId, Long expediteurId,
-                                          String extrait, boolean versLeClient) {
+                                          String extrait, boolean versLeClient,
+                                          VueMessage message) {
     }
 
     /** Une proposition de prix a ete faite, ou acceptee. */

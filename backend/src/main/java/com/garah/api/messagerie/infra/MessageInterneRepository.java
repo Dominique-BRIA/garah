@@ -41,7 +41,7 @@ public interface MessageInterneRepository extends JpaRepository<MessageInterne, 
     @Query("""
             SELECT count(m) FROM MessageInterne m
               JOIN FilInterne f ON f.id = m.filId
-             WHERE (f.responsableA = :moi OR f.responsableB = :moi)
+             WHERE (f.utilisateurA = :moi OR f.utilisateurB = :moi)
                AND m.expediteurId <> :moi
                AND m.dateLecture IS NULL
             """)

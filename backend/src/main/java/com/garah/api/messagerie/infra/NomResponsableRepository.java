@@ -38,15 +38,32 @@ public interface NomResponsableRepository extends JpaRepository<FilInterne, Long
      * étrangère refuse et l'erreur se lit « élément supprimé entre-temps »,
      * ce qui est faux dans les deux moitiés de la phrase.</p>
      */
-    @Query("SELECT count(r) > 0 FROM Responsable r WHERE r.id = :id")
-    boolean existsResponsable(@Param("id") Long id);
+    /**
+     * Ce compte a-t-il sa place dans la messagerie INTERNE ?
+     *
+     * <p>⚠️ La question portait sur {@code Responsable}, et excluait donc les
+     * ADMIN et SUPER_ADMIN — non par décision, mais parce que le schéma
+     * d'origine y renvoyait (V32). L'administration fait partie de la maison :
+     * elle a autant de raisons d'écrire à un chef de service qu'il en a de lui
+     * répondre.</p>
+     *
+     * <p>⚠️ Un CLIENT reste exclu, et c'est la seule exclusion voulue : cette
+     * messagerie est interne. La base ne sait pas l'exprimer — {@code
+     * utilisateur} porte les quatre types — donc c'est cette requête qui le
+     * dit, et un test qui la tient.</p>
+     */
+    @Query("""
+            SELECT count(u) > 0 FROM Utilisateur u
+             WHERE u.id = :id
+               AND u.type <> com.garah.api.iam.domaine.TypeUtilisateur.CLIENT
+            """)
+    boolean estCompteInterne(@Param("id") Long id);
 
 
     @Query("""
-            SELECT r.id, u.prenom, u.nom
-              FROM Responsable r
-              JOIN Utilisateur u ON u.id = r.id
-             WHERE r.id IN :ids
+            SELECT u.id, u.prenom, u.nom
+              FROM Utilisateur u
+             WHERE u.id IN :ids
             """)
     List<Object[]> nomsPar(@Param("ids") Collection<Long> ids);
 
@@ -60,16 +77,22 @@ public interface NomResponsableRepository extends JpaRepository<FilInterne, Long
      *
      * <p>Moi non plus je n y suis pas : on ne s ecrit pas a soi-meme.</p>
      */
+    /**
+     * ⚠️ Le statut lu est celui de l'UTILISATEUR, plus celui du responsable :
+     * un ADMIN n'a pas de ligne `responsable`, donc pas de statut à y lire.
+     * Les deux valent 'ACTIF' / 'INACTIF' et disaient la même chose pour un
+     * responsable.
+     */
     @Query("""
-            SELECT r.id, u.prenom, u.nom
-              FROM Responsable r
-              JOIN Utilisateur u ON u.id = r.id
-             WHERE r.id <> :moi
-               AND r.statut = 'ACTIF'
+            SELECT u.id, u.prenom, u.nom
+              FROM Utilisateur u
+             WHERE u.id <> :moi
+               AND u.type <> com.garah.api.iam.domaine.TypeUtilisateur.CLIENT
+               AND u.statut = com.garah.api.iam.domaine.StatutUtilisateur.ACTIF
                AND NOT EXISTS (
                    SELECT 1 FROM BlocageMessage b
-                    WHERE b.bloqueurId = r.id AND b.bloqueId = :moi)
+                    WHERE b.bloqueurId = u.id AND b.bloqueId = :moi)
              ORDER BY u.prenom, u.nom
             """)
-    List<Object[]> joignablesPar(@Param("moi") Long responsableId);
+    List<Object[]> joignablesPar(@Param("moi") Long utilisateurId);
 }

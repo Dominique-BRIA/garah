@@ -20,24 +20,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * La messagerie interne relie les membres de l'ÉQUIPE.
+ * La messagerie interne relie TOUTE la maison.
  *
- * <h2>🎯 Ce que ces tests ferment</h2>
+ * <h2>🎯 Une contrainte de schéma déguisée en principe</h2>
  *
- * <p>{@code message_interne.expediteur_id} et {@code fil_interne} référencent
- * {@code responsable}. Un ADMIN ou un SUPER_ADMIN n'a <b>pas</b> de ligne dans
- * cette table : la clé étrangère refusait, et le gestionnaire d'erreurs
- * traduisait cela en « cette opération renvoie à un élément qui n'existe pas,
- * ou qui a été supprimé entre-temps ».</p>
+ * <p>V30 faisait pointer les clés étrangères de la messagerie vers
+ * {@code responsable}. Un ADMIN ou un SUPER_ADMIN n'a pas de ligne dans cette
+ * table : ils en étaient <b>exclus</b>. L'API l'affichait même comme une
+ * règle — « un compte d'administration n'y a pas de place ».</p>
  *
- * <p>⚠️ Le message était faux dans les <b>deux moitiés</b> de sa phrase : rien
- * n'avait été supprimé, et l'élément n'a jamais existé. On aurait cherché une
- * donnée disparue là où il fallait lire « ce compte n'est pas concerné par
- * cette fonctionnalité ».</p>
+ * <p>⚠️ Personne n'avait décidé cela. C'était une conséquence du schéma, et
+ * elle s'était habillée en principe métier le jour où on lui a écrit un
+ * message d'erreur. L'administration fait partie de la maison : elle a autant
+ * de raisons d'écrire à un chef de service qu'il en a de lui répondre.</p>
  *
- * <p>Trouvé en éprouvant l'écran neuf contre l'API réelle : le
- * super-administrateur voyait ses collègues joignables, et chaque envoi
- * échouait.</p>
+ * <p>V32 repointe les cinq clés vers {@code utilisateur}. Comme
+ * {@code responsable.id} <b>est</b> l'identifiant de l'utilisateur, aucune
+ * ligne n'a bougé.</p>
+ *
+ * <p>⚠️ Il reste UNE exclusion, et elle est voulue : un CLIENT n'a rien à
+ * faire dans une messagerie interne. La base ne sait pas l'exprimer —
+ * {@code utilisateur} porte les quatre types — donc c'est le service qui le
+ * vérifie, et c'est ce que ces tests tiennent.</p>
  */
 @SpringBootTest
 @DisplayName("Messagerie entre collègues")
@@ -46,6 +50,7 @@ class MessagerieEntreCollegues {
     private static final String EMAIL_A = "collegue.a@garah.cm";
     private static final String EMAIL_B = "collegue.b@garah.cm";
     private static final String EMAIL_PATRON = "patron.messagerie@garah.cm";
+    private static final String EMAIL_CLIENT = "client.messagerie@garah.cm";
 
     @Autowired ServiceMessagerie messagerie;
     @Autowired UtilisateurRepository utilisateurs;
@@ -56,6 +61,7 @@ class MessagerieEntreCollegues {
     private Long a;
     private Long b;
     private Long patron;
+    private Long client;
 
     @BeforeEach
     void creerLesComptes() {
@@ -64,6 +70,12 @@ class MessagerieEntreCollegues {
         b = creerResponsable(EMAIL_B, "RES-MSG-B");
         patron = utilisateurs.save(new Utilisateur(
                 TypeUtilisateur.SUPER_ADMIN, "Patron", EMAIL_PATRON, "x")).getId();
+
+        // ⚠️ Sans ligne `client`, mais c'est sans importance : le service
+        //    interroge le TYPE du compte, pas l'existence d'une ligne dans une
+        //    table annexe. C'est précisément ce que V32 corrige.
+        client = utilisateurs.save(new Utilisateur(
+                TypeUtilisateur.CLIENT, "Passant", EMAIL_CLIENT, "x")).getId();
     }
 
     private Long creerResponsable(String email, String matricule) {
@@ -77,12 +89,12 @@ class MessagerieEntreCollegues {
 
     @AfterEach
     void nettoyer() {
-        for (String email : new String[] {EMAIL_A, EMAIL_B, EMAIL_PATRON}) {
+        for (String email : new String[] {EMAIL_A, EMAIL_B, EMAIL_PATRON, EMAIL_CLIENT}) {
             utilisateurs.findByEmailIgnoreCase(email).ifPresent(u -> {
                 jdbc.update("DELETE FROM message_interne WHERE expediteur_id = ?", u.getId());
                 jdbc.update("""
                         DELETE FROM fil_interne
-                         WHERE responsable_a = ? OR responsable_b = ?
+                         WHERE utilisateur_a = ? OR utilisateur_b = ?
                         """, u.getId(), u.getId());
                 responsables.findById(u.getId()).ifPresent(responsables::delete);
                 utilisateurs.delete(u);
@@ -103,21 +115,38 @@ class MessagerieEntreCollegues {
     }
 
     @Test
-    @DisplayName("⚠️ un compte d'administration reçoit un refus CLAIR")
-    void unCompteDAdministrationRecoitUnRefusClair() {
-        // Avant : une violation de clé étrangère, traduite en « élément
-        // supprimé entre-temps ». On cherchait une donnée disparue.
-        assertThatThrownBy(() -> messagerie.envoyer(patron, a, "Bonjour"))
-                .isInstanceOf(RegleMetierViolee.class)
-                .hasMessageContaining("membres de l'équipe");
+    @DisplayName("⚠️ l'administration ÉCRIT, et c'est le sens de V32")
+    void lAdministrationEcrit() {
+        // Avant : une violation de clé étrangère, puis un message qui en
+        // faisait une règle — « un compte d'administration n'y a pas de
+        // place ». Personne ne l'avait décidé.
+        var message = messagerie.envoyer(patron, a, "Peux-tu me rappeler ?");
+
+        assertThat(message.contenu()).isEqualTo("Peux-tu me rappeler ?");
+        assertThat(messagerie.mesFils(a)).hasSize(1);
     }
 
     @Test
-    @DisplayName("⚠️ et on ne peut pas non plus ÉCRIRE à un compte d'administration")
-    void onNEcritPasNonPlusAUnCompteDAdministration() {
-        assertThatThrownBy(() -> messagerie.envoyer(a, patron, "Bonjour"))
+    @DisplayName("⚠️ et on lui RÉPOND")
+    void etOnLuiRepond() {
+        messagerie.envoyer(patron, a, "Peux-tu me rappeler ?");
+        var reponse = messagerie.envoyer(a, patron, "Je vous rappelle.");
+
+        assertThat(reponse.contenu()).isEqualTo("Je vous rappelle.");
+        // Le MÊME fil : un aller-retour n'ouvre pas deux conversations.
+        assertThat(messagerie.mesFils(patron)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("⚠️ un CLIENT reste dehors — la seule exclusion voulue")
+    void unClientResteDehors() {
+        assertThatThrownBy(() -> messagerie.envoyer(client, a, "Bonjour"))
                 .isInstanceOf(RegleMetierViolee.class)
-                .hasMessageContaining("membre de l'équipe");
+                .hasMessageContaining("comptes de la maison");
+
+        assertThatThrownBy(() -> messagerie.envoyer(a, client, "Bonjour"))
+                .isInstanceOf(RegleMetierViolee.class)
+                .hasMessageContaining("membre de la maison");
     }
 
     @Test

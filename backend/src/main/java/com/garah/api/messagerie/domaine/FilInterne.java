@@ -9,7 +9,12 @@ import java.time.Instant;
  *
  * <h2>⚠️ La paire est ORDONNÉE, et ce n'est pas une convention d'écriture</h2>
  *
- * <p>{@code responsableA} porte toujours le plus petit identifiant. Sans cela,
+ * <p>⚠️ Les deux bouts référencent {@code utilisateur}, et non {@code responsable} :
+ * la messagerie est ouverte à TOUT compte interne, administration comprise
+ * (V32). Elle ne l'était pas — non par décision, mais parce que le schéma
+ * d'origine pointait vers une table où un ADMIN n'a pas de ligne.</p>
+ *
+ * <p>{@code utilisateurA} porte toujours le plus petit identifiant. Sans cela,
  * A→B et B→A donneraient <b>deux fils</b> pour la même discussion : chacun
  * verrait la moitié des messages et croirait l'autre muet.</p>
  *
@@ -25,11 +30,11 @@ public class FilInterne {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "responsable_a", nullable = false)
-    private Long responsableA;
+    @Column(name = "utilisateur_a", nullable = false)
+    private Long utilisateurA;
 
-    @Column(name = "responsable_b", nullable = false)
-    private Long responsableB;
+    @Column(name = "utilisateur_b", nullable = false)
+    private Long utilisateurB;
 
     @Column(name = "date_creation", nullable = false)
     private Instant dateCreation = Instant.now();
@@ -48,27 +53,27 @@ public class FilInterne {
     }
 
     /** Range les deux identifiants dans l'ordre, quelle que soit la saisie. */
-    public FilInterne(Long unResponsable, Long autreResponsable) {
-        this.responsableA = Math.min(unResponsable, autreResponsable);
-        this.responsableB = Math.max(unResponsable, autreResponsable);
+    public FilInterne(Long unCompte, Long autreCompte) {
+        this.utilisateurA = Math.min(unCompte, autreCompte);
+        this.utilisateurB = Math.max(unCompte, autreCompte);
     }
 
     public void toucher() {
         this.dateDernier = Instant.now();
     }
 
-    public boolean concerne(Long responsableId) {
-        return responsableA.equals(responsableId) || responsableB.equals(responsableId);
+    public boolean concerne(Long utilisateurId) {
+        return utilisateurA.equals(utilisateurId) || utilisateurB.equals(utilisateurId);
     }
 
-    /** L'autre bout du fil, vu de {@code responsableId}. */
-    public Long interlocuteurDe(Long responsableId) {
-        return responsableA.equals(responsableId) ? responsableB : responsableA;
+    /** L'autre bout du fil, vu de {@code utilisateurId}. */
+    public Long interlocuteurDe(Long utilisateurId) {
+        return utilisateurA.equals(utilisateurId) ? utilisateurB : utilisateurA;
     }
 
     public Long getId() { return id; }
-    public Long getResponsableA() { return responsableA; }
-    public Long getResponsableB() { return responsableB; }
+    public Long getUtilisateurA() { return utilisateurA; }
+    public Long getUtilisateurB() { return utilisateurB; }
     public Instant getDateCreation() { return dateCreation; }
     public Instant getDateDernier() { return dateDernier; }
 }

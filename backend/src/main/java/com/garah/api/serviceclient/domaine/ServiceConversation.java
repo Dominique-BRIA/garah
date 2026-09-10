@@ -166,6 +166,13 @@ public class ServiceConversation {
 
         Message message = conversation.ajouterMessage(expediteurId, contenu);
 
+        // ⚠️ VIDER AVANT DE PUBLIER. ajouterMessage() ne fait qu ajouter a
+        //    la collection : l identifiant n est attribue qu au vidage
+        //    Hibernate. Sans ce flush, la diffusion temps reel partirait avec
+        //    un id nul, et l ecran d en face ne saurait pas reconnaitre un
+        //    message qu il affiche deja.
+        conversations.flush();
+
         // ⚠️ Le SENS se décide ici, où l'on sait qui est le client. Le deviner
         //    plus tard, dans l'écouteur, demanderait de recharger la
         //    conversation — et de se tromper le jour où un responsable est
@@ -178,7 +185,8 @@ public class ServiceConversation {
                 conversation.getResponsableId(),
                 expediteurId,
                 extrait(contenu),
-                versLeClient));
+                versLeClient,
+                VueMessage.de(message, conversationId)));
 
         return message;
     }

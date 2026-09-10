@@ -21,7 +21,7 @@ interface MessageInterne {
 }
 
 interface Collegue {
-  readonly responsableId: number;
+  readonly utilisateurId: number;
   readonly nom: string;
 }
 

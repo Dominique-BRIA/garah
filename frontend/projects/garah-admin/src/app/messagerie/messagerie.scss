@@ -1,3 +1,8 @@
+// La hauteur commune aux deux panneaux. Déclarée UNE fois : deux valeurs qui
+// divergent d'un demi-rem donnent deux cartes désalignées, et personne ne
+// trouve pourquoi.
+.messagerie { --hauteur-messagerie: min(62vh, 34rem); }
+
 // La messagerie interne : deux colonnes, les fils à gauche, le fil ouvert à
 // droite. C'est la disposition que tout le monde connaît — en inventer une
 // autre ferait chercher.
@@ -16,11 +21,18 @@
 
 // --- La colonne des fils ------------------------------------------------------
 
+// ⚠️ Les deux panneaux sont des CARTES. Ils flottaient sur le fond de page :
+//    la liste vide, le sélecteur et le champ de saisie paraissaient éparpillés
+//    sans rien pour les relier.
+//
+// ⚠️ Le remplissage de `.gu-carte` est fait pour un formulaire — 1,5 rem
+//    autour d'une liste de fils gaspille la largeur qu'on a justement peu.
 .fils {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 70vh;
+  padding: 0.6rem;
+  height: var(--hauteur-messagerie);
   overflow-y: auto;
 }
 
@@ -76,11 +88,20 @@
 
 // --- Le fil ouvert ------------------------------------------------------------
 
+// 🎯 LA HAUTEUR EST BORNÉE, et c'est le cœur de la reprise.
+//
+//    Sans elle, `.bulles` s'étirait sur 55 % de la fenêtre MÊME VIDE : après
+//    avoir choisi un destinataire, on trouvait le champ de saisie tout en bas,
+//    séparé de lui par un grand trou. On croyait l'écran cassé.
+//
+//    Bornée, la carte se comporte comme une messagerie : l'en-tête en haut, le
+//    fil qui défile au milieu, la saisie ancrée en bas.
 .fil-ouvert {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  min-height: 20rem;
+  padding: 0.9rem;
+  height: var(--hauteur-messagerie);
 }
 
 .destinataire {
@@ -88,14 +109,30 @@
   flex-direction: column;
   gap: 0.35rem;
   max-width: 24rem;
+  flex: none;
 }
 
+// Une conversation ouverte n'a plus de choix à faire : on NOMME l'interlocuteur
+// au même endroit, pour que l'œil n'ait pas à se déplacer entre les deux cas.
+.destinataire--fige {
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--verre-bordure);
+}
+
+.destinataire__nom {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+// ⚠️ Plus de `max-height` : la carte parente borne déjà. Deux limites de
+//    hauteur qui se superposent donnent une zone qui ne remplit jamais son
+//    panneau, et un espace mort en dessous.
 .bulles {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   flex: 1;
-  max-height: 55vh;
+  min-height: 0;
   overflow-y: auto;
   padding: 0.25rem;
 }
@@ -133,10 +170,15 @@
   color: var(--texte-attenue);
 }
 
+// Ancrée en bas, séparée du fil par un trait : on doit voir où finit la
+// conversation et où commence ce qu'on écrit.
 .composer {
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
+  flex: none;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--verre-bordure);
 
   textarea { resize: vertical; }
 }
@@ -154,4 +196,14 @@
   display: block;
   margin-top: 0.3rem;
   font-size: 0.8rem;
+}
+
+// Un panneau vide se lit au CENTRE : collé en haut, il donne l'impression
+// qu'un contenu a disparu en dessous.
+.vide--centre {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
