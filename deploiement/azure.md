@@ -114,6 +114,52 @@ Le test : ouvrir **un autre** écran. S'il échoue aussi, ce n'est pas l'écran,
 c'est la liaison. Et si un déploiement vient de passer, il n'y a rien à
 corriger — il faut attendre et recharger.
 
+### ⚠️ WebSockets — à activer explicitement
+
+Le temps réel des conversations passe par un WebSocket (`/ws`). **App Service
+le refuse tant qu'on ne l'a pas activé**, et le réglage n'est pas dans les
+variables d'environnement : il est dans la configuration du site.
+
+> Portail Azure → l'App Service → **Configuration** → **Paramètres généraux**
+> → **Web sockets** → **Activé** → Enregistrer.
+
+Ou en ligne de commande :
+
+```bash
+az webapp config set --name <app> --resource-group <groupe> --web-sockets-enabled true
+```
+
+**⚠️ Le symptôme à reconnaître.** Rien ne dit que c'est éteint. Le navigateur
+signale seulement une connexion fermée ; le client retente indéfiniment,
+comme il doit le faire quand le réseau tombe ; et l'écran a simplement l'air
+de ne pas se mettre à jour. On cherche alors le défaut dans le code du temps
+réel, qui est juste.
+
+**Deux autres causes du même symptôme**, à écarter dans cet ordre :
+
+1. `/ws` doit être ouvert dans `ConfigurationSecurite`. Sans la ligne
+   `.requestMatchers("/ws").permitAll()`, la poignée de main répond **401**
+   avant que STOMP ne voie la trame `CONNECT` qui porte le jeton. Le test
+   `PoigneeDeMainWebSocketTest` garde ce point.
+
+2. `GARAH_CORS_ORIGINS` doit contenir l'origine EXACTE du front, `www` compris.
+   Le WebSocket lit la **même** variable que CORS — volontairement : deux
+   listes finiraient par diverger, et la prise resterait ouverte là où HTTP a
+   été fermé.
+
+**Pour vérifier depuis n'importe où**, sans navigateur :
+
+```bash
+curl -s -i -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  -H "Origin: https://www.garah.me" \
+  https://<api>/ws | head -3
+```
+
+`101 Switching Protocols` : tout va bien. `401` : la règle de sécurité manque.
+`403` : l'origine n'est pas dans `GARAH_CORS_ORIGINS`. `404` ou une coupure
+sèche : les WebSockets ne sont pas activés sur l'App Service.
+
 ### Sonde de santé
 
 **Surveillance → Health check** → `/api/sante`

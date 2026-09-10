@@ -187,6 +187,31 @@ public class ConfigurationSecurite {
                         //
                         // Un joker dans une règle de sécurité ouvre TOUJOURS
                         // plus que ce qu'on avait en tête.
+                        // ⚠️ LA POIGNÉE DE MAIN WEBSOCKET EST ANONYME, ET
+                        //    ELLE DOIT L'ÊTRE.
+                        //
+                        // L'API WebSocket du navigateur ne permet pas
+                        // d'ajouter un en-tête Authorization à l'ouverture.
+                        // C'est une limite du standard : les seules façons de
+                        // porter le jeton dans la poignée de main seraient
+                        // l'URL — où il finirait dans les journaux du serveur
+                        // et du mandataire — ou un cookie, qui rouvrirait le
+                        // CSRF que FiltreOrigineCsrf ferme ailleurs.
+                        //
+                        // Le jeton est donc contrôlé sur la trame STOMP
+                        // CONNECT, dans ConfigurationWebSocket. Sans jeton
+                        // valide, la session reste anonyme et AUCUNE file
+                        // personnelle ne lui est jamais adressée : elle
+                        // n'apprend rien.
+                        //
+                        // ⚠️ SANS CETTE LIGNE, /ws répond 401 et rien ne
+                        //    fonctionne — mais rien ne le dit non plus. Le
+                        //    navigateur signale seulement une connexion
+                        //    fermée, le client retente indéfiniment, et
+                        //    l'écran a simplement l'air de ne pas se mettre à
+                        //    jour. C'est exactement ce qui est arrivé.
+                        .requestMatchers("/ws").permitAll()
+
                         .requestMatchers("/api/sante").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/configuration").permitAll()
 
