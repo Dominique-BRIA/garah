@@ -220,12 +220,17 @@ GARAH_MEDIA_BASE_URL
 GARAH_CAMPAY_BASE_URL, GARAH_CAMPAY_APP_USERNAME, GARAH_CAMPAY_APP_PASSWORD
 GARAH_CAMPAY_WEBHOOK_KEY, GARAH_CAMPAY_WEBHOOK_STRICT=false
 
+# Commerce
+GARAH_DELAI_PAIEMENT_MINUTES=43200   (un mois : une commande impayée est ensuite annulée)
+GARAH_NEGOCIATION_ACTIVE=false       (prix fixes — D-46. Ne passer à true qu'après avoir
+                                      fait exiger les droits NEGOCIATION_* par le serveur)
+
 # E-mail
 GARAH_MAIL_HOST, GARAH_MAIL_PORT, GARAH_MAIL_UTILISATEUR
 GARAH_MAIL_MOT_DE_PASSE, GARAH_MAIL_EXPEDITEUR, GARAH_MAIL_NOM_EXPEDITEUR
 
-# Confirmation d'adresse — À METTRE À JOUR avec l'URL Azure
-GARAH_URL_VERIFICATION=https://<hôte-azure>/api/auth/verification
+# Confirmation d'adresse — la page de la BOUTIQUE (D-42), pas l'API
+GARAH_URL_VERIFICATION=https://www.garah.me/verification
 GARAH_VERIFICATION_VALIDITE_HEURES=48
 
 # Premier démarrage — À RETIRER une fois le compte créé
