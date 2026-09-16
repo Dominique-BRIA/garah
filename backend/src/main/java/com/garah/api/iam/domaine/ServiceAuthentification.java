@@ -96,15 +96,53 @@ public class ServiceAuthentification {
 
         Utilisateur utilisateur = trouve.get();
 
+        // ⚠️ Un compte ouvert par « Continuer avec Google » n'a PAS de mot de
+        // passe (V38). Sans ce test, encodeur.matches(x, null) lèverait, et le
+        // client recevrait 500 au lieu d'un refus.
+        //
+        // On emprunte volontairement le MÊME chemin que l'adresse inconnue :
+        // empreinte leurre, puis IdentifiantsInvalides. Répondre « ce compte
+        // utilise Google » serait plus aimable — et transformerait le
+        // formulaire en annuaire, en révélant qui possède un compte et par
+        // quel moyen. C'est exactement ce que le §2 ci-dessus refuse.
+        if (utilisateur.getMotDePasse() == null) {
+            encodeur.matches(motDePasse, EMPREINTE_LEURRE);
+            securite.enregistrerEchecConnexion(utilisateur.getId(), adresseIp,
+                    "Mot de passe presente sur un compte sans mot de passe");
+            throw new IdentifiantsInvalides();
+        }
+
         if (!encodeur.matches(motDePasse, utilisateur.getMotDePasse())) {
             securite.enregistrerEchecConnexion(utilisateur.getId(), adresseIp, "Mot de passe incorrect");
             throw new IdentifiantsInvalides();
         }
 
-        // Le mot de passe est bon, mais le compte est fermé. On le dit
-        // clairement : à ce stade la personne a PROUVÉ son identité, il n'y a
-        // plus rien à protéger en restant vague — et un message flou la
-        // ferait réessayer indéfiniment.
+        return ouvrirSession(utilisateur, adresseIp);
+    }
+
+    /**
+     * Ouvre la session d'un utilisateur <b>dont l'identité est déjà établie</b>.
+     *
+     * <p>Extrait de {@link #connecter} sans le moindre changement de
+     * comportement, pour que la connexion sociale emprunte <b>exactement</b>
+     * le même chemin : mêmes droits relus en base, même contrôle de compte
+     * fermé, même événement de sécurité, même {@link ResultatConnexion}.</p>
+     *
+     * <p>🎯 <b>C'est ce qui rend l'ajout de « Continuer avec Google »
+     * indolore.</b> Le contrat de connexion figé en D-36 est produit ici, à un
+     * seul endroit : la boutique, le back-office et le mobile reçoivent la
+     * même réponse, et aucun écran ne sait par quel chemin la session a été
+     * ouverte.</p>
+     *
+     * <p>⚠️ Visible dans le paquetage, jamais publique : cette méthode
+     * <b>ne vérifie aucune identité</b>. L'exposer serait offrir une session
+     * pour n'importe quel utilisateur.</p>
+     */
+    ResultatConnexion ouvrirSession(Utilisateur utilisateur, String adresseIp) {
+
+        // Le compte est fermé. On le dit clairement : à ce stade la personne a
+        // PROUVÉ son identité, il n'y a plus rien à protéger en restant vague
+        // — et un message flou la ferait réessayer indéfiniment.
         if (!utilisateur.estActif()) {
             securite.enregistrer(utilisateur.getId(), TypeEvenementSecurite.BLOCAGE_COMPTE,
                     GraviteEvenement.MOYENNE, adresseIp, "Connexion refusée : compte " + utilisateur.getStatut());

@@ -85,6 +85,18 @@ class RoutesGardeesTest {
             "ControleurAuthentification.moi", "ControleurAuthentification.confirmerParLien",
             "ControleurAuthentification.confirmer", "ControleurAuthentification.renvoyer",
 
+            // ⚠️ « Continuer avec Google » : connexion ET inscription à la
+            //    fois, donc nécessairement ouverte — on ne peut pas exiger
+            //    d'être entré pour entrer.
+            //
+            //    Ce qui la garde n'est PAS un @PreAuthorize, mais la
+            //    VÉRIFICATION DE SIGNATURE du jeton contre les clés publiques
+            //    du fournisseur, plus le contrôle de son destinataire. Aucune
+            //    donnée du corps n'est crue : ni l'adresse, ni le nom, ni
+            //    l'identifiant — le jeton est la seule chose transmise, parce
+            //    que c'est la seule que le client ne peut pas fabriquer.
+            "ControleurAuthentification.connexionSociale",
+
             // --- PUBLIC : l'opérateur nous notifie ---
             // ⚠️ Elle ne retient que la référence et redemande l'état réel à
             //    Campay : forger une notification ne sert a rien.

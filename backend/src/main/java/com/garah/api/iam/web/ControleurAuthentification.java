@@ -2,7 +2,9 @@ package com.garah.api.iam.web;
 
 import com.garah.api.commun.stockage.StockageObjet;
 import com.garah.api.commun.web.AdresseClient;
+import com.garah.api.iam.domaine.FournisseurIdentite;
 import com.garah.api.iam.domaine.ServiceAuthentification;
+import com.garah.api.iam.domaine.ServiceConnexionSociale;
 import com.garah.api.iam.domaine.ServiceInscription;
 import com.garah.api.iam.domaine.ServiceRafraichissement;
 import com.garah.api.iam.domaine.ServiceVerificationEmail;
@@ -41,6 +43,7 @@ import java.util.Map;
 public class ControleurAuthentification {
 
     private final ServiceAuthentification authentification;
+    private final ServiceConnexionSociale connexionSociale;
     private final ServiceInscription inscription;
     private final ServiceRafraichissement sessions;
     private final CookieRafraichissement cookie;
@@ -56,12 +59,14 @@ public class ControleurAuthentification {
     private final StockageObjet stockage;
 
     public ControleurAuthentification(ServiceAuthentification authentification,
+                                      ServiceConnexionSociale connexionSociale,
                                       ServiceInscription inscription,
                                       ServiceRafraichissement sessions,
                                       CookieRafraichissement cookie,
                                       ServiceVerificationEmail verification,
                                       StockageObjet stockage) {
         this.authentification = authentification;
+        this.connexionSociale = connexionSociale;
         this.inscription = inscription;
         this.sessions = sessions;
         this.cookie = cookie;
@@ -98,6 +103,42 @@ public class ControleurAuthentification {
         String ip = AdresseClient.de(requete);
 
         var connexion = authentification.connecter(demande.email(), demande.motDePasse(), ip);
+
+        return avecCookie(requete, HttpStatus.OK, sessions.ouvrirSession(connexion, ip));
+    }
+
+    /**
+     * « Continuer avec Google » — inscription et connexion à la fois.
+     *
+     * <h2>Une seule route pour les deux, et c'est le sujet</h2>
+     *
+     * <p>Le visiteur ne sait pas — et n'a pas à savoir — s'il possède déjà un
+     * compte. C'est même tout l'intérêt du bouton. Deux routes l'obligeraient
+     * à choisir « me connecter » ou « m'inscrire » avant de cliquer, et la
+     * moitié se tromperait.</p>
+     *
+     * <p>⚠️ <b>Route publique</b>, comme la connexion et l'inscription : il
+     * faut bien pouvoir entrer sans être déjà entré. Ce qui la protège n'est
+     * donc pas l'authentification, mais la <b>vérification de la signature</b>
+     * du jeton — et la limitation de débit (D-24), au même titre que les
+     * autres portes ouvertes.</p>
+     *
+     * <p>Elle renvoie exactement le même {@link ReponseConnexion} et pose le
+     * même cookie que {@code /connexion}. Le contrat figé en D-36 est donc
+     * respecté : aucun écran n'a besoin de savoir par où la session est
+     * entrée.</p>
+     */
+    @PostMapping("/social")
+    public ResponseEntity<ReponseConnexion> connexionSociale(
+            @Valid @RequestBody DemandeConnexionSociale demande,
+            HttpServletRequest requete) {
+
+        String ip = AdresseClient.de(requete);
+
+        // valueOf est sûr : @Pattern a déjà refusé toute autre valeur, et une
+        // valeur hors énumération produirait un 400 de validation, pas un 500.
+        var connexion = connexionSociale.connecter(
+                FournisseurIdentite.valueOf(demande.fournisseur()), demande.jeton(), ip);
 
         return avecCookie(requete, HttpStatus.OK, sessions.ouvrirSession(connexion, ip));
     }

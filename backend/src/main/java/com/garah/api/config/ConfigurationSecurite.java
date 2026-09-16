@@ -235,6 +235,17 @@ public class ConfigurationSecurite {
                         // avant l'ouverture au public.
                         .requestMatchers(HttpMethod.POST, "/api/auth/inscription").permitAll()
 
+                        // « Continuer avec Google » : connexion ET inscription
+                        // à la fois, donc nécessairement ouverte — on ne peut
+                        // pas exiger d'être entré pour entrer.
+                        //
+                        // ⚠️ Ce qui la protège n'est PAS l'authentification,
+                        // mais la vérification de la signature du jeton contre
+                        // les clés publiques du fournisseur. Un endpoint qui
+                        // croirait un e-mail posté par le client laisserait
+                        // n'importe qui ouvrir la session de n'importe qui.
+                        .requestMatchers(HttpMethod.POST, "/api/auth/social").permitAll()
+
                         // Rafraîchissement et déconnexion s'authentifient par
                         // COOKIE, pas par jeton Bearer. Elles doivent donc
                         // passer la chaîne de filtres sans exiger de JWT —

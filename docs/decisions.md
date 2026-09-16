@@ -2501,3 +2501,130 @@ commande est partie », avec un numéro de suivi, pour un colis qui ne
 contenait rien. Pendant ce temps, la commande, qui ignore les colis vides
 (D-43), restait « en préparation ». Le serveur refuse désormais : « Ce colis
 est vide : rangez-y d'abord les articles de la commande. »
+
+---
+
+## D-51 — « Continuer avec Google » : le serveur vérifie, il ne croit pas
+
+**Date :** 16/09/2026
+**Statut :** ✅ actée — Google livré, Facebook et TikTok préparés mais absents.
+
+**Choix.** Une seule route, `POST /api/auth/social`, reçoit un **jeton
+d'identité** obtenu par le client chez le fournisseur. Le serveur en vérifie la
+signature contre les clés publiques du fournisseur, puis ouvre une session
+GARAH ordinaire.
+
+```text
+client (web ou mobile)   obtient un jeton d identite
+        ↓
+POST /api/auth/social    { fournisseur, jeton }
+        ↓
+backend                  VERIFIE signature, emetteur, destinataire, expiration
+        ↓
+session GARAH normale    jeton d acces + cookie (D-19), contrat fige (D-36)
+```
+
+### Ce que ça n'a PAS changé
+
+C'était la condition pour le faire. Le format du jeton et les droits déduits
+(D-34, D-35), le cookie de rafraîchissement (D-19), la session partagée
+(D-33), le contrat de connexion (D-36), les permissions, et **tous les écrans
+existants** sont inchangés. Les vingt dernières lignes de
+`ServiceAuthentification.connecter()` ont été extraites dans `ouvrirSession()`,
+sans le moindre changement de comportement : les deux chemins y passent, et
+aucun écran ne sait par lequel la session est entrée.
+
+### La règle qui rend l'ensemble sûr
+
+⚠️ **Rien du corps de la requête n'est cru.** `DemandeConnexionSociale` ne
+porte ni adresse, ni nom, ni identifiant : uniquement le jeton, parce que c'est
+la seule chose que le client ne peut pas fabriquer. C'est D-17 appliqué à
+l'authentification.
+
+Le contrôle qu'on oublie est celui du **destinataire** (`aud`). Sans lui, un
+jeton Google parfaitement valide, mais émis pour l'application de quelqu'un
+d'autre, ouvrirait une session chez nous — n'importe quel développeur pourrait
+faire signer à Google un jeton portant l'adresse de sa victime.
+
+📌 Le même `aud` sert au web et à Android : sur Android, le jeton se demande
+avec l'identifiant du client **web** (`serverClientId`), le client Android ne
+servant qu'à prouver la signature de l'APK. Une seule valeur à configurer.
+
+### Le rattachement d'un compte existant
+
+Quelqu'un inscrit avec un mot de passe revient et clique « Continuer avec
+Google » avec la même adresse. **On rattache**, à une seule condition :
+`email_verified` vaut vrai dans le jeton.
+
+Ce drapeau ne vient pas du client : Google atteste avoir lui-même vérifié que
+cette personne contrôle cette boîte. Sans ce contrôle, ouvrir un compte chez un
+fournisseur laxiste en déclarant l'adresse d'un client GARAH suffirait à
+prendre son compte, ses commandes et son historique de paiement.
+
+C'est pourquoi `FournisseurIdentite` porte `fournitUnEmailVerifie` : **Facebook
+et TikTok ne pourront jamais rattacher un compte existant tout seuls.**
+
+Le rattachement est journalisé sous son **propre** type d'événement,
+`RATTACHEMENT_SOCIAL`. Réutiliser `CHANGEMENT_MOT_DE_PASSE` aurait été plus
+rapide et aurait fait mentir le score de risque : « 3 changements de mot de
+passe » pour quelqu'un qui n'a fait que lier son compte est une phrase fausse,
+et le chapitre 18 exige un score **explicable**.
+
+### L'identité est le `sujet`, jamais l'adresse
+
+`identite_sociale` est unique sur `(fournisseur, sujet)`. Une adresse change et
+peut être réattribuée — chez Google Workspace, un départ suivi de l'embauche
+d'un homonyme suffit. Le `sub` désigne la même personne à vie. L'adresse est
+conservée, mais comme **photographie** : elle explique un rattachement, elle
+n'identifie jamais.
+
+### Ce que ça coûte
+
+`utilisateur.mot_de_passe` devient **nullable** (V38). Un compte né par Google
+n'en a pas, et lui en fabriquer un au hasard donnerait l'illusion d'un secret
+que personne ne connaît. En contrepartie, un trigger différé garantit qu'un
+compte a toujours **un mot de passe ou une identité sociale** — sinon il serait
+enfermé dehors. La règle dépasse ce qu'un `CHECK` sait exprimer : il ne voit
+qu'une ligne, et ne peut pas interroger l'autre table.
+
+Et `connecter()` doit désormais traiter un mot de passe `null`. Il emprunte le
+**même** chemin qu'une adresse inconnue — empreinte leurre puis
+`IdentifiantsInvalides`. Répondre « ce compte utilise Google » serait plus
+aimable et transformerait le formulaire en annuaire.
+
+### D-23 est honoré sans envoyer un seul courriel
+
+Commander exige une adresse confirmée. Un compte créé par Google naît
+`email_verifie = true` : demander de cliquer un lien reviendrait à redemander
+ce qu'on vient de recevoir signé. **C'est le vrai gain du bouton**, et c'est ce
+que Facebook et TikTok n'apportent pas.
+
+### Pourquoi Google seul
+
+| | Effort | E-mail | Conséquence |
+|---|---|---|---|
+| **Google** | faible | oui, attesté | Supprime l'étape de confirmation |
+| **Facebook** | moyen | pas garanti | `email` exige App Review + vérification d'entreprise ; un compte créé par téléphone n'a aucune adresse |
+| **TikTok** | élevé | **non** | Login Kit ne donne qu'un `open_id` et un pseudo |
+
+Les deux autres obligent à un écran « complétez votre profil » : ils déplacent
+l'étape au lieu de la supprimer. Leurs valeurs existent déjà dans l'énumération
+et dans la contrainte de la base pour que les ajouter ne demande **aucune
+migration**.
+
+### Vérifié
+
+449 tests verts sur base vierge, dont 8 nouveaux. Deux défauts trouvés en
+chemin, tous deux par la base :
+
+- un `CASE` dans une seule expression PL/pgSQL, qui exigeait que **les deux**
+  branches existent pour la table courante — `OLD.utilisateur_id` n'existe pas
+  sur `utilisateur` ;
+- le nettoyage du test lui-même, qui supprimait les identités avant le compte
+  et l'enfermait dehors. Ce n'est pas le test qui a trouvé un défaut, c'est la
+  base qui en a trouvé un dans le test.
+
+**Ce qui reste à faire :** poser `GARAH_GOOGLE_CLIENT_IDS`, créer le client
+OAuth **Web** dans le projet Firebase `garah-project` — et non dans un autre
+projet Google Cloud, sinon `google-services.json` ne le verra jamais — puis
+brancher le bouton dans la boutique et dans le mobile.

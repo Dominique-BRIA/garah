@@ -66,7 +66,10 @@ public class Utilisateur {
      * raison n°1 pour laquelle une entité n'est jamais renvoyée telle quelle
      * par un contrôleur (chapitre 06, piège 5).</p>
      */
-    @Column(name = "mot_de_passe", nullable = false, length = 255)
+    // nullable depuis V38 : un compte ouvert par « Continuer avec Google »
+    // n en a aucun. Lui en fabriquer un au hasard donnerait l illusion d un
+    // secret que personne ne connait et qui ne peut jamais servir.
+    @Column(name = "mot_de_passe", length = 255)
     private String motDePasse;
 
     @Enumerated(EnumType.STRING)
