@@ -118,4 +118,37 @@ class ConfigurationAnnonceeTest {
 
         assertThat(json.readTree(corps).get("devise").asText()).isEqualTo("XAF");
     }
+
+    /**
+     * L'identifiant du client Google est <b>toujours</b> annoncé, même vide.
+     *
+     * <p>C'est tout le point de ce test. Un champ <i>absent</i> et un champ
+     * <i>vide</i> ne se lisent pas pareil côté frontend :
+     * {@code config.identifiantClientGoogle} vaudrait {@code undefined}, et un
+     * code qui teste {@code === ''} laisserait le bouton s'afficher pour une
+     * connexion qui échouerait à coup sûr.</p>
+     *
+     * <p>Le contrat est donc net : la clé existe, et sa valeur vide signifie
+     * <b>« ne propose pas ce bouton »</b>. C'est la règle « dire ce qui manque
+     * AVANT le clic », appliquée à la configuration.</p>
+     *
+     * <p>Le test ne peut pas exiger une valeur précise : elle dépend de
+     * l'environnement, et la base de test n'a aucun identifiant Google.</p>
+     */
+    @Test
+    @DisplayName("l'identifiant client Google est annoncé, même absent")
+    void lIdentifiantGoogleEstToujoursAnnonce() throws Exception {
+        String corps = http.perform(get("/api/configuration"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var noeud = json.readTree(corps).get("identifiantClientGoogle");
+
+        assertThat(noeud)
+                .as("la clé doit exister, pour que le frontend distingue "
+                        + "« non configuré » de « champ oublié »")
+                .isNotNull();
+        assertThat(noeud.isTextual()).isTrue();
+    }
 }

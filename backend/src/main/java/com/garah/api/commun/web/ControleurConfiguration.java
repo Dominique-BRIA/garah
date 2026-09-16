@@ -62,11 +62,46 @@ public class ControleurConfiguration {
      */
     private final boolean paiementDemonstration;
 
+    /**
+     * L'identifiant du client Google à utiliser côté navigateur.
+     *
+     * <h2>Pourquoi l'API l'annonce, plutôt que chaque frontend le porter</h2>
+     *
+     * <p>Trois applications l'utiliseraient : la boutique, le mobile, et
+     * demain le back-office. Écrit dans chacune, une rotation d'identifiant
+     * imposerait trois modifications, trois compilations, trois déploiements —
+     * et le jour où l'une est oubliée, son bouton « Continuer avec Google »
+     * échoue sans que rien ne le signale.</p>
+     *
+     * <p>Ici, l'API est la source unique : elle sait avec quel identifiant elle
+     * vérifiera les jetons, donc elle sait lequel annoncer. On ne peut pas se
+     * désynchroniser d'avec soi-même.</p>
+     *
+     * <p>⚠️ <b>Ce n'est pas un secret</b>, et le publier est sans risque : il
+     * voyage déjà dans chaque page et dans chaque APK. Le <i>secret</i> client,
+     * lui, n'existe même pas dans ce projet — GARAH ne fait que
+     * <b>vérifier</b> des jetons, il n'en demande jamais au nom de
+     * l'utilisateur.</p>
+     *
+     * <p>📌 {@code GARAH_GOOGLE_CLIENT_IDS} accepte plusieurs valeurs : ce sont
+     * les destinataires <b>acceptés</b> à la vérification (iOS a le sien, et
+     * une rotation impose d'accepter l'ancien et le nouveau quelque temps). La
+     * <b>première</b> est celle qu'on annonce — donc celle qu'on met à jour en
+     * tête le jour d'une rotation.</p>
+     *
+     * <p>Chaîne vide = le bouton ne doit pas être affiché. Le frontend s'en
+     * sert pour ne pas proposer une connexion qui échouerait de toute façon
+     * (« dire ce qui manque AVANT le clic »).</p>
+     */
+    private final String identifiantClientGoogle;
+
     public ControleurConfiguration(StockageObjet stockage,
                                    @Value("${GARAH_VERSION:dev}") String version,
-                                   @Value("${GARAH_CAMPAY_BASE_URL:}") String urlPaiement) {
+                                   @Value("${GARAH_CAMPAY_BASE_URL:}") String urlPaiement,
+                                   @Value("${GARAH_GOOGLE_CLIENT_IDS:}") String clientsGoogle) {
         this.stockage = stockage;
         this.version = version;
+        this.identifiantClientGoogle = premier(clientsGoogle);
 
         String url = urlPaiement == null ? "" : urlPaiement.toLowerCase(java.util.Locale.ROOT);
         // ⚠️ Non configuré compte AUSSI comme démonstration : une boutique sans
@@ -108,6 +143,24 @@ public class ControleurConfiguration {
 
                 // ⚠️ Vrai quand AUCUN argent ne circule : bac à sable, ou
                 //    opérateur non configuré. Voir le champ du même nom.
-                "paiementDemonstration", paiementDemonstration);
+                "paiementDemonstration", paiementDemonstration,
+
+                // Vide = ne pas afficher « Continuer avec Google ». Voir le
+                // champ du même nom.
+                "identifiantClientGoogle", identifiantClientGoogle);
+    }
+
+    /**
+     * La première valeur d'une liste séparée par des virgules.
+     *
+     * <p>Tolère les espaces et une liste vide : une configuration incomplète
+     * doit désactiver le bouton, jamais empêcher l'API de démarrer. Le
+     * catalogue n'a rien à voir avec Google et doit continuer de se servir.</p>
+     */
+    private static String premier(String liste) {
+        if (liste == null || liste.isBlank()) {
+            return "";
+        }
+        return liste.strip().split("\\s*,\\s*")[0];
     }
 }
