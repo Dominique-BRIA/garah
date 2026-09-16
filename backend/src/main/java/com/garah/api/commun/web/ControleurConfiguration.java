@@ -114,14 +114,49 @@ public class ControleurConfiguration {
      */
     private final boolean whatsappDisponible;
 
+    /**
+     * Les boutons « Continuer avec… » que l'écran peut proposer.
+     *
+     * <p>🎯 <b>L'écran n'affiche que ce qui est là.</b> Un bouton Facebook sur
+     * une application dont la configuration Meta n'est pas faite échouerait au
+     * clic, et la personne chercherait la panne chez elle — son compte, sa
+     * connexion — alors que le manque est chez nous.</p>
+     *
+     * <p>⚠️ Déduit de la <b>présence des variables</b>, et non injecté depuis le
+     * module IAM : {@code commun} ne doit dépendre d'aucun domaine, et le test
+     * d'architecture refuserait ce lien. Le prix est une duplication de la
+     * règle « configuré = ces deux variables sont posées », qui doit rester
+     * d'accord avec chaque {@code VerificateurParFournisseur}.</p>
+     */
+    private final List<String> fournisseursSociaux;
+
     public ControleurConfiguration(StockageObjet stockage,
                                    @Value("${GARAH_VERSION:dev}") String version,
                                    @Value("${GARAH_CAMPAY_BASE_URL:}") String urlPaiement,
                                    @Value("${GARAH_GOOGLE_CLIENT_IDS:}") String clientsGoogle,
                                    @Value("${GARAH_WHATSAPP_PHONE_NUMBER_ID:}") String numeroWhatsApp,
-                                   @Value("${GARAH_WHATSAPP_TOKEN:}") String jetonWhatsApp) {
+                                   @Value("${GARAH_WHATSAPP_TOKEN:}") String jetonWhatsApp,
+                                   @Value("${GARAH_FACEBOOK_APP_ID:}") String facebookId,
+                                   @Value("${GARAH_FACEBOOK_APP_SECRET:}") String facebookSecret,
+                                   @Value("${GARAH_TIKTOK_CLIENT_KEY:}") String tiktokCle,
+                                   @Value("${GARAH_TIKTOK_CLIENT_SECRET:}") String tiktokSecret) {
         this.whatsappDisponible =
                 !premier(numeroWhatsApp).isEmpty() && !premier(jetonWhatsApp).isEmpty();
+
+        List<String> actifs = new java.util.ArrayList<>();
+        if (!premier(clientsGoogle).isEmpty()) {
+            actifs.add("GOOGLE");
+        }
+        if (pose(facebookId) && pose(facebookSecret)) {
+            actifs.add("FACEBOOK");
+        }
+        if (pose(tiktokCle) && pose(tiktokSecret)) {
+            actifs.add("TIKTOK");
+        }
+        if (this.whatsappDisponible) {
+            actifs.add("WHATSAPP");
+        }
+        this.fournisseursSociaux = List.copyOf(actifs);
         this.stockage = stockage;
         this.version = version;
         this.identifiantClientGoogle = premier(clientsGoogle);
@@ -175,7 +210,11 @@ public class ControleurConfiguration {
                 // Vrai quand Meta est configure. Le frontend s en sert pour
                 // ne pas proposer un bouton qui echouerait — meme regle que
                 // pour Google, meme raison.
-                "whatsappDisponible", whatsappDisponible);
+                "whatsappDisponible", whatsappDisponible,
+
+                // Les boutons « Continuer avec… » réellement utilisables.
+                // Voir le champ du même nom.
+                "fournisseursSociaux", fournisseursSociaux);
     }
 
     /**
@@ -185,6 +224,11 @@ public class ControleurConfiguration {
      * doit désactiver le bouton, jamais empêcher l'API de démarrer. Le
      * catalogue n'a rien à voir avec Google et doit continuer de se servir.</p>
      */
+    /** Une variable réellement renseignée — vide ne compte pas (leçon du chapitre 21). */
+    private static boolean pose(String valeur) {
+        return valeur != null && !valeur.isBlank();
+    }
+
     private static String premier(String liste) {
         if (liste == null || liste.isBlank()) {
             return "";

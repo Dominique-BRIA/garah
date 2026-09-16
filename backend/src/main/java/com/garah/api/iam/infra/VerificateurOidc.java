@@ -2,7 +2,8 @@ package com.garah.api.iam.infra;
 
 import com.garah.api.iam.domaine.FournisseurIdentite;
 import com.garah.api.iam.domaine.IdentiteVerifiee;
-import com.garah.api.iam.domaine.VerificateurIdentiteSociale;
+import com.garah.api.iam.domaine.VerificateurIdentiteSociale.JetonSocialInvalide;
+import com.garah.api.iam.domaine.VerificateurParFournisseur;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * le même destinataire — une seule valeur à configurer ici.</p>
  */
 @Component
-public class VerificateurOidc implements VerificateurIdentiteSociale {
+public class VerificateurOidc implements VerificateurParFournisseur {
 
     private static final Logger log = LoggerFactory.getLogger(VerificateurOidc.class);
 
@@ -86,16 +87,18 @@ public class VerificateurOidc implements VerificateurIdentiteSociale {
     }
 
     @Override
-    public IdentiteVerifiee verifier(FournisseurIdentite fournisseur, String jeton) {
-        if (fournisseur != FournisseurIdentite.GOOGLE) {
-            // Les valeurs existent dans l'énumération et dans la contrainte de
-            // la base pour ne pas imposer de migration plus tard. Le chemin de
-            // vérification, lui, n'existe pas encore.
-            throw new JetonSocialInvalide();
-        }
-        if (jeton == null || jeton.isBlank() || destinatairesGoogle.isEmpty()) {
-            throw new JetonSocialInvalide();
-        }
+    public FournisseurIdentite fournisseur() {
+        return FournisseurIdentite.GOOGLE;
+    }
+
+    @Override
+    public boolean estActif() {
+        return !destinatairesGoogle.isEmpty();
+    }
+
+    @Override
+    public IdentiteVerifiee verifier(String jeton) {
+        FournisseurIdentite fournisseur = FournisseurIdentite.GOOGLE;
 
         Jwt verifie;
         try {
