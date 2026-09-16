@@ -12,6 +12,7 @@ import com.garah.api.commun.erreur.RegleMetierViolee;
 import com.garah.api.commun.erreur.RessourceIntrouvable;
 import com.garah.api.iam.domaine.NomClient;
 import com.garah.api.iam.domaine.ServiceClient;
+import com.garah.api.iam.domaine.ServiceJoignabilite;
 import com.garah.api.iam.domaine.ServiceVerificationEmail;
 import com.garah.api.logistique.domaine.Lieu;
 import com.garah.api.logistique.domaine.TypeLieu;
@@ -105,6 +106,9 @@ public class ServiceCommande {
     private final LieuRepository lieux;
     private final ServiceVerificationEmail verification;
 
+    /** D-52 : joignable par e-mail confirme OU par numero prouve. */
+    private final ServiceJoignabilite joignabilite;
+
     /** La lecture des clients, pour afficher un nom plutot qu un identifiant. */
     private final ServiceClient clients;
 
@@ -135,6 +139,7 @@ public class ServiceCommande {
                            VarianteRepository variantes, ServiceTarification tarification,
                            ServiceCommission commissions, ServiceStock stock,
                            LieuRepository lieux, ServiceVerificationEmail verification,
+                           ServiceJoignabilite joignabilite,
                            ServiceClient clients, JournalActions journal,
                            JournalParcours parcours,
                            com.garah.api.serviceclient.domaine.ServiceNegociation negociation,
@@ -160,6 +165,7 @@ public class ServiceCommande {
         this.stock = stock;
         this.lieux = lieux;
         this.verification = verification;
+        this.joignabilite = joignabilite;
         this.clients = clients;
         this.negociation = negociation;
     }
@@ -321,7 +327,19 @@ public class ServiceCommande {
      * récupération.</p>
      */
     private void exigerAdresseConfirmee(Long clientId) {
-        if (!verification.estConfirme(clientId)) {
+        // ⚠️ « JOIGNABLE », et non plus « adresse confirmée » (D-52).
+        //
+        //    La règle de D-23 n'a jamais porté sur l'e-mail : elle portait sur
+        //    le fait de pouvoir PRÉVENIR le client — numéro de commande, code
+        //    de retrait, avis d'acheminement. Un numéro prouvé par WhatsApp le
+        //    prouve aussi bien, et sur l'axe Douala → Bangui souvent mieux :
+        //    beaucoup de clients n'ouvrent jamais leur boîte mail.
+        //
+        //    Le code d'erreur reste ADRESSE_NON_CONFIRMEE, et il reste exact :
+        //    les seuls comptes qui peuvent encore le rencontrer sont ceux nés
+        //    avec une adresse, non confirmée. Le renommer casserait les trois
+        //    frontends pour un gain nul.
+        if (!joignabilite.estJoignable(clientId)) {
             throw new ServiceVerificationEmail.AdresseNonConfirmee();
         }
     }

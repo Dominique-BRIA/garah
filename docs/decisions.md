@@ -2628,3 +2628,58 @@ chemin, tous deux par la base :
 OAuth **Web** dans le projet Firebase `garah-project` — et non dans un autre
 projet Google Cloud, sinon `google-services.json` ne le verra jamais — puis
 brancher le bouton dans la boutique et dans le mobile.
+
+---
+
+## D-52 — Commander exige d'être JOIGNABLE, pas d'avoir un e-mail
+
+**Date :** 16/09/2026
+**Statut :** ✅ actée — **remplace la condition posée par D-23**, sans en
+renier l'intention.
+
+**Ce que D-23 disait.** Une adresse e-mail confirmée avant de commander. Sa
+justification, elle, ne parlait pas d'e-mail :
+
+> « le numéro de commande, le code de retrait, les avis d'acheminement partent
+> tous à cette adresse […] la marchandise arrive à Bangui sans que personne ne
+> puisse être prévenu »
+
+**🎯 La règle n'a jamais porté sur l'e-mail. Elle portait sur le fait d'être
+joignable.** L'e-mail en était le seul moyen disponible à l'époque. Depuis V39
+il y en a un second, et il prouve exactement la même chose :
+
+```text
+e-mail confirme    le client a clique le lien qu on lui a envoye
+numero WhatsApp    le client a recopie le code qu on lui a envoye
+```
+
+Sur l'axe Douala → Bangui, le second est même le plus fiable : beaucoup de
+clients n'ouvrent jamais leur boîte mail.
+
+**Choix.** `ServiceJoignabilite.estJoignable()` remplace
+`verification.estConfirme()` au seul endroit où la barrière tombe — le passage
+de commande. Un compte né par WhatsApp commande immédiatement, sans rien
+ajouter.
+
+**⚠️ Ce qui ne compte PAS comme preuve.** La colonne `utilisateur.telephone`.
+Elle a été saisie dans un formulaire, sans le moindre contrôle : un chiffre de
+travers y ressemble à un numéro juste. L'accepter rouvrirait exactement le
+défaut que D-23 fermait — le colis arrive, et l'avis part chez quelqu'un
+d'autre. Seule une identité `WHATSAPP` atteste le numéro, parce qu'elle
+n'existe que si un code envoyé à ce numéro a été recopié. C'est testé.
+
+**Le code d'erreur reste `ADRESSE_NON_CONFIRMEE`**, et il reste exact : les
+seuls comptes qui peuvent encore le rencontrer sont ceux nés avec une adresse,
+non confirmée. Le renommer casserait les trois frontends pour un gain nul
+(D-36).
+
+**Ce que ça ne débloque pas.** Facebook sans adresse, et TikTok — qui n'en
+donne jamais — restent refusés à l'inscription (`ADRESSE_INDISPONIBLE`). Les
+débloquer demanderait un écran « complétez votre profil » qui prouve un
+numéro sur place. C'est identifié, ce n'est pas fait.
+
+**Vérifié.** 477 tests verts sur base vierge, dont 5 nouveaux. Un défaut trouvé
+en chemin, par la base : insérer un compte sans mot de passe puis son identité
+en **deux** instructions auto-validées laisse, entre les deux, un compte
+réellement enfermé dehors. Le trigger de V38 l'a refusé. Les deux écritures
+tiennent désormais dans une seule transaction.
