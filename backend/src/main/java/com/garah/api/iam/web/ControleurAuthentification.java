@@ -5,6 +5,7 @@ import com.garah.api.commun.web.AdresseClient;
 import com.garah.api.iam.domaine.FournisseurIdentite;
 import com.garah.api.iam.domaine.ServiceAuthentification;
 import com.garah.api.iam.domaine.ServiceConnexionSociale;
+import com.garah.api.iam.domaine.ServiceConnexionWhatsApp;
 import com.garah.api.iam.domaine.ServiceInscription;
 import com.garah.api.iam.domaine.ServiceRafraichissement;
 import com.garah.api.iam.domaine.ServiceVerificationEmail;
@@ -44,6 +45,7 @@ public class ControleurAuthentification {
 
     private final ServiceAuthentification authentification;
     private final ServiceConnexionSociale connexionSociale;
+    private final ServiceConnexionWhatsApp connexionWhatsApp;
     private final ServiceInscription inscription;
     private final ServiceRafraichissement sessions;
     private final CookieRafraichissement cookie;
@@ -60,6 +62,7 @@ public class ControleurAuthentification {
 
     public ControleurAuthentification(ServiceAuthentification authentification,
                                       ServiceConnexionSociale connexionSociale,
+                                      ServiceConnexionWhatsApp connexionWhatsApp,
                                       ServiceInscription inscription,
                                       ServiceRafraichissement sessions,
                                       CookieRafraichissement cookie,
@@ -67,6 +70,7 @@ public class ControleurAuthentification {
                                       StockageObjet stockage) {
         this.authentification = authentification;
         this.connexionSociale = connexionSociale;
+        this.connexionWhatsApp = connexionWhatsApp;
         this.inscription = inscription;
         this.sessions = sessions;
         this.cookie = cookie;
@@ -139,6 +143,50 @@ public class ControleurAuthentification {
         // valeur hors énumération produirait un 400 de validation, pas un 500.
         var connexion = connexionSociale.connecter(
                 FournisseurIdentite.valueOf(demande.fournisseur()), demande.jeton(), ip);
+
+        return avecCookie(requete, HttpStatus.OK, sessions.ouvrirSession(connexion, ip));
+    }
+
+    /**
+     * « Continuer avec WhatsApp », étape 1 : envoyer le code.
+     *
+     * <p>⚠️ <b>Répond 200 que le numéro ait un compte ou non</b>, et renvoie la
+     * même chose dans les deux cas. Distinguer ferait de ce formulaire un
+     * annuaire : on essaierait des numéros jusqu'à voir changer la réponse, et
+     * on saurait qui est client chez GARAH.</p>
+     *
+     * <p>Le numéro masqué renvoyé — {@code +237 6•• •• •• 00} — sert à
+     * confirmer <b>où part le code</b> sans révéler le numéro entier à qui
+     * regarde l'écran par-dessus l'épaule.</p>
+     */
+    @PostMapping("/whatsapp/code")
+    public Map<String, Object> demanderUnCodeWhatsApp(
+            @Valid @RequestBody DemandeCodeWhatsApp demande,
+            HttpServletRequest requete) {
+
+        return Map.of("telephone", connexionWhatsApp.demanderUnCode(demande.telephone()));
+    }
+
+    /**
+     * « Continuer avec WhatsApp », étape 2 : vérifier le code et ouvrir la session.
+     *
+     * <p>Comme {@code /social}, elle renvoie le contrat figé en D-36 et pose le
+     * même cookie : aucun écran ne sait par quelle porte la session est
+     * entrée.</p>
+     *
+     * <p>⚠️ Un compte créé par ce chemin n'a <b>aucune adresse e-mail</b>. Il
+     * devra en ajouter une, et la confirmer, avant de commander (D-23). WhatsApp
+     * atteste un numéro, jamais une adresse — aucune mécanique ne peut en
+     * inventer une.</p>
+     */
+    @PostMapping("/whatsapp/connexion")
+    public ResponseEntity<ReponseConnexion> connexionWhatsApp(
+            @Valid @RequestBody DemandeConnexionWhatsApp demande,
+            HttpServletRequest requete) {
+
+        String ip = AdresseClient.de(requete);
+
+        var connexion = connexionWhatsApp.verifier(demande.telephone(), demande.code(), ip);
 
         return avecCookie(requete, HttpStatus.OK, sessions.ouvrirSession(connexion, ip));
     }

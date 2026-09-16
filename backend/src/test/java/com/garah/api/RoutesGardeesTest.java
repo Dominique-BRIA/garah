@@ -97,6 +97,13 @@ class RoutesGardeesTest {
             //    que c'est la seule que le client ne peut pas fabriquer.
             "ControleurAuthentification.connexionSociale",
 
+            // ⚠️ « Continuer avec WhatsApp » : demander le code, puis le
+            //    verifier. Ce qui les garde n est pas un @PreAuthorize mais la
+            //    limitation de debit, le plafond de tentatives et l expiration
+            //    du code — ici, GARAH EST le fournisseur d identite.
+            "ControleurAuthentification.demanderUnCodeWhatsApp",
+            "ControleurAuthentification.connexionWhatsApp",
+
             // --- PUBLIC : l'opérateur nous notifie ---
             // ⚠️ Elle ne retient que la référence et redemande l'état réel à
             //    Campay : forger une notification ne sert a rien.

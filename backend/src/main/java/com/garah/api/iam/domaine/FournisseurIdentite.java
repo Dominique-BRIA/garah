@@ -41,7 +41,25 @@ public enum FournisseurIdentite {
     FACEBOOK("https://www.facebook.com", false),
 
     /** Non implémenté : voir la javadoc de la classe. */
-    TIKTOK("https://www.tiktok.com", false);
+    TIKTOK("https://www.tiktok.com", false),
+
+    /**
+     * ⚠️ <b>WhatsApp n'est PAS un fournisseur OIDC</b>, et n'a donc pas
+     * d'émetteur.
+     *
+     * <p>Meta n'expose aucune API de connexion. Ce que le bouton « Continuer
+     * avec WhatsApp » recouvre, c'est un <b>code à usage unique</b> envoyé par
+     * message, que GARAH engendre et vérifie lui-même.</p>
+     *
+     * <p>Il figure ici parce qu'il produit bien une {@link IdentiteSociale} —
+     * le {@code sujet} étant le <b>numéro normalisé</b> — mais il ne passe
+     * jamais par {@code VerificateurOidc}, qui le refuserait.</p>
+     *
+     * <p>Et il n'atteste <b>aucune adresse e-mail</b> : il atteste un numéro.
+     * D'où {@code false}, qui lui interdit de rattacher un compte existant
+     * tout seul.</p>
+     */
+    WHATSAPP("", false);
 
     private final String emetteur;
     private final boolean fournitUnEmailVerifie;

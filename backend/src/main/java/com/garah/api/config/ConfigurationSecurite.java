@@ -246,6 +246,18 @@ public class ConfigurationSecurite {
                         // n'importe qui ouvrir la session de n'importe qui.
                         .requestMatchers(HttpMethod.POST, "/api/auth/social").permitAll()
 
+                        // « Continuer avec WhatsApp » : demander le code, puis
+                        // le verifier. Publiques pour la meme raison — on ne
+                        // peut pas exiger d etre entre pour entrer.
+                        //
+                        // ⚠️ Ce qui les protege n est pas l authentification,
+                        // mais la limitation de debit (D-24), le plafond de
+                        // tentatives et l expiration du code. Ici GARAH EST le
+                        // fournisseur d identite : aucun tiers ne verifie a
+                        // notre place.
+                        .requestMatchers(HttpMethod.POST, "/api/auth/whatsapp/code").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/whatsapp/connexion").permitAll()
+
                         // Rafraîchissement et déconnexion s'authentifient par
                         // COOKIE, pas par jeton Bearer. Elles doivent donc
                         // passer la chaîne de filtres sans exiger de JWT —

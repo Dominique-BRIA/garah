@@ -1,4 +1,4 @@
-package com.garah.api.config;
+package com.garah.api.commun.debit;
 
 import java.time.Duration;
 import java.time.Instant;

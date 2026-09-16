@@ -73,7 +73,13 @@ public class ServiceJeton {
                 //    base à chaque geste tracé ajouterait une requête sur des
                 //    chemins qui en ont déjà assez ; et la surveillance ne peut
                 //    pas interroger l'IAM sans créer un cycle entre les deux.
-                .claim("email", utilisateur.getEmail())
+                // ⚠️ Chaîne vide si l'adresse est absente, JAMAIS null.
+                //    Depuis V39, un compte ouvert par WhatsApp n'en a pas — et
+                //    Nimbus refuse un claim nul. L'application ne démarrerait
+                //    pas la session, sur une exception peu parlante, et
+                //    uniquement pour ces comptes-là : le genre de défaut qui
+                //    passe tous les essais faits avec un compte ordinaire.
+                .claim("email", utilisateur.getEmail() == null ? "" : utilisateur.getEmail())
                 .claim("langue", utilisateur.getLangue());
 
         // 🎯 ON N ÉNUMÈRE QUE CE QUI NE SE DÉDUIT PAS.

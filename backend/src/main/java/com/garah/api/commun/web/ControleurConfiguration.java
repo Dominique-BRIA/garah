@@ -95,10 +95,33 @@ public class ControleurConfiguration {
      */
     private final String identifiantClientGoogle;
 
+    /**
+     * « Continuer avec WhatsApp » peut-il être proposé ?
+     *
+     * <p>Vrai seulement quand les identifiants Meta sont posés. Le frontend
+     * s'en sert pour ne pas afficher un bouton qui échouerait — même règle que
+     * pour Google, et même raison : <b>dire ce qui manque avant le clic</b>.</p>
+     *
+     * <p>⚠️ Un booléen, et non l'identifiant : contrairement à Google, le
+     * navigateur n'a <b>rien</b> à connaître de notre configuration Meta. Tout
+     * se passe entre le serveur et l'API WhatsApp. Publier le moindre élément
+     * ici serait donner sans aucune contrepartie.</p>
+     *
+     * <p>⚠️ Lu comme une PROPRIÉTÉ, et non injecté depuis le module IAM :
+     * {@code commun} ne doit dépendre d'aucun domaine, et le test
+     * d'architecture refuserait ce lien. C'est la même raison qui fait lire
+     * {@code GARAH_CAMPAY_BASE_URL} ici plutôt que d'appeler le paiement.</p>
+     */
+    private final boolean whatsappDisponible;
+
     public ControleurConfiguration(StockageObjet stockage,
                                    @Value("${GARAH_VERSION:dev}") String version,
                                    @Value("${GARAH_CAMPAY_BASE_URL:}") String urlPaiement,
-                                   @Value("${GARAH_GOOGLE_CLIENT_IDS:}") String clientsGoogle) {
+                                   @Value("${GARAH_GOOGLE_CLIENT_IDS:}") String clientsGoogle,
+                                   @Value("${GARAH_WHATSAPP_PHONE_NUMBER_ID:}") String numeroWhatsApp,
+                                   @Value("${GARAH_WHATSAPP_TOKEN:}") String jetonWhatsApp) {
+        this.whatsappDisponible =
+                !premier(numeroWhatsApp).isEmpty() && !premier(jetonWhatsApp).isEmpty();
         this.stockage = stockage;
         this.version = version;
         this.identifiantClientGoogle = premier(clientsGoogle);
@@ -147,7 +170,12 @@ public class ControleurConfiguration {
 
                 // Vide = ne pas afficher « Continuer avec Google ». Voir le
                 // champ du même nom.
-                "identifiantClientGoogle", identifiantClientGoogle);
+                "identifiantClientGoogle", identifiantClientGoogle,
+
+                // Vrai quand Meta est configure. Le frontend s en sert pour
+                // ne pas proposer un bouton qui echouerait — meme regle que
+                // pour Google, meme raison.
+                "whatsappDisponible", whatsappDisponible);
     }
 
     /**

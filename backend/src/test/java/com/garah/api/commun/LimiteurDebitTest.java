@@ -1,4 +1,6 @@
-package com.garah.api.config;
+package com.garah.api.commun;
+
+import com.garah.api.commun.debit.LimiteurDebit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
