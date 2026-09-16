@@ -72,7 +72,42 @@ public class ServiceJoignabilite {
                 .map(Utilisateur::estEmailVerifie)
                 .orElse(false);
 
-        return emailConfirme || numeroProuve(utilisateurId);
+        return emailConfirme || entreParUnReseau(utilisateurId);
+    }
+
+    /**
+     * Le compte est entré par un réseau — Google, Facebook, WhatsApp, TikTok.
+     *
+     * <h2>⚠️ D-53 : la barrière tombe entièrement pour ces comptes</h2>
+     *
+     * <p>Les quatre ne se valent pourtant pas, et il faut le savoir :</p>
+     *
+     * <pre>
+     * GOOGLE     adresse attestee par Google        → joignable, vraiment
+     * WHATSAPP   numero prouve par un code recopie  → joignable, vraiment
+     * FACEBOOK   adresse non attestee, ou ABSENTE   → parfois injoignable
+     * TIKTOK     ni adresse ni numero, JAMAIS       → injoignable
+     * </pre>
+     *
+     * <p>🎯 <b>Un compte TikTok n'a aucun canal hors de l'application.</b> Si
+     * son colis arrive à Bangui et qu'il n'ouvre pas l'application, personne ne
+     * peut le prévenir — ni courriel, ni message, ni appel. C'est le risque que
+     * D-23 avait été écrit pour fermer, et qui est rouvert ici en connaissance
+     * de cause.</p>
+     *
+     * <p>Ce qui l'atténue, sans l'annuler : GARAH dispose des <b>notifications
+     * poussées</b> et de l'<b>Assistance</b> dans l'application (D-41). Un
+     * client qui garde l'application installée <i>est</i> joignable. Un client
+     * qui la désinstalle ne l'est plus du tout.</p>
+     *
+     * <p>📌 <b>Ce que ça implique côté écran</b>, et qui reste à faire : la
+     * fiche d'une commande passée par un compte sans canal externe devrait le
+     * signaler à l'équipe logistique, pour qu'elle sache qu'un avis de
+     * disponibilité ne partira nulle part.</p>
+     */
+    @Transactional(readOnly = true)
+    public boolean entreParUnReseau(Long utilisateurId) {
+        return identites.existsByUtilisateurId(utilisateurId);
     }
 
     /** Une identité WhatsApp existe : le numéro a reçu un code, et il a été recopié. */

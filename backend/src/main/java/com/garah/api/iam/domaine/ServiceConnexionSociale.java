@@ -80,28 +80,6 @@ public class ServiceConnexionSociale {
         this.transaction = new TransactionTemplate(transactions);
     }
 
-    /**
-     * Le fournisseur ne nous donne pas d'adresse utilisable.
-     *
-     * <p>Attendu pour Facebook (permission refusée, ou compte créé par
-     * téléphone) et <b>systématique</b> pour TikTok. Le jour où ces
-     * fournisseurs seront branchés, cette erreur devra conduire l'interface à
-     * demander l'adresse, pas à afficher un échec.</p>
-     */
-    public static class AdresseIndisponible extends ErreurMetier {
-
-        public AdresseIndisponible() {
-            super("ADRESSE_INDISPONIBLE",
-                    "Ce compte ne communique pas d'adresse e-mail. "
-                            + "Inscrivez-vous avec une adresse.");
-        }
-
-        @Override
-        public HttpStatus getStatut() {
-            return HttpStatus.UNPROCESSABLE_ENTITY;
-        }
-    }
-
     /** L'adresse est déjà prise, et le fournisseur ne l'atteste pas. */
     public static class RattachementRefuse extends ErreurMetier {
 
@@ -146,8 +124,20 @@ public class ServiceConnexionSociale {
         }
 
         String adresse = identite.email() == null ? "" : identite.email().strip();
+
+        // ⚠️ D-53 : une identité SANS adresse ouvre quand même un compte.
+        //
+        //    Auparavant on levait AdresseIndisponible, ce qui rendait TikTok
+        //    inutilisable — il n'en fournit jamais — et Facebook aléatoire.
+        //    Le compte naît désormais sans adresse, exactement comme un compte
+        //    WhatsApp (V39).
+        //
+        //    🎯 Le prix, et il est réel : ce compte n'a AUCUN canal hors de
+        //    l'application. Si son colis arrive à Bangui et qu'il n'ouvre pas
+        //    l'application, personne ne peut le prévenir. C'est le risque que
+        //    D-23 fermait, rouvert en connaissance de cause.
         if (adresse.isBlank()) {
-            throw new AdresseIndisponible();
+            return creerLeCompte(identite, null);
         }
 
         // --- Cas 2 : l'adresse appartient déjà à quelqu'un -------------------
@@ -177,15 +167,34 @@ public class ServiceConnexionSociale {
         }
 
         // --- Cas 3 : personne inconnue --------------------------------------
+        return creerLeCompte(identite, adresse);
+    }
+
+    /**
+     * Crée le compte, avec ou sans adresse.
+     *
+     * @param adresse l'adresse annoncée, ou {@code null} si le fournisseur
+     *                n'en donne aucune (TikTok toujours, Facebook parfois)
+     */
+    private Long creerLeCompte(IdentiteVerifiee identite, String adresse) {
         Utilisateur utilisateur = new Utilisateur(
                 TypeUtilisateur.CLIENT, nomOuDefaut(identite, adresse), adresse, null);
 
-        // 🎯 D-23 honoré SANS envoyer le moindre courriel : Google vient
-        //    d'attester que cette personne contrôle cette boîte. Lui demander
-        //    de cliquer un lien de confirmation reviendrait à redemander ce
-        //    qu'on vient de recevoir signé — et bloquerait la commande de
-        //    quelqu'un dont l'adresse est déjà prouvée.
-        utilisateur.marquerEmailVerifie();
+        // 🎯 Marqué vérifié UNIQUEMENT si le fournisseur l'atteste.
+        //
+        //    Pour Google, c'est D-23 honoré sans envoyer le moindre courriel :
+        //    lui demander de cliquer un lien reviendrait à redemander ce qu'on
+        //    vient de recevoir signé.
+        //
+        //    ⚠️ Pour Facebook, surtout pas : Meta ne dit pas s'il a vérifié
+        //    l'adresse. La marquer vérifiée en ferait une preuve qu'elle n'est
+        //    pas — et permettrait plus tard d'y envoyer un code de retrait sans
+        //    que personne n'ait jamais confirmé la contrôler.
+        if (adresse != null && identite.emailVerifie()
+                && identite.fournisseur().fournitUnEmailVerifie()) {
+            utilisateur.marquerEmailVerifie();
+        }
+
         utilisateurs.save(utilisateur);
 
         // Les deux naissent ensemble, comme à l'inscription : un utilisateur
@@ -210,6 +219,18 @@ public class ServiceConnexionSociale {
         if (identite.nom() != null && !identite.nom().isBlank()) {
             return identite.nom().strip();
         }
-        return adresse.substring(0, adresse.indexOf('@') < 0 ? adresse.length() : adresse.indexOf('@'));
+
+        // ⚠️ `adresse` peut être null depuis D-53 : TikTok n'en donne aucune,
+        //    et n'impose pas non plus de nom d'affichage. Sans ce garde, la
+        //    création levait une NullPointerException — qui n'est pas une
+        //    ErreurMetier, donc un 500 au lieu d'un compte.
+        if (adresse != null && !adresse.isBlank()) {
+            int arobase = adresse.indexOf('@');
+            return arobase < 0 ? adresse : adresse.substring(0, arobase);
+        }
+
+        // Dernier repli : `utilisateur.nom` est NOT NULL, et il faut bien
+        // afficher quelque chose. La personne le changera depuis son profil.
+        return "Client " + identite.fournisseur();
     }
 }

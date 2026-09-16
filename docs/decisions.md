@@ -2683,3 +2683,55 @@ en chemin, par la base : insérer un compte sans mot de passe puis son identité
 en **deux** instructions auto-validées laisse, entre les deux, un compte
 réellement enfermé dehors. Le trigger de V38 l'a refusé. Les deux écritures
 tiennent désormais dans une seule transaction.
+
+---
+
+## D-53 — Entrer par un réseau suffit pour commander
+
+**Date :** 16/09/2026
+**Statut :** ✅ actée — **lève la condition de D-52** pour tout compte portant
+une identité sociale.
+
+**Choix.** Un compte entré par Google, Facebook, WhatsApp ou TikTok commande
+sans autre vérification. Deux verrous ont dû sauter, pas un :
+
+```text
+1. la barriere a la commande      estJoignable() accepte toute identite sociale
+2. la creation du compte          une identite SANS adresse cree quand meme
+```
+
+Le second était le vrai blocage : `AdresseIndisponible` rendait TikTok
+inutilisable — il ne fournit jamais d'adresse — et Facebook aléatoire.
+
+**⚠️ Ce que ça coûte, et il faut le savoir.** Les quatre fournisseurs ne se
+valent pas :
+
+| | Canal réel | Joignable hors application ? |
+|---|---|---|
+| **Google** | adresse attestée | ✅ oui |
+| **WhatsApp** | numéro prouvé par un code recopié | ✅ oui |
+| **Facebook** | adresse non attestée, ou absente | ⚠️ parfois |
+| **TikTok** | **rien** | ❌ **non** |
+
+🎯 **Un compte TikTok n'a aucun canal hors de l'application.** Si son colis
+arrive à Bangui et qu'il n'ouvre pas l'application, personne ne peut le
+prévenir — ni courriel, ni message, ni appel. C'est exactement le risque que
+D-23 avait été écrit pour fermer, rouvert **en connaissance de cause**.
+
+**Ce qui l'atténue, sans l'annuler.** GARAH dispose des notifications poussées
+et de l'Assistance dans l'application (D-41). Un client qui garde l'application
+installée *est* joignable. Un client qui la désinstalle ne l'est plus du tout.
+
+**⚠️ Ce qui reste à faire, et qui n'est pas cosmétique.** La fiche d'une
+commande passée par un compte sans canal externe devrait le **signaler à
+l'équipe logistique** : sinon un avis de disponibilité part dans le vide et
+personne ne s'en aperçoit. Le colis attendra au point de récupération sans que
+quiconque sache pourquoi.
+
+**Une règle qui ne bouge pas.** Une adresse que le fournisseur n'atteste pas
+n'est **jamais** marquée vérifiée. Meta ne dit pas s'il a vérifié la sienne : la
+marquer en ferait une preuve qu'elle n'est pas, et permettrait d'y envoyer un
+code de retrait sans que personne n'ait confirmé la contrôler. Seul Google
+atteste, et seul Google produit un compte `email_verifie = true`.
+
+**Vérifié.** 479 tests verts sur base vierge, dont 2 nouveaux.

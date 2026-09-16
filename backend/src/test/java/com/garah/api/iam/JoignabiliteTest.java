@@ -118,6 +118,37 @@ class JoignabiliteTest {
                 .isFalse();
     }
 
+    /**
+     * D-53 : toute identite sociale suffit, meme sans aucun canal externe.
+     *
+     * <p>⚠️ C est la decision la plus lourde de consequence de ce fichier. Un
+     * compte TikTok n a ni adresse ni numero : si son colis arrive a Bangui et
+     * qu il n ouvre pas l application, <b>personne ne peut le prevenir</b>.</p>
+     *
+     * <p>Ce qui l attenue sans l annuler : les notifications poussees et
+     * l Assistance dans l application (D-41). Un client qui garde
+     * l application installee est joignable ; un client qui la desinstalle ne
+     * l est plus du tout.</p>
+     */
+    @Test
+    @DisplayName("une identite sociale suffit, meme sans adresse ni numero")
+    void identiteSocialeSuffit() {
+        Long id = sql.queryForObject("""
+                WITH nouveau AS (
+                    INSERT INTO utilisateur (type, nom, email, mot_de_passe, email_verifie)
+                    VALUES ('CLIENT', 'Par TikTok', NULL, NULL, false)
+                    RETURNING id
+                )
+                INSERT INTO identite_sociale (utilisateur_id, fournisseur, sujet)
+                SELECT id, 'TIKTOK', 'open-id-essai-53' FROM nouveau
+                RETURNING utilisateur_id
+                """, Long.class);
+
+        assertThat(joignabilite.estJoignable(id)).isTrue();
+
+        sql.update("DELETE FROM utilisateur WHERE id = ?", id);
+    }
+
     @Test
     @DisplayName("un compte inconnu n'est pas joignable — le doute refuse")
     void compteInconnu() {

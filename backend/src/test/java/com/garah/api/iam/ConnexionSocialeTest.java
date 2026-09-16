@@ -218,14 +218,61 @@ class ConnexionSocialeTest {
                 existant, FournisseurIdentite.GOOGLE)).isFalse();
     }
 
+    /**
+     * D-53 : sans adresse, le compte se crée quand même.
+     *
+     * <p>Auparavant on levait {@code AdresseIndisponible}, ce qui rendait
+     * TikTok inutilisable — il n'en fournit jamais — et Facebook aléatoire.</p>
+     *
+     * <p>⚠️ Le prix est réel et assumé : ce compte n'a <b>aucun canal hors de
+     * l'application</b>. Si son colis arrive à Bangui et qu'il ne l'ouvre pas,
+     * personne ne peut le prévenir.</p>
+     */
     @Test
-    @DisplayName("sans adresse, on ne peut pas créer de compte")
-    void refuseQuandLeFournisseurNeDonnePasDAdresse() {
+    @DisplayName("sans adresse, le compte se crée quand même (D-53)")
+    void sansAdresseLeCompteSeCreeQuandMeme() {
         googleRenvoie(SUJET, null, false);
 
-        assertThatThrownBy(() ->
-                connexion.connecter(FournisseurIdentite.GOOGLE, "j", "10.0.0.1"))
-                .isInstanceOf(ServiceConnexionSociale.AdresseIndisponible.class);
+        Long id = connexion.connecter(FournisseurIdentite.GOOGLE, "j", "10.0.0.1")
+                .utilisateurId();
+
+        Utilisateur cree = utilisateurs.findById(id).orElseThrow();
+
+        assertThat(cree.getEmail()).isNull();
+        assertThat(cree.getMotDePasse()).isNull();
+        assertThat(cree.estEmailVerifie())
+                .as("aucune adresse ne peut etre dite verifiee")
+                .isFalse();
+
+        Integer lignesClient = sql.queryForObject(
+                "SELECT count(*) FROM client WHERE id = ?", Integer.class, id);
+        assertThat(lignesClient).isEqualTo(1);
+
+        sql.update("DELETE FROM client WHERE id = ?", id);
+        sql.update("DELETE FROM utilisateur WHERE id = ?", id);
+    }
+
+    /**
+     * ⚠️ Une adresse que le fournisseur n'atteste pas ne doit PAS être marquée
+     * vérifiée.
+     *
+     * <p>Meta ne dit pas s'il a vérifié l'adresse qu'il transmet. La marquer
+     * vérifiée en ferait une preuve qu'elle n'est pas — et permettrait plus
+     * tard d'y envoyer un code de retrait sans que personne n'ait jamais
+     * confirmé la contrôler.</p>
+     */
+    @Test
+    @DisplayName("une adresse non attestée n'est pas marquée vérifiée")
+    void adresseNonAttesteeResteNonVerifiee() {
+        when(verificateur.verifier(any(), anyString())).thenReturn(
+                new IdentiteVerifiee(FournisseurIdentite.FACEBOOK, SUJET, EMAIL, true, "Aline"));
+
+        Long id = connexion.connecter(FournisseurIdentite.FACEBOOK, "j", "10.0.0.1")
+                .utilisateurId();
+
+        assertThat(utilisateurs.findById(id).orElseThrow().estEmailVerifie())
+                .as("Facebook n atteste pas : l adresse reste non verifiee")
+                .isFalse();
     }
 
     // -------------------------------------------------------------------------
