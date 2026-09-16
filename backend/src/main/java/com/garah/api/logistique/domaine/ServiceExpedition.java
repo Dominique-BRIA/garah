@@ -343,7 +343,7 @@ public class ServiceExpedition {
                 .map(Lieu::getNom)
                 .orElse(null);
         journal.publishEvent(new EvenementsExpedition.MarchandiseDisponible(
-                clientId, expedition.getCommandeId(), point));
+                clientId, expedition.getCommandeId(), expeditionId, point));
 
         return retrait;
     }

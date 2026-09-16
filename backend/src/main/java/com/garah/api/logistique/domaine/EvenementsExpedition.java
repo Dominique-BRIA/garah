@@ -46,8 +46,18 @@ public final class EvenementsExpedition {
      * <p>⚠️ Le code de retrait n'est <b>pas</b> dans cet événement, et ne doit
      * jamais l'être : une bannière s'affiche sur un écran verrouillé, à la vue
      * de qui passe. On dit que c'est arrivé, pas comment le prendre.</p>
+     *
+     * <p>🎯 D'où {@code expeditionId}. Un consommateur qui a le droit de
+     * transmettre le code — une <b>discussion</b>, qui est derrière
+     * l'authentification, contrairement à une bannière — va le <b>lire
+     * lui-même</b>. Le secret ne voyage donc jamais dans l'événement : on ne
+     * peut pas l'afficher par distraction, puisqu'on ne l'a pas.</p>
+     *
+     * <p>Un identifiant d'expédition, lui, ne permet d'emporter aucune
+     * marchandise.</p>
      */
-    public record MarchandiseDisponible(Long clientId, Long commandeId, String pointRecuperation) {
+    public record MarchandiseDisponible(Long clientId, Long commandeId,
+                                        Long expeditionId, String pointRecuperation) {
     }
 
     /**

@@ -430,6 +430,49 @@ class ParcoursLogistiqueTest {
         assertThat(retrait.getClientId()).isEqualTo(clientId);
     }
 
+    /**
+     * 🎯 Le code de retrait arrive DANS LES DISCUSSIONS du client.
+     *
+     * <p>C'est l'annonce la plus importante du système : le code est le seul
+     * moyen de prouver qu'un colis est le sien. Sans lui, la marchandise reste
+     * au comptoir.</p>
+     *
+     * <p>Et depuis D-53, un compte peut n'avoir ni adresse e-mail ni numéro —
+     * un compte TikTok n'en a aucun des deux. La discussion devient alors son
+     * <b>unique</b> canal.</p>
+     *
+     * <p>⚠️ Le code ne voyage <b>pas</b> dans l'événement, exprès : une
+     * bannière de notification s'affiche sur un écran verrouillé. L'écouteur va
+     * le lire lui-même, parce qu'une discussion, elle, est derrière
+     * l'authentification.</p>
+     */
+    @Test
+    @DisplayName("le code de retrait est annoncé au client, dans ses discussions")
+    void leCodeDeRetraitEstAnnonce() {
+        Colis colis = colisPret();
+        Long expeditionId = colis.getExpedition().getId();
+        expeditions.enregistrer(colis.getId(), entrepotId, responsableId, TypeEvenement.DEPART, null);
+        expeditions.enregistrer(colis.getId(), pointRetraitId, responsableId, TypeEvenement.ARRIVEE, null);
+
+        RetraitMarchandise retrait = expeditions.preparerRetrait(expeditionId);
+
+        assertThat(evenementsPublies.stream(EvenementsExpedition.MarchandiseDisponible.class))
+                .as("l arrivee doit etre annoncee")
+                .isNotEmpty();
+
+        String annonces = jdbc.queryForObject("""
+                SELECT coalesce(string_agg(m.contenu, ' | '), '')
+                  FROM message m
+                  JOIN conversation c ON c.id = m.conversation_id
+                 WHERE c.commande_id = ?
+                """, String.class, commande.id());
+
+        assertThat(annonces)
+                .as("le client doit lire son code la ou il relit ce qu on lui dit")
+                .contains(retrait.getCodeRetrait())
+                .contains("arrivée");
+    }
+
     @Test
     @DisplayName("le comptoir montre ce que le code désigne, sans rien remettre")
     void comptoirAvantRemise() {

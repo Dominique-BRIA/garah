@@ -2735,3 +2735,53 @@ code de retrait sans que personne n'ait confirmé la contrôler. Seul Google
 atteste, et seul Google produit un compte `email_verifie = true`.
 
 **Vérifié.** 479 tests verts sur base vierge, dont 2 nouveaux.
+
+---
+
+## D-54 — Le code de retrait part tout seul, dans les discussions
+
+**Date :** 16/09/2026
+**Statut :** ✅ actée — **répond au reste-à-faire de D-53**, et mieux que ce
+qui y était proposé.
+
+**Ce que D-53 proposait, et pourquoi c'était faible.** Signaler à l'équipe
+logistique qu'une commande vient d'un compte sans canal externe. Un signalement
+prévient l'équipe ; il ne prévient **pas le client**. Le colis attend toujours.
+
+**Ce qui existait déjà, et que personne n'avait relié.** `annoncer()` écrit dans
+les discussions du client au nom de GARAH. Le **départ** l'utilisait déjà pour
+transmettre le numéro de suivi (D-43). L'**arrivée**, non — alors que c'est elle
+qui porte le code de retrait, la seule chose qui permette d'emporter la
+marchandise.
+
+**Choix.** `AnnoncesDeLivraison` écoute désormais `MarchandiseDisponible` et
+écrit le code de retrait dans la discussion de la commande.
+
+**🎯 Ce que ça change pour D-53.** Un compte sans adresse ni numéro — un compte
+TikTok — n'est plus injoignable : son code l'attend dans ses discussions, à
+l'endroit où il relit déjà ce qu'on lui a dit. Le risque rouvert par D-53 se
+referme, sans rien exiger de lui à l'inscription.
+
+**⚠️ Le code n'est PAS dans l'événement, et ne doit jamais y être.** Une
+notification poussée affiche une bannière sur un **écran verrouillé**, à la vue
+de qui passe. L'événement ne porte donc que `expeditionId` ; l'écouteur lit le
+code lui-même, parce qu'une discussion est derrière l'authentification.
+
+```text
+notification poussee   « votre commande est arrivee a Bangui »   sans le code
+discussion             « … Code de retrait : 4821 … »            avec le code
+```
+
+On ne peut pas l'afficher par distraction, puisque celui qui affiche ne l'a pas.
+
+**Et une discussion plutôt qu'une notification**, pour la raison qui valait déjà
+au départ : une notification s'efface d'un geste et ne se relit pas. Un code de
+retrait sert des jours plus tard, se recopie, et se transmet à qui ira chercher
+le colis.
+
+**Si le code manque**, l'arrivée est annoncée quand même, sans lui. Renoncer à
+toute l'annonce laisserait le client ignorer que son colis est là — le pire des
+deux.
+
+**Vérifié.** 480 tests verts sur base vierge. Le test parcourt la chaîne réelle,
+du départ jusqu'à la lecture du message en base.
