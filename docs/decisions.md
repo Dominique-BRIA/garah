@@ -2791,7 +2791,9 @@ du départ jusqu'à la lecture du message en base.
 ## D-55 — MoneyFusion encaisse, Campay reste en réserve
 
 **Date :** 09/10/2026
-**Statut :** ✅ actée — serveur livré (lot A). Boutique et mobile à suivre.
+**Statut :** ✅ actée — livrée en trois lots, le 09/10/2026 : serveur (`garah`),
+boutique web et mobile (`garah-client`). Le réglage reste sur `CAMPAY` tant que
+les conditions ci-dessous ne sont pas remplies.
 **Cours :** chapitre [13 bis](cours/13b-deux-fournisseurs-de-paiement.md).
 
 **Contexte.** Campay n'a jamais quitté le bac à sable : aucun encaissement réel
