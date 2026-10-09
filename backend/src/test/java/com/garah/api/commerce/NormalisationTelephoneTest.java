@@ -34,7 +34,11 @@ class NormalisationTelephoneTest {
             "'699000000',          237699000000",
             "'00237699000000',     237699000000",
             "'(237) 699-000-000',  237699000000",
-            "'237 699 000 000',    237699000000"
+            "'237 699 000 000',    237699000000",
+            // Centrafrique : 8 chiffres en local, indicatif 236.
+            "'70 77 88 15',        23670778815",
+            "'+236 70 77 88 15',   23670778815",
+            "'0023670778815',      23670778815"
     })
     @DisplayName("accepte les écritures usuelles et produit la même valeur")
     void normaliseLesFormesUsuelles(String saisi, String attendu) {

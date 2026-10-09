@@ -570,6 +570,17 @@ public class ServicePaiementMobile {
         if (chiffres.length() == 9) {
             chiffres = "237" + chiffres;
         }
+        // 7xxxxxxx (8 chiffres, format centrafricain local) → 236 7xxxxxxx
+        //
+        // ⚠️ Sans cette ligne, un client de Bangui qui tape son numéro comme
+        //    il le connaît — « 70 77 88 15 » — était refusé comme
+        //    « inexploitable », alors que MoneyFusion encaisse Orange Money
+        //    Centrafrique (confirmé par leur support le 09/10/2026). Les deux
+        //    formats ne se chevauchent pas : 9 chiffres au Cameroun, 8 en
+        //    Centrafrique.
+        if (chiffres.length() == 8) {
+            chiffres = "236" + chiffres;
+        }
 
         if (chiffres.length() < 11 || chiffres.length() > 15) {
             throw new RegleMetierViolee("TELEPHONE_INVALIDE",

@@ -308,6 +308,10 @@ public class ClientMoneyFusion implements PasserellePaiement {
         if (chiffres.length() == 12 && chiffres.startsWith("237")) {
             chiffres = chiffres.substring(3);
         }
+        // Centrafrique : 236 + 8 chiffres.
+        if (chiffres.length() == 11 && chiffres.startsWith("236")) {
+            chiffres = chiffres.substring(3);
+        }
         return chiffres;
     }
 

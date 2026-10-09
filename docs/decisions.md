@@ -2849,9 +2849,12 @@ n'ouvre donc rien.
 - Toutes les IP sortantes d'Azure déclarées dans le tableau de bord.
 - La boutique et le mobile livrés (lots B et C), et le **nouvel APK diffusé** :
   une ancienne version attend un code USSD qui ne viendra jamais.
-- La Centrafrique n'a **aucun** moyen de paiement chez MoneyFusion (liste
-  publique consultée le 09/10/2026). Un client de Bangui ne peut payer qu'avec
-  un compte MTN ou Orange camerounais — comme avec Campay.
+- **Centrafrique : corrigé le même jour.** La liste publique consultée
+  (`/withdraw/methods`) était celle des **retraits**, et n'y montrait rien.
+  Pour les **encaissements**, le support MoneyFusion confirme que la page de
+  paiement accepte Orange Money Centrafrique. Conséquence dans le code : un
+  numéro à 8 chiffres reçoit l'indicatif 236, au lieu d'être refusé comme
+  « inexploitable ». À confirmer par un paiement réel depuis un +236.
 
 **Vérifié.** 517 tests verts sur la base locale, dont 17 qui rejouent les
 réponses exactes de la documentation MoneyFusion contre un faux serveur, et 4
