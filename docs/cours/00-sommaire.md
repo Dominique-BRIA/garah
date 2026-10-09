@@ -116,6 +116,7 @@ Chapitre 22.
 | 11 | [Stock et concurrence](11-stock-et-concurrence.md) — chapitre clé | ✅ écrit |
 | 12 | [Panier et commande](12-panier-et-commande.md) | ✅ écrit |
 | 13 | [Paiement mobile money](13-paiement-mobile-money.md) | ✅ écrit |
+| 13 bis | [Deux fournisseurs de paiement : Campay et MoneyFusion](13b-deux-fournisseurs-de-paiement.md) — D-55 | ✅ écrit |
 | 14 | [Conversations et négociation](14-conversations-et-negociation.md) | ✅ écrit |
 | 15 | [Logistique : expédition, itinéraire, traçabilité](15-logistique.md) | ✅ écrit |
 | 16 | [SAV : réclamations et retours](16-sav-reclamations-et-retours.md) | ✅ écrit |

@@ -171,8 +171,18 @@ export const MOYENS_PAIEMENT: readonly MoyenPaiement[] = [
   'VIREMENT',
 ];
 
-/** Le libelle d'un moyen de paiement, tel qu'on le nomme au Cameroun. */
-export function libelleMoyen(moyen: string): string {
+/**
+ * Le libelle d'un moyen de paiement, tel qu'on le nomme au Cameroun.
+ *
+ * <p>⚠️ Le moyen peut etre NUL depuis D-55 : avec MoneyFusion, le client le
+ * choisit sur la page de paiement, et GARAH ne l'apprend qu'a la
+ * confirmation. Ce n'est pas une donnee manquante, c'est un fait — on le dit,
+ * plutot que laisser une case vide qui ressemblerait a un defaut.</p>
+ */
+export function libelleMoyen(moyen: string | null, fournisseur?: string | null): string {
+  if (!moyen) {
+    return fournisseur === 'MONEYFUSION' ? 'Choisi chez MoneyFusion' : 'Non précisé';
+  }
   switch (moyen) {
     case 'MTN_MOMO':
       return 'MTN MoMo';
@@ -195,7 +205,10 @@ export interface Paiement {
   readonly type: TypePaiement;
   readonly montant: number;
   readonly devise: string;
-  readonly moyen: MoyenPaiement;
+  /** Nul tant que le client ne l'a pas choisi chez le fournisseur (D-55). */
+  readonly moyen: MoyenPaiement | null;
+  /** CAMPAY, MONEYFUSION, ou nul hors API (virement, saisie manuelle). */
+  readonly fournisseur: string | null;
   readonly statut: StatutPaiement;
   readonly referenceTransaction: string | null;
   readonly dateInitiation: string;

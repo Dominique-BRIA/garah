@@ -188,6 +188,26 @@ class SecuriteHttpTest {
                 .andExpect(jsonPath("$.traite").value(false));
     }
 
+    /**
+     * Le webhook MoneyFusion (D-55), avec la forme exacte de leur
+     * documentation. Même règle : ouvert, et 200 sur un jeton inconnu — sans
+     * appeler MoneyFusion, sinon n'importe qui nous ferait émettre des
+     * requêtes sortantes à volonté.
+     */
+    @Test
+    @DisplayName("le webhook MoneyFusion est ouvert et repond 200 sur un jeton inconnu")
+    void leWebhookMoneyFusionEstPublic() throws Exception {
+        http.perform(post("/api/paiements/notifications/moneyfusion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"event": "payin.session.completed",
+                                 "tokenPay": "jeton-totalement-invente",
+                                 "Montant": 1000000, "statut": "paid"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.traite").value(false));
+    }
+
     @Test
     @DisplayName("les points de recuperation se lisent sans compte")
     void lesPointsDeRecuperationSontPublics() throws Exception {

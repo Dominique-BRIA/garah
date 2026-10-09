@@ -61,7 +61,10 @@ class ContratDePaiementTest {
                         a déjà son téléphone en main.""")
                 .containsExactlyInAnyOrder(
                         "id", "statut", "montant", "moyen",
-                        "referenceTransaction", "codeUssd");
+                        "referenceTransaction", "codeUssd",
+                        // D-55 : la page MoneyFusion, et l adresse que
+                        // l application mobile guette pour la refermer.
+                        "urlPaiement", "urlRetour");
     }
 
     @Test

@@ -278,7 +278,7 @@
                 </div>
 
                 <p class="paiement__detail">
-                  {{ moyen(p.moyen) }} · {{ dateHeure(p.dateInitiation) }}
+                  {{ moyen(p.moyen, p.fournisseur) }} · {{ dateHeure(p.dateInitiation) }}
                 </p>
 
                 @if (p.referenceTransaction) {

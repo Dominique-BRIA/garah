@@ -101,7 +101,7 @@
                 <span class="attenue">—</span>
               }
             </td>
-            <td>{{ moyen(p.moyen) }}</td>
+            <td>{{ moyen(p.moyen, p.fournisseur) }}</td>
             <td>
               @if (p.referenceTransaction) {
                 <code class="reference">{{ p.referenceTransaction }}</code>

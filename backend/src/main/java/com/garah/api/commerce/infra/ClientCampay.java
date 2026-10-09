@@ -1,5 +1,6 @@
 package com.garah.api.commerce.infra;
 
+import com.garah.api.commerce.domaine.FournisseurPaiement;
 import com.garah.api.commun.erreur.ErreurMetier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,7 @@ import java.util.Optional;
  * fichier que personne ne surveille.</p>
  */
 @Component
-public class ClientCampay {
+public class ClientCampay implements PasserellePaiement {
 
     private static final Logger log = LoggerFactory.getLogger(ClientCampay.class);
 
@@ -76,6 +77,7 @@ public class ClientCampay {
     private final String utilisateur;
     private final String motDePasse;
     private final boolean configure;
+    private final boolean demonstration;
 
     /** Jeton courant et péremption. {@code volatile} : plusieurs requêtes en parallèle. */
     private volatile String jeton;
@@ -99,6 +101,10 @@ public class ClientCampay {
                 && !this.utilisateur.isBlank()
                 && !this.motDePasse.isBlank();
 
+        // ⚠️ Non configuré compte AUSSI comme démonstration : une boutique sans
+        //    opérateur n'encaisse pas davantage qu'une boutique en bac à sable.
+        this.demonstration = !configure || base.toLowerCase(java.util.Locale.ROOT).contains("demo");
+
         this.http = constructeur
                 .baseUrl(base.isBlank() ? "https://campay-non-configure.invalid" : base)
                 .build();
@@ -113,83 +119,20 @@ public class ClientCampay {
     }
 
     /** Campay est-il utilisable ? Sert à répondre 503 plutôt qu'à planter. */
+    @Override
     public boolean estConfigure() {
         return configure;
     }
 
-    /**
-     * Le service de paiement est indisponible.
-     *
-     * <p>{@code 503}, pas {@code 500} : la commande du client est intacte, la
-     * panne est chez nous ou chez l'opérateur, et réessayer plus tard a du
-     * sens. Un {@code 500} dirait « bug », et le support chercherait au mauvais
-     * endroit.</p>
-     */
-    /**
-     * L'opérateur a <b>répondu</b>, et il a refusé.
-     *
-     * <h2>🎯 Ce que cette classe sépare</h2>
-     *
-     * <p>Tout échec d'appel devenait « le service de paiement est
-     * momentanément injoignable ». C'était faux la moitié du temps : un
-     * {@code 400} signifie que Campay a répondu parfaitement, pour dire
-     * <b>non</b> — montant trop faible, numéro invalide, opérateur qui ne
-     * correspond pas au préfixe.</p>
-     *
-     * <p>⚠️ Le coût du mélange : on cherche une panne réseau pendant que la
-     * réponse était sur la table. Un paiement de 20 FCFA était refusé parce
-     * que Campay exige un minimum, et l'écran annonçait une indisponibilité.</p>
-     *
-     * <p>{@code 422} et non {@code 503} : rien n'est en panne, et réessayer à
-     * l'identique donnera le même refus.</p>
-     */
-    public static class OperateurRefuse extends ErreurMetier {
-        public OperateurRefuse(String message) {
-            super("OPERATEUR_REFUSE", message);
-        }
-
-        @Override
-        public HttpStatus getStatut() {
-            return HttpStatus.UNPROCESSABLE_ENTITY;
-        }
+    /** Un bac à sable n'encaisse rien de réel ; non configuré non plus. */
+    @Override
+    public boolean estDemonstration() {
+        return demonstration;
     }
 
-    public static class OperateurIndisponible extends ErreurMetier {
-        public OperateurIndisponible(String message) {
-            super("OPERATEUR_INDISPONIBLE", message);
-        }
-
-        @Override
-        public HttpStatus getStatut() {
-            return HttpStatus.SERVICE_UNAVAILABLE;
-        }
-    }
-
-    /** Ce que Campay renvoie quand on lui demande d'encaisser. */
-    public record Collecte(String reference, String codeUssd, String operateur) {
-    }
-
-    /**
-     * L'état d'une transaction chez l'opérateur — <b>la source de vérité</b>.
-     *
-     * @param statut {@code SUCCESSFUL}, {@code FAILED} ou {@code PENDING}
-     */
-    public record EtatTransaction(String reference, String statut, BigDecimal montant,
-                                  String operateur, String referenceOperateur,
-                                  String codeErreur) {
-
-        public boolean reussi() {
-            return "SUCCESSFUL".equalsIgnoreCase(statut);
-        }
-
-        public boolean echoue() {
-            return "FAILED".equalsIgnoreCase(statut);
-        }
-
-        /** Tout ce qui n'est ni un succès ni un échec est encore en cours. */
-        public boolean enCours() {
-            return !reussi() && !echoue();
-        }
+    @Override
+    public FournisseurPaiement fournisseur() {
+        return FournisseurPaiement.CAMPAY;
     }
 
     /**
@@ -199,12 +142,17 @@ public class ClientCampay {
      * téléphone. <b>Rien n'est encaissé à ce stade</b> : la confirmation
      * arrivera par le webhook, ou par la réconciliation périodique.</p>
      *
-     * @param referenceExterne notre propre identifiant de paiement — c'est lui
-     *                         qui permet de rapprocher les deux systèmes le
-     *                         jour d'un litige
+     * <p>Notre identifiant de paiement part en {@code external_reference} :
+     * c'est lui qui permet de rapprocher les deux systèmes le jour d'un
+     * litige.</p>
      */
-    public Collecte encaisser(BigDecimal montant, String telephone,
-                              String description, String referenceExterne) {
+    @Override
+    public Collecte encaisser(DemandeEncaissement demande) {
+        BigDecimal montant = demande.montant();
+        String telephone = demande.telephone();
+        String description = "GARAH " + demande.numeroCommande();
+        String referenceExterne = String.valueOf(demande.paiementId());
+
         // ⚠️ AUCUN CONTRÔLE DE MONTANT ICI, et c'est une correction.
         //
         //    Une version précédente refusait en dessous de 100 FCFA, sur la
@@ -249,7 +197,7 @@ public class ClientCampay {
                     "L'opérateur n'a pas renvoyé de référence de transaction.");
         }
 
-        return new Collecte(reference, texte(reponse, "ussd_code"), texte(reponse, "operator"));
+        return new Collecte(reference, texte(reponse, "ussd_code"), texte(reponse, "operator"), null);
     }
 
     /**
@@ -267,6 +215,7 @@ public class ClientCampay {
      *
      * @return vide si Campay ne connaît pas cette référence
      */
+    @Override
     public Optional<EtatTransaction> statut(String reference) {
         exigerConfiguration();
 
@@ -277,11 +226,26 @@ public class ClientCampay {
 
         return Optional.of(new EtatTransaction(
                 texte(reponse, "reference"),
-                texte(reponse, "status"),
+                issueDe(texte(reponse, "status")),
                 montant(reponse.get("amount")),
                 texte(reponse, "operator"),
                 texte(reponse, "operator_reference"),
                 texte(reponse, "code")));
+    }
+
+    /**
+     * Le vocabulaire de Campay : {@code SUCCESSFUL}, {@code FAILED} ou
+     * {@code PENDING}. Tout ce qui n'est ni un succès ni un échec est encore
+     * en cours.
+     */
+    static Issue issueDe(String statut) {
+        if ("SUCCESSFUL".equalsIgnoreCase(statut)) {
+            return Issue.REUSSIE;
+        }
+        if ("FAILED".equalsIgnoreCase(statut)) {
+            return Issue.ECHOUEE;
+        }
+        return Issue.EN_COURS;
     }
 
     // -------------------------------------------------------------------------

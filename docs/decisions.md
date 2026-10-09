@@ -2785,3 +2785,73 @@ deux.
 
 **Vérifié.** 480 tests verts sur base vierge. Le test parcourt la chaîne réelle,
 du départ jusqu'à la lecture du message en base.
+
+---
+
+## D-55 — MoneyFusion encaisse, Campay reste en réserve
+
+**Date :** 09/10/2026
+**Statut :** ✅ actée — serveur livré (lot A). Boutique et mobile à suivre.
+**Cours :** chapitre [13 bis](cours/13b-deux-fournisseurs-de-paiement.md).
+
+**Contexte.** Campay n'a jamais quitté le bac à sable : aucun encaissement réel
+n'a eu lieu. Le compte marchand MoneyFusion est ouvert et vérifié.
+
+**Ce que MoneyFusion change.** Ce n'est pas le même mécanisme :
+
+| | Campay | MoneyFusion |
+|---|---|---|
+| Parcours | fait sonner le téléphone | renvoie l'adresse d'une page de paiement |
+| Choix de l'opérateur | chez nous | sur sa page |
+| Webhook | signé (JWT) | **non signé**, plusieurs envois par paiement |
+| Consultation d'état | authentifiée | **sans authentification** |
+| Accès à l'API | identifiant + mot de passe | un **lien secret** + **IP déclarées** |
+| Bac à sable | oui | **non** |
+
+**Choix (validés par Dominique).**
+
+1. **Campay reste dans le code**, derrière le réglage
+   `GARAH_PAIEMENT_FOURNISSEUR` (`CAMPAY` par défaut). Revenir en arrière ne
+   demande aucun déploiement de code.
+2. **Le client choisit MTN ou Orange sur la page MoneyFusion.** GARAH
+   l'apprend à la confirmation.
+3. **Sur le mobile, la page s'ouvre dans l'application** (page intégrée), qui
+   guette l'adresse de retour pour se refermer.
+
+**🎯 La règle structurante : un paiement se souvient de son fournisseur.** Le
+réglage ne décide que des paiements à venir. Un paiement Campay resté en
+attente au moment de la bascule continue d'être interrogé chez Campay —
+sinon il serait abandonné au bout de 20 minutes, client débité, commande
+annulée. D'où la colonne `paiement.fournisseur` (V40).
+
+**Le moyen devient nullable**, tenu par une contrainte plutôt que par une
+valeur inventée : `moyen IS NOT NULL OR fournisseur IS NOT NULL`. Un moyen
+qu'on ne sait pas traduire **n'empêche pas** la confirmation : l'argent est
+là. L'annonce brute est gardée dans `moyen_fournisseur`.
+
+**Ce qui ne change pas.** Le webhook reste un signal : on n'en retient que
+`tokenPay`, et l'état est redemandé à MoneyFusion. Qu'il ne soit pas signé
+n'ouvre donc rien.
+
+**⚠️ Restent à vérifier au premier paiement réel.**
+
+- **`Montant` est-il brut ou net ?** La documentation se contredit. On
+  compare `Montant + frais` au prix de la commande, et on journalise les deux.
+- **`no paid` est-il définitif ?** On le traite comme « en cours » ; le délai
+  d'abandon (20 min) le clôt s'il n'aboutit pas.
+- **Le format attendu de `numeroSend`.** On envoie le format national
+  (`699000000`), comme dans leurs exemples.
+
+**⚠️ Conditions avant de basculer le réglage sur `MONEYFUSION`.**
+
+- Toutes les IP sortantes d'Azure déclarées dans le tableau de bord.
+- La boutique et le mobile livrés (lots B et C), et le **nouvel APK diffusé** :
+  une ancienne version attend un code USSD qui ne viendra jamais.
+- La Centrafrique n'a **aucun** moyen de paiement chez MoneyFusion (liste
+  publique consultée le 09/10/2026). Un client de Bangui ne peut payer qu'avec
+  un compte MTN ou Orange camerounais — comme avec Campay.
+
+**Vérifié.** 517 tests verts sur la base locale, dont 17 qui rejouent les
+réponses exactes de la documentation MoneyFusion contre un faux serveur, et 4
+qui passent par la vraie base (moyen appris à la confirmation, moyen inconnu,
+contrainte V40, moyen choisi chez nous non écrasé).

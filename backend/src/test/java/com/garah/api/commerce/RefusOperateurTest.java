@@ -1,6 +1,7 @@
 package com.garah.api.commerce;
 
 import com.garah.api.commerce.infra.ClientCampay;
+import com.garah.api.commerce.infra.PasserellePaiement;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -40,7 +41,7 @@ class RefusOperateurTest {
     void leRefusRend422() {
         // 503 dirait « réessayez plus tard ». Or réessayer à l'identique
         // donnera le même refus : le montant ne change pas tout seul.
-        var refus = new ClientCampay.OperateurRefuse("Montant trop faible.");
+        var refus = new PasserellePaiement.OperateurRefuse("Montant trop faible.");
 
         assertThat(refus.getStatut()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     }
@@ -50,7 +51,7 @@ class RefusOperateurTest {
     void lIndisponibiliteRend503() {
         // ⚠️ La distinction ne vaut que si les DEUX restent justes : ramener
         //    toute erreur à un 422 déplacerait simplement le mensonge.
-        var panne = new ClientCampay.OperateurIndisponible("Injoignable.");
+        var panne = new PasserellePaiement.OperateurIndisponible("Injoignable.");
 
         assertThat(panne.getStatut()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     }

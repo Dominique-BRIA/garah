@@ -302,8 +302,8 @@ export class FicheCommande {
     return STATUTS_PAIEMENT.find((s) => s.code === statut)?.libelle ?? statut;
   }
 
-  protected moyen(code: string): string {
-    return libelleMoyen(code);
+  protected moyen(code: string | null, fournisseur?: string | null): string {
+    return libelleMoyen(code, fournisseur);
   }
 
   protected montant(valeur: number | null, devise: string): string {

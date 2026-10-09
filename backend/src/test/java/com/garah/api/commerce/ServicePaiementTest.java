@@ -301,4 +301,62 @@ class ServicePaiementTest {
                 .isEqualByComparingTo("32000.00");
         assertThat(apres.commandes() - avant.commandes()).isEqualTo(1);
     }
+
+    // -------------------------------------------------------------------------
+    // D-55 — MoneyFusion : le moyen n'est connu qu'à la confirmation
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("MoneyFusion : le moyen arrive avec la confirmation, et la commande est payée")
+    void moneyFusionApprendLeMoyenALaConfirmation() {
+        // Le client choisit MTN ou Orange SUR LA PAGE MoneyFusion : à la
+        // création, GARAH ne le sait pas.
+        Paiement paiement = paiements.initier(commande.id(), null, FournisseurPaiement.MONEYFUSION);
+        assertThat(paiement.getMoyen()).isNull();
+
+        paiements.confirmer(paiement.getId(), "MF-JETON-0001", MoyenPaiement.ORANGE_MONEY, "orange");
+
+        assertThat(commandes.detail(commande.id()).statut()).isEqualTo("PAYEE");
+        var ligne = jdbc.queryForMap(
+                "SELECT moyen, fournisseur, moyen_fournisseur FROM paiement WHERE id = ?",
+                paiement.getId());
+        assertThat(ligne.get("moyen")).isEqualTo("ORANGE_MONEY");
+        assertThat(ligne.get("fournisseur")).isEqualTo("MONEYFUSION");
+        assertThat(ligne.get("moyen_fournisseur")).isEqualTo("orange");
+    }
+
+    @Test
+    @DisplayName("⚠️ un moyen qu'on ne sait pas nommer ne bloque pas la confirmation")
+    void moyenInconnuNeBloquePas() {
+        // L'argent est encaissé : refuser de confirmer laisserait un client
+        // débité avec une commande impayée. L'annonce brute reste lisible.
+        Paiement paiement = paiements.initier(commande.id(), null, FournisseurPaiement.MONEYFUSION);
+
+        paiements.confirmer(paiement.getId(), "MF-JETON-0002", null, "wave");
+
+        assertThat(commandes.detail(commande.id()).statut()).isEqualTo("PAYEE");
+        assertThat(jdbc.queryForObject("SELECT moyen_fournisseur FROM paiement WHERE id = ?",
+                String.class, paiement.getId())).isEqualTo("wave");
+    }
+
+    @Test
+    @DisplayName("⚠️ la base refuse un paiement sans moyen ET sans fournisseur")
+    void sansMoyenNiFournisseur() {
+        // Un virement ou une saisie manuelle n'a personne à qui redemander
+        // son moyen : il doit être dit à la saisie (paiement_moyen_connu, V40).
+        assertThatThrownBy(() -> paiements.initier(commande.id(), null, null))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("⚠️ le moyen choisi chez nous n'est pas écrasé par l'annonce du fournisseur")
+    void moyenConnuNonEcrase() {
+        Paiement paiement = paiements.initier(commande.id(), MoyenPaiement.MTN_MOMO,
+                FournisseurPaiement.CAMPAY);
+
+        paiements.confirmer(paiement.getId(), "CP-REF-0003", MoyenPaiement.ORANGE_MONEY, "Orange");
+
+        assertThat(jdbc.queryForObject("SELECT moyen FROM paiement WHERE id = ?",
+                String.class, paiement.getId())).isEqualTo("MTN_MOMO");
+    }
 }

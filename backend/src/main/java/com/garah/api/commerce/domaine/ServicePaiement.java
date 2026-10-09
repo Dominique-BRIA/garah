@@ -78,6 +78,17 @@ public class ServicePaiement {
      */
     @Transactional
     public Paiement initier(Long commandeId, MoyenPaiement moyen) {
+        return initier(commandeId, moyen, null);
+    }
+
+    /**
+     * @param moyen       {@code null} si le client le choisira chez le
+     *                    fournisseur (MoneyFusion)
+     * @param fournisseur chez qui le paiement sera demandé ; c'est lui qu'on
+     *                    interrogera ensuite, quel que soit le réglage du jour
+     */
+    @Transactional
+    public Paiement initier(Long commandeId, MoyenPaiement moyen, FournisseurPaiement fournisseur) {
         Commande commande = commandes.findById(commandeId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Commande", commandeId));
 
@@ -93,7 +104,7 @@ public class ServicePaiement {
             throw new ConflitEtat("DEJA_PAYEE", "Cette commande est déjà réglée.");
         }
 
-        return paiements.save(Paiement.encaissement(commandeId, reste, moyen));
+        return paiements.save(Paiement.encaissement(commandeId, reste, moyen, fournisseur));
     }
 
     /**
@@ -117,6 +128,17 @@ public class ServicePaiement {
      */
     @Transactional
     public Paiement confirmer(Long paiementId, String referenceTransaction) {
+        return confirmer(paiementId, referenceTransaction, null, null);
+    }
+
+    /**
+     * @param moyenConstate le moyen que le fournisseur a vu passer, traduit
+     *                      chez nous — {@code null} s'il n'a pas pu l'être
+     * @param moyenAnnonce  le même, mot pour mot, tel que le fournisseur l'a dit
+     */
+    @Transactional
+    public Paiement confirmer(Long paiementId, String referenceTransaction,
+                              MoyenPaiement moyenConstate, String moyenAnnonce) {
         Paiement paiement = paiements.findById(paiementId)
                 .orElseThrow(() -> RessourceIntrouvable.de("Paiement", paiementId));
 
@@ -132,6 +154,7 @@ public class ServicePaiement {
                     "Ce paiement est déjà clos, il ne peut plus être confirmé.");
         }
 
+        paiement.noterMoyen(moyenConstate, moyenAnnonce);
         paiement.confirmer(referenceTransaction);
         tentatives.save(new TentativePaiement(paiement.getId(), "CONFIRME", null, null));
 

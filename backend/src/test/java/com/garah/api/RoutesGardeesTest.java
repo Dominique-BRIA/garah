@@ -108,6 +108,8 @@ class RoutesGardeesTest {
             // ⚠️ Elle ne retient que la référence et redemande l'état réel à
             //    Campay : forger une notification ne sert a rien.
             "ControleurPaiement.notificationCampay",
+            // Idem pour MoneyFusion, qui ne signe même pas (D-55).
+            "ControleurPaiement.notificationMoneyFusion",
 
             // --- PROPRIETE : le panier ---
             "ControleurPanier.contenu", "ControleurPanier.ajouter",

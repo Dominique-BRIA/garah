@@ -38,9 +38,22 @@ public class Paiement {
     @Column(nullable = false, length = 3)
     private String devise = "XAF";
 
+    /**
+     * {@code null} tant que le client n'a pas choisi sur la page du
+     * fournisseur (V40) — MoneyFusion ne nous le dit qu'à la confirmation.
+     */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private MoyenPaiement moyen;
+
+    /** Chez qui le paiement a été demandé. C'est LUI qu'on interroge (V40). */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private FournisseurPaiement fournisseur;
+
+    /** Le moyen tel que le fournisseur l'a annoncé, non traduit (V40). */
+    @Column(name = "moyen_fournisseur", length = 40)
+    private String moyenFournisseur;
 
     /** Unique quand elle existe (V18) : le webhook peut être rejoué. */
     @Column(name = "reference_transaction", length = 100)
@@ -67,11 +80,22 @@ public class Paiement {
     }
 
     public static Paiement encaissement(Long commandeId, BigDecimal montant, MoyenPaiement moyen) {
+        return encaissement(commandeId, montant, moyen, null);
+    }
+
+    /**
+     * @param fournisseur {@code null} pour un paiement qui ne passe par aucune
+     *                    API — et alors le moyen est obligatoire
+     *                    ({@code paiement_moyen_connu}, V40)
+     */
+    public static Paiement encaissement(Long commandeId, BigDecimal montant, MoyenPaiement moyen,
+                                        FournisseurPaiement fournisseur) {
         Paiement p = new Paiement();
         p.commandeId = commandeId;
         p.type = TypePaiement.ENCAISSEMENT;
         p.montant = montant;
         p.moyen = moyen;
+        p.fournisseur = fournisseur;
         return p;
     }
 
@@ -105,6 +129,22 @@ public class Paiement {
         this.dateConfirmation = Instant.now();
     }
 
+    /**
+     * Ce que le fournisseur dit du moyen utilisé.
+     *
+     * <p>⚠️ Ne remplace JAMAIS un moyen déjà connu : celui choisi chez nous
+     * avec Campay est un fait, et une traduction approximative d'un libellé
+     * ne doit pas l'écraser. L'annonce brute, elle, est toujours gardée.</p>
+     */
+    void noterMoyen(MoyenPaiement constate, String annonce) {
+        if (this.moyen == null && constate != null) {
+            this.moyen = constate;
+        }
+        if (annonce != null && !annonce.isBlank()) {
+            this.moyenFournisseur = annonce.length() > 40 ? annonce.substring(0, 40) : annonce;
+        }
+    }
+
     void echouer() {
         this.statut = StatutPaiement.ECHOUE;
     }
@@ -120,6 +160,8 @@ public class Paiement {
     public BigDecimal getMontant() { return montant; }
     public String getDevise() { return devise; }
     public MoyenPaiement getMoyen() { return moyen; }
+    public FournisseurPaiement getFournisseur() { return fournisseur; }
+    public String getMoyenFournisseur() { return moyenFournisseur; }
     public String getReferenceTransaction() { return referenceTransaction; }
     public StatutPaiement getStatut() { return statut; }
     public String getOrigineType() { return origineType; }

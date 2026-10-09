@@ -63,6 +63,22 @@ public class ControleurConfiguration {
     private final boolean paiementDemonstration;
 
     /**
+     * Le fournisseur des nouveaux paiements : {@code CAMPAY} ou
+     * {@code MONEYFUSION} (D-55).
+     *
+     * <p>L'écran en dépend AVANT le clic : avec Campay il propose MTN ou
+     * Orange, avec MoneyFusion il n'en propose aucun — le choix se fait sur la
+     * page de paiement.</p>
+     *
+     * <p>⚠️ Duplication assumée de la lecture faite par
+     * {@code ServicePaiementMobile}, pour la même raison que
+     * {@link #paiementDemonstration}. Une valeur inconnue empêche le serveur
+     * de démarrer là-bas : on ne peut donc pas annoncer ici une valeur que le
+     * paiement refuserait.</p>
+     */
+    private final String fournisseurPaiement;
+
+    /**
      * L'identifiant du client Google à utiliser côté navigateur.
      *
      * <h2>Pourquoi l'API l'annonce, plutôt que chaque frontend le porter</h2>
@@ -133,6 +149,8 @@ public class ControleurConfiguration {
     public ControleurConfiguration(StockageObjet stockage,
                                    @Value("${GARAH_VERSION:dev}") String version,
                                    @Value("${GARAH_CAMPAY_BASE_URL:}") String urlPaiement,
+                                   @Value("${GARAH_PAIEMENT_FOURNISSEUR:CAMPAY}") String fournisseur,
+                                   @Value("${GARAH_MONEYFUSION_API_URL:}") String urlMoneyFusion,
                                    @Value("${GARAH_GOOGLE_CLIENT_IDS:}") String clientsGoogle,
                                    @Value("${GARAH_WHATSAPP_PHONE_NUMBER_ID:}") String numeroWhatsApp,
                                    @Value("${GARAH_WHATSAPP_TOKEN:}") String jetonWhatsApp,
@@ -165,7 +183,18 @@ public class ControleurConfiguration {
         // ⚠️ Non configuré compte AUSSI comme démonstration : une boutique sans
         //    opérateur n'encaisse pas davantage qu'une boutique en bac à sable.
         //    Annoncer « production » dans ce cas serait le pire des deux.
-        this.paiementDemonstration = url.isBlank() || url.contains("demo");
+        String actif = fournisseur == null || fournisseur.isBlank()
+                ? "CAMPAY" : fournisseur.strip().toUpperCase(java.util.Locale.ROOT);
+        this.fournisseurPaiement = actif;
+
+        if ("MONEYFUSION".equals(actif)) {
+            // MoneyFusion n'a pas de bac à sable : configuré, il encaisse pour
+            // de bon. Non configuré, rien n'est encaissé.
+            this.paiementDemonstration = urlMoneyFusion == null
+                    || !urlMoneyFusion.strip().startsWith("https://");
+        } else {
+            this.paiementDemonstration = url.isBlank() || url.contains("demo");
+        }
     }
 
     @GetMapping
@@ -202,6 +231,9 @@ public class ControleurConfiguration {
                 // ⚠️ Vrai quand AUCUN argent ne circule : bac à sable, ou
                 //    opérateur non configuré. Voir le champ du même nom.
                 "paiementDemonstration", paiementDemonstration,
+                // D-55 : Campay demande MTN ou Orange avant le clic,
+                // MoneyFusion sur sa propre page.
+                "fournisseurPaiement", fournisseurPaiement,
 
                 // Vide = ne pas afficher « Continuer avec Google ». Voir le
                 // champ du même nom.

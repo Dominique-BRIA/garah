@@ -23,7 +23,10 @@ public record ResumePaiement(
         String type,
         BigDecimal montant,
         String devise,
+        /** {@code null} : choisi chez le fournisseur, pas encore connu (V40). */
         String moyen,
+        /** {@code CAMPAY}, {@code MONEYFUSION}, ou {@code null} hors API. */
+        String fournisseur,
         String statut,
         String referenceTransaction,
         Instant dateInitiation,
@@ -43,7 +46,9 @@ public record ResumePaiement(
     public static ResumePaiement de(Paiement p, String numero) {
         return new ResumePaiement(
                 p.getId(), p.getCommandeId(), numero, p.getType().name(),
-                p.getMontant(), p.getDevise(), p.getMoyen().name(),
+                p.getMontant(), p.getDevise(),
+                p.getMoyen() == null ? null : p.getMoyen().name(),
+                p.getFournisseur() == null ? null : p.getFournisseur().name(),
                 p.getStatut().name(), p.getReferenceTransaction(),
                 p.getDateInitiation(), p.getDateConfirmation());
     }

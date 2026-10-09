@@ -297,6 +297,11 @@ public class ConfigurationSecurite {
                         // montant.
                         .requestMatchers(HttpMethod.POST, "/api/paiements/notifications/campay")
                             .permitAll()
+                        // Même raisonnement pour MoneyFusion (D-55) : il ne
+                        // signe même pas ses notifications, et ça ne change
+                        // rien — on n'en retient que tokenPay.
+                        .requestMatchers(HttpMethod.POST, "/api/paiements/notifications/moneyfusion")
+                            .permitAll()
 
                         // La vitrine est ouverte : elle doit lire le catalogue
                         // sans jeton, sinon aucun visiteur ne voit un produit.

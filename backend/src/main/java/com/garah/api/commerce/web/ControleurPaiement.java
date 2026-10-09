@@ -203,6 +203,34 @@ public class ControleurPaiement {
         }
     }
 
+    /**
+     * Le webhook MoneyFusion. <b>Route publique</b>, pour la même raison que
+     * celle de Campay.
+     *
+     * <p>MoneyFusion ne signe pas ses notifications. Ça ne change rien à notre
+     * sécurité, qui n'a jamais reposé sur la signature : on ne retient que
+     * {@code tokenPay}, et on redemande l'état à MoneyFusion.</p>
+     *
+     * <p>⚠️ MoneyFusion envoie <b>plusieurs</b> notifications par paiement :
+     * {@code pending} répété, puis {@code completed} ou {@code cancelled}. On
+     * ne trie pas sur l'événement : chacune déclenche une vérification, et
+     * {@code ServicePaiement.confirmer()} est idempotent. Trier sur l'événement
+     * reviendrait à croire la notification.</p>
+     *
+     * <p>Toujours {@code 200}, comme pour Campay : sinon l'expéditeur rejoue.</p>
+     */
+    @PostMapping("/notifications/moneyfusion")
+    public ResponseEntity<Map<String, Object>> notificationMoneyFusion(
+            @RequestBody Map<String, Object> corps) {
+        String reference = valeur(corps, "tokenPay");
+        boolean traite = mobile.traiterNotification(reference);
+
+        log.info("Notification MoneyFusion tokenPay={} evenement={} traitee={}",
+                reference, valeur(corps, "event"), traite);
+
+        return ResponseEntity.ok(Map.of("recu", true, "traite", traite));
+    }
+
     // -------------------------------------------------------------------------
     // Le back-office rembourse
     // -------------------------------------------------------------------------
@@ -286,7 +314,12 @@ public class ControleurPaiement {
             @NotNull(message = "La commande est obligatoire.")
             Long commandeId,
 
-            @NotNull(message = "Le moyen de paiement est obligatoire.")
+            /*
+             * Obligatoire avec Campay, ignoré avec MoneyFusion — le client le
+             * choisit sur la page de paiement (D-55). C'est le service qui
+             * l'exige selon le fournisseur actif : une annotation ici ne
+             * connaît pas le réglage.
+             */
             MoyenPaiement moyen,
 
             @NotBlank(message = "Le numéro de téléphone est obligatoire.")
