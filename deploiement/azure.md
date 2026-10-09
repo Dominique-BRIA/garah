@@ -222,7 +222,7 @@ GARAH_CAMPAY_WEBHOOK_KEY, GARAH_CAMPAY_WEBHOOK_STRICT=false
 GARAH_PAIEMENT_FOURNISSEUR=CAMPAY    (MONEYFUSION seulement après diffusion du nouvel APK — D-55)
 GARAH_MONEYFUSION_API_URL            (le lien du tableau de bord : c'est le SECRET)
 GARAH_MONEYFUSION_WEBHOOK_URL=https://<api>/api/paiements/notifications/moneyfusion
-GARAH_MONEYFUSION_URL_RETOUR=https://garah.vercel.app/paiement/{commande}?paiement={paiement}
+GARAH_MONEYFUSION_URL_RETOUR=https://www.garah.me/paiement/{commande}?paiement={paiement}
 
 # Commerce
 GARAH_DELAI_PAIEMENT_MINUTES=43200   (un mois : une commande impayée est ensuite annulée)

@@ -155,7 +155,7 @@ MoneyFusion si le jeton nous est inconnu.
 Après le paiement, la page MoneyFusion renvoie le client vers :
 
 ```text
-https://garah.vercel.app/paiement/{commande}?paiement={paiement}
+https://www.garah.me/paiement/{commande}?paiement={paiement}
 ```
 
 Elle porte **l'identifiant du paiement**, parce que la boutique web est
