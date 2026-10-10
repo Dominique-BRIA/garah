@@ -2856,6 +2856,29 @@ n'ouvre donc rien.
   numéro à 8 chiffres reçoit l'indicatif 236, au lieu d'être refusé comme
   « inexploitable ». À confirmer par un paiement réel depuis un +236.
 
+**Ajout du 10/10/2026 — le relais à IP fixe.** MoneyFusion n'accepte qu'**une**
+IP déclarée (ni plusieurs, ni plage CIDR, « 0.0.0.0 » non prouvé). Azure sort
+par 25 IP qui tournent. Pas de carte bancaire, donc ni Oracle ni NAT Azure.
+Un collègue prête son VPS (`alanyavox.com`, IP fixe `141.95.170.46`), sur
+lequel tournent d'autres sites.
+
+- **tinyproxy**, sur le port 18443 : 3 Mo de mémoire. Rien d'autre n'est
+  touché sur ce serveur (nginx, PostgreSQL, Redis, coturn et les applications
+  Node ont gardé leur date de démarrage).
+- **Proxy CONNECT** : le TLS va de GARAH jusqu'à MoneyFusion. Le serveur prêté
+  ne voit que des octets chiffrés — ni le lien secret, ni les paiements. Un
+  test le prouve : la seule ligne en clair est `CONNECT hôte:443`.
+- **Deux verrous** : le pare-feu (ufw, refus par défaut) n'ouvre le port
+  qu'aux 25 IP d'Azure, et tinyproxy n'accepte qu'elles. Il ne relaie que vers
+  `*.moneyfusion.net:443` : tout autre site est refusé (vérifié).
+- Côté GARAH : `GARAH_MONEYFUSION_PROXY=141.95.170.46:18443`. Seuls les appels
+  MoneyFusion passent par là ; Campay, le courriel et le stockage, non.
+
+⚠️ **Le jour où le VPS est rendu**, il faut une autre IP fixe, et les
+paiements MoneyFusion s'arrêtent d'ici là. Pour retirer le relais :
+`sudo apt-get remove tinyproxy` et `sudo ufw delete` des 25 règles
+« relais GARAH MoneyFusion ».
+
 **Vérifié.** 517 tests verts sur la base locale, dont 17 qui rejouent les
 réponses exactes de la documentation MoneyFusion contre un faux serveur, et 4
 qui passent par la vraie base (moyen appris à la confirmation, moyen inconnu,

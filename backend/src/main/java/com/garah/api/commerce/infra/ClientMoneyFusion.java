@@ -67,9 +67,29 @@ public class ClientMoneyFusion implements PasserellePaiement {
     private final String urlWebhook;
     private final boolean configure;
 
+    /**
+     * @param proxy {@code hote:port} d'un relais à IP fixe, ou vide.
+     *
+     *              <h2>🎯 Pourquoi un relais</h2>
+     *
+     *              <p>MoneyFusion n'accepte qu'UNE adresse IP déclarée. Azure
+     *              App Service sort par 25 adresses qui tournent : sans relais,
+     *              le paiement échouerait au hasard.</p>
+     *
+     *              <h2>Pourquoi un proxy HTTP CONNECT, et pas un relais qui
+     *              relit la requête</h2>
+     *
+     *              <p>Le chiffrement TLS va de bout en bout, d'ici jusqu'à
+     *              MoneyFusion : le relais ne fait que passer des octets
+     *              chiffrés. Il ne voit <b>ni le lien secret</b>, ni le
+     *              montant, ni le client. Ce qui compte d'autant plus que le
+     *              serveur est prêté : son propriétaire ne peut rien lire de
+     *              ce qui y transite.</p>
+     */
     public ClientMoneyFusion(@Value("${GARAH_MONEYFUSION_API_URL:}") String urlApi,
                              @Value("${GARAH_MONEYFUSION_URL_STATUT:}") String urlStatut,
                              @Value("${GARAH_MONEYFUSION_WEBHOOK_URL:}") String urlWebhook,
+                             @Value("${GARAH_MONEYFUSION_PROXY:}") String proxy,
                              RestClient.Builder constructeur) {
 
         this.urlApi = urlApi == null ? "" : urlApi.strip();
@@ -84,6 +104,20 @@ public class ClientMoneyFusion implements PasserellePaiement {
         this.urlStatut = statut.endsWith("/") ? statut : statut + "/";
 
         this.configure = this.urlApi.startsWith("https://");
+
+        java.net.InetSocketAddress relais = relaisDe(proxy);
+        if (relais != null) {
+            // ⚠️ Le relais ne sert QU'À MoneyFusion. Campay, le courriel et
+            //    le stockage gardent leur chemin habituel : un serveur prêté
+            //    ne doit porter que ce qu'on lui a demandé de porter.
+            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                    .proxy(java.net.ProxySelector.of(relais))
+                    .connectTimeout(java.time.Duration.ofSeconds(10))
+                    .build();
+            constructeur = constructeur.requestFactory(
+                    new org.springframework.http.client.JdkClientHttpRequestFactory(client));
+            log.info("MoneyFusion passe par le relais {}:{}", relais.getHostString(), relais.getPort());
+        }
         this.http = constructeur.build();
 
         if (!this.urlApi.isEmpty() && !configure) {
@@ -249,6 +283,36 @@ public class ClientMoneyFusion implements PasserellePaiement {
     }
 
     // -------------------------------------------------------------------------
+
+    /**
+     * Lit {@code hote:port}. Vide : pas de relais.
+     *
+     * <p>⚠️ Une valeur mal écrite <b>empêche le démarrage</b>, plutôt que de
+     * passer en silence sans relais : les paiements partiraient alors des 25
+     * IP d'Azure et échoueraient au hasard, ce qui ne se diagnostique pas.</p>
+     */
+    static java.net.InetSocketAddress relaisDe(String valeur) {
+        String v = valeur == null ? "" : valeur.strip();
+        if (v.isEmpty()) {
+            return null;
+        }
+        int deuxPoints = v.lastIndexOf(':');
+        if (deuxPoints <= 0 || deuxPoints == v.length() - 1) {
+            throw new IllegalStateException(
+                    "GARAH_MONEYFUSION_PROXY doit etre de la forme hote:port, par exemple 203.0.113.7:8888");
+        }
+        int port;
+        try {
+            port = Integer.parseInt(v.substring(deuxPoints + 1));
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("GARAH_MONEYFUSION_PROXY : port illisible dans « " + v + " »");
+        }
+        if (port < 1 || port > 65535) {
+            throw new IllegalStateException("GARAH_MONEYFUSION_PROXY : port hors limites dans « " + v + " »");
+        }
+        // Résolu une fois, au démarrage. En pratique c'est une IP : pas de DNS.
+        return new java.net.InetSocketAddress(v.substring(0, deuxPoints), port);
+    }
 
     /**
      * Le vocabulaire de MoneyFusion : {@code paid}, {@code failure},

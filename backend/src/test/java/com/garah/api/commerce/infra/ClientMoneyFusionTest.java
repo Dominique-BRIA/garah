@@ -42,7 +42,7 @@ class ClientMoneyFusionTest {
     void preparer() {
         RestClient.Builder constructeur = RestClient.builder();
         serveur = MockRestServiceServer.bindTo(constructeur).build();
-        client = new ClientMoneyFusion(LIEN, "", "https://api.garah.test/api/paiements/notifications/moneyfusion",
+        client = new ClientMoneyFusion(LIEN, "", "https://api.garah.test/api/paiements/notifications/moneyfusion", "",
                 constructeur);
     }
 
@@ -169,7 +169,7 @@ class ClientMoneyFusionTest {
     @Test
     @DisplayName("non configuré : 503, et la boutique se dit en démonstration")
     void nonConfigure() {
-        var vide = new ClientMoneyFusion("", "", "", RestClient.builder());
+        var vide = new ClientMoneyFusion("", "", "", "", RestClient.builder());
 
         assertThat(vide.estConfigure()).isFalse();
         assertThat(vide.estDemonstration()).isTrue();
@@ -180,7 +180,52 @@ class ClientMoneyFusionTest {
     @Test
     @DisplayName("⚠️ un lien en http:// n'est pas un lien configuré")
     void lienEnClair() {
-        var clair = new ClientMoneyFusion("http://pay.moneyfusion.net/x", "", "", RestClient.builder());
+        var clair = new ClientMoneyFusion("http://pay.moneyfusion.net/x", "", "", "", RestClient.builder());
         assertThat(clair.estConfigure()).isFalse();
+    }
+
+    @Test
+    @DisplayName("🎯 avec un relais, l'appel part vers le relais en CONNECT — le contenu reste chiffré")
+    void passeParLeRelais() throws Exception {
+        // Un faux relais : il note la première ligne reçue, puis raccroche.
+        try (var faux = new java.net.ServerSocket(0)) {
+            var premiereLigne = new java.util.concurrent.CompletableFuture<String>();
+            Thread.ofVirtual().start(() -> {
+                try (var s = faux.accept();
+                     var lecteur = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream()))) {
+                    premiereLigne.complete(lecteur.readLine());
+                } catch (Exception e) {
+                    premiereLigne.completeExceptionally(e);
+                }
+            });
+
+            var avecRelais = new ClientMoneyFusion(LIEN, "", "", "127.0.0.1:" + faux.getLocalPort(),
+                    RestClient.builder());
+
+            // Le relais raccroche : l'appel échoue, c'est attendu.
+            assertThatThrownBy(() -> avecRelais.encaisser(demande()))
+                    .isInstanceOf(PasserellePaiement.OperateurIndisponible.class);
+
+            // ⚠️ CONNECT, et seulement l'hôte : le chemin — qui EST le secret —
+            //    ne voyage que dans le tunnel chiffré, jamais en clair vers le
+            //    relais.
+            String ligne = premiereLigne.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(ligne).isEqualTo("CONNECT www.pay.moneyfusion.net:443 HTTP/1.1");
+            assertThat(ligne).doesNotContain("abc123");
+        }
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"sans-port", "hote:", "hote:abc", "hote:70000", ":8888"})
+    @DisplayName("⚠️ un relais mal écrit empêche de démarrer, plutôt que de passer sans lui")
+    void relaisMalEcrit(String valeur) {
+        assertThatThrownBy(() -> ClientMoneyFusion.relaisDe(valeur))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("vide : pas de relais")
+    void pasDeRelais() {
+        assertThat(ClientMoneyFusion.relaisDe("  ")).isNull();
     }
 }
