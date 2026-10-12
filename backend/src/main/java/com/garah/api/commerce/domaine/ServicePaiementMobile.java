@@ -145,7 +145,8 @@ public class ServicePaiementMobile {
             return FournisseurPaiement.valueOf(v);
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("GARAH_PAIEMENT_FOURNISSEUR=" + valeur
-                    + " est inconnu. Valeurs acceptees : CAMPAY, MONEYFUSION.");
+                    + " est inconnu. Valeurs acceptees : "
+                    + java.util.Arrays.toString(FournisseurPaiement.values()));
         }
     }
 

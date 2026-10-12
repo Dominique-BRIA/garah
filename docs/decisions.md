@@ -2883,3 +2883,58 @@ paiements MoneyFusion s'arrêtent d'ici là. Pour retirer le relais :
 réponses exactes de la documentation MoneyFusion contre un faux serveur, et 4
 qui passent par la vraie base (moyen appris à la confirmation, moyen inconnu,
 contrainte V40, moyen choisi chez nous non écrasé).
+
+---
+
+## D-56 — GeniusPay, troisième fournisseur de paiement
+
+**Date :** 12/10/2026
+**Statut :** ✅ actée — serveur livré. Le réglage reste sur `CAMPAY` jusqu'au
+premier test réel.
+**Cours :** chapitre [13 bis](cours/13b-deux-fournisseurs-de-paiement.md), §7.
+
+**Contexte.** MoneyFusion n'a pas validé le compte marchand (demande refaite).
+GeniusPay l'a accepté : contrat signé le 12/10/2026, clé de production
+disponible.
+
+**Ce que GeniusPay apporte par rapport à MoneyFusion.**
+
+| | MoneyFusion | GeniusPay |
+|---|---|---|
+| Accès | un lien secret | une clé secrète `sk_live_…` en en-tête `X-API-Key` |
+| Filtre par IP | oui, une seule IP — d'où le relais (D-55) | **aucun** annoncé |
+| Consultation d'état | sans authentification | authentifiée |
+| Notifications | non signées | signées HMAC-SHA256 (`whsec_…`) |
+| Rejeu | — | `Idempotency-Key` : un même paiement ne débite jamais deux fois |
+| Cameroun | MTN, Orange | MTN, Orange, en XAF |
+| Centrafrique | confirmée par leur support | **absente** de leur couverture publiée |
+
+**Choix.** Aucune règle métier ne change : la passerelle de D-55 accueille un
+troisième fournisseur. `ClientGeniusPay` implémente `PasserellePaiement` ;
+V41 élargit la contrainte `paiement_fournisseur_valide`. La notification n'est
+toujours qu'un signal — sa signature est vérifiée et journalisée, jamais seule
+juge — et l'état est redemandé avec notre clé.
+
+**🎯 L'idempotence est dérivée de notre numéro de paiement**
+(`UUID.nameUUIDFromBytes("garah-paiement-<id>")`), donc stable : une création
+rejouée après une coupure réseau ne crée pas un second débit.
+
+**⚠️ Restent à vérifier au premier paiement réel.**
+
+- **Le compte peut-il encaisser en Live ?** Leur passage en production demande
+  un dossier KYC complet (registre de commerce, pièce d'identité) ; le tableau
+  de bord affichait « KYC Niv. 1/3 ». Un refus serait rapporté tel quel à
+  l'écran (« L'opérateur a refusé : … »).
+- **Le libellé du moyen** (`payment_method`) : traduit en MTN ou Orange par le
+  mot qu'il contient, comme pour les autres.
+- **`return_url`** : présent dans un exemple de leur documentation, absent de
+  la table des paramètres. S'il est ignoré, le client revient par le bouton de
+  la page intégrée, et la vérification se fait quand même.
+- **La base d'API** : la documentation donne `https://geniuspay.ci/api/v1`, ses
+  exemples `https://pay.genius.ci/api/v1`. La première est utilisée ;
+  `GARAH_GENIUSPAY_BASE_URL` permet de changer sans redéployer.
+
+**Vérifié.** 542 tests verts, dont 13 qui rejouent les réponses de leur
+documentation contre un faux serveur (création en XAF, clé et idempotence en
+en-tête, refus rapporté, signature recalculée sur le corps brut, référence
+forgée sans effet sur la route).

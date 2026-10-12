@@ -300,6 +300,10 @@ public class ConfigurationSecurite {
                         // Même raisonnement pour MoneyFusion (D-55) : il ne
                         // signe même pas ses notifications, et ça ne change
                         // rien — on n'en retient que tokenPay.
+                        .requestMatchers(HttpMethod.POST, "/api/paiements/notifications/geniuspay")
+                            .permitAll()
+                        // GeniusPay signe (HMAC), et la règle reste la même :
+                        // l'état est redemandé avec notre clé (D-56).
                         .requestMatchers(HttpMethod.POST, "/api/paiements/notifications/moneyfusion")
                             .permitAll()
 

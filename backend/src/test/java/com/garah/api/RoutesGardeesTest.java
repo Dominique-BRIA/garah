@@ -110,6 +110,9 @@ class RoutesGardeesTest {
             "ControleurPaiement.notificationCampay",
             // Idem pour MoneyFusion, qui ne signe même pas (D-55).
             "ControleurPaiement.notificationMoneyFusion",
+            // Idem pour GeniusPay, qui signe, mais dont la signature ne suffit
+            // pas : l etat est redemande (D-56).
+            "ControleurPaiement.notificationGeniusPay",
 
             // --- PROPRIETE : le panier ---
             "ControleurPanier.contenu", "ControleurPanier.ajouter",

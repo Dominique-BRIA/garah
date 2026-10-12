@@ -194,6 +194,24 @@ class SecuriteHttpTest {
      * appeler MoneyFusion, sinon n'importe qui nous ferait émettre des
      * requêtes sortantes à volonté.
      */
+    /**
+     * Le webhook GeniusPay (D-56), avec une fausse signature : ouvert, et 200
+     * sur une reference inconnue — la signature n'est pas ce qui protege.
+     */
+    @Test
+    @DisplayName("le webhook GeniusPay est ouvert et repond 200 sur une reference inconnue")
+    void leWebhookGeniusPayEstPublic() throws Exception {
+        http.perform(post("/api/paiements/notifications/geniuspay")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Gateway-Signature", "signature-totalement-inventee")
+                        .content("""
+                                {"event": "payment.succeeded",
+                                 "data": {"reference": "PAY-INVENTEE", "amount": 1000000, "status": "completed"}}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.traite").value(false));
+    }
+
     @Test
     @DisplayName("le webhook MoneyFusion est ouvert et repond 200 sur un jeton inconnu")
     void leWebhookMoneyFusionEstPublic() throws Exception {

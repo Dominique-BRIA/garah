@@ -73,10 +73,18 @@ public class ControleurPaiement {
      */
     private final boolean signatureObligatoire;
 
+    /** Pour vérifier la signature des notifications GeniusPay (D-56). */
+    private final com.garah.api.commerce.infra.ClientGeniusPay geniusPay;
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON =
+            new com.fasterxml.jackson.databind.ObjectMapper();
+
     public ControleurPaiement(ServicePaiementMobile mobile,
                               ServicePaiement paiements,
+                              com.garah.api.commerce.infra.ClientGeniusPay geniusPay,
                               @Value("${GARAH_CAMPAY_WEBHOOK_KEY:}") String cleWebhook,
                               @Value("${GARAH_CAMPAY_WEBHOOK_STRICT:false}") boolean strict) {
+        this.geniusPay = geniusPay;
         this.mobile = mobile;
         this.paiements = paiements;
         this.cleWebhook = cleWebhook == null ? "" : cleWebhook.strip();
@@ -227,6 +235,55 @@ public class ControleurPaiement {
 
         log.info("Notification MoneyFusion tokenPay={} evenement={} traitee={}",
                 reference, valeur(corps, "event"), traite);
+
+        return ResponseEntity.ok(Map.of("recu", true, "traite", traite));
+    }
+
+    /**
+     * Le webhook GeniusPay (D-56). <b>Route publique</b>, comme les deux autres.
+     *
+     * <p>Le corps est lu <b>brut</b> : la signature HMAC-SHA256 se calcule sur
+     * ces octets exacts, et un JSON relu puis réécrit n'aurait plus la même
+     * empreinte.</p>
+     *
+     * <p>Leur documentation nomme l'en-tête de deux façons —
+     * {@code X-Gateway-Signature} et {@code X-GeniusPay-Signature} — on lit
+     * les deux.</p>
+     *
+     * <p>⚠️ Une signature absente ou fausse est JOURNALISÉE, pas refusée : la
+     *    sécurité ne repose pas sur elle. On ne retient que la référence, et
+     *    l'état est redemandé à GeniusPay avec notre clé. Refuser sur une
+     *    signature dont on n'a jamais vu un exemple réel ferait tomber tous
+     *    les paiements sans rien protéger de plus (même raisonnement que
+     *    Campay).</p>
+     */
+    @PostMapping("/notifications/geniuspay")
+    public ResponseEntity<Map<String, Object>> notificationGeniusPay(
+            @RequestBody(required = false) String corpsBrut,
+            @RequestHeader(value = "X-Gateway-Signature", required = false) String signature,
+            @RequestHeader(value = "X-GeniusPay-Signature", required = false) String signatureBis) {
+
+        String reference = null;
+        String evenement = null;
+        try {
+            Map<String, Object> corps = JSON.readValue(corpsBrut == null ? "{}" : corpsBrut,
+                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { });
+            evenement = valeur(corps, "event");
+            reference = corps.get("data") instanceof Map<?, ?> data && data.get("reference") != null
+                    ? String.valueOf(data.get("reference"))
+                    : valeur(corps, "reference");
+        } catch (Exception illisible) {
+            // Un corps illisible n'est pas une erreur chez nous : 200 quand
+            // même, sinon l'expéditeur rejoue indéfiniment.
+            log.warn("Notification GeniusPay illisible : {}", illisible.getClass().getSimpleName());
+        }
+
+        boolean signee = geniusPay.signatureValide(corpsBrut,
+                signature != null ? signature : signatureBis);
+        boolean traite = mobile.traiterNotification(reference);
+
+        log.info("Notification GeniusPay reference={} evenement={} signature={} traitee={}",
+                reference, evenement, signee ? "ok" : "absente/invalide", traite);
 
         return ResponseEntity.ok(Map.of("recu", true, "traite", traite));
     }

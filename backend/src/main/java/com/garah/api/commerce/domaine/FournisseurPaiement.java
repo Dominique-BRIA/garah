@@ -11,5 +11,7 @@ package com.garah.api.commerce.domaine;
  */
 public enum FournisseurPaiement {
     CAMPAY,
-    MONEYFUSION
+    MONEYFUSION,
+    /** Ajouté le 12/10/2026 (D-56) : pas de filtre par IP, Cameroun en XAF. */
+    GENIUSPAY
 }

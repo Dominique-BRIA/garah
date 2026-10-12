@@ -151,6 +151,7 @@ public class ControleurConfiguration {
                                    @Value("${GARAH_CAMPAY_BASE_URL:}") String urlPaiement,
                                    @Value("${GARAH_PAIEMENT_FOURNISSEUR:CAMPAY}") String fournisseur,
                                    @Value("${GARAH_MONEYFUSION_API_URL:}") String urlMoneyFusion,
+                                   @Value("${GARAH_GENIUSPAY_API_KEY:}") String cleGeniusPay,
                                    @Value("${GARAH_GOOGLE_CLIENT_IDS:}") String clientsGoogle,
                                    @Value("${GARAH_WHATSAPP_PHONE_NUMBER_ID:}") String numeroWhatsApp,
                                    @Value("${GARAH_WHATSAPP_TOKEN:}") String jetonWhatsApp,
@@ -187,7 +188,12 @@ public class ControleurConfiguration {
                 ? "CAMPAY" : fournisseur.strip().toUpperCase(java.util.Locale.ROOT);
         this.fournisseurPaiement = actif;
 
-        if ("MONEYFUSION".equals(actif)) {
+        if ("GENIUSPAY".equals(actif)) {
+            // Une clé sk_sandbox_ n'encaisse rien ; pas de clé non plus.
+            // ⚠️ Même règle que ClientGeniusPay.estDemonstration().
+            String cle = cleGeniusPay == null ? "" : cleGeniusPay.strip();
+            this.paiementDemonstration = !cle.startsWith("sk_") || cle.startsWith("sk_sandbox_");
+        } else if ("MONEYFUSION".equals(actif)) {
             // MoneyFusion n'a pas de bac à sable : configuré, il encaisse pour
             // de bon. Non configuré, rien n'est encaissé.
             this.paiementDemonstration = urlMoneyFusion == null

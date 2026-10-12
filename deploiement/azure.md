@@ -224,6 +224,8 @@ GARAH_MONEYFUSION_API_URL            (le lien du tableau de bord : c'est le SECR
 GARAH_MONEYFUSION_WEBHOOK_URL=https://<api>/api/paiements/notifications/moneyfusion
 GARAH_MONEYFUSION_URL_RETOUR=https://www.garah.me/paiement/{commande}?paiement={paiement}
 GARAH_MONEYFUSION_PROXY=141.95.170.46:18443   (relais à IP fixe, VPS prêté — voir D-55)
+GARAH_GENIUSPAY_API_KEY              (sk_live_… : la clé SECRÈTE — D-56)
+GARAH_GENIUSPAY_WEBHOOK_SECRET       (whsec_…, facultatif)
 
 # Commerce
 GARAH_DELAI_PAIEMENT_MINUTES=43200   (un mois : une commande impayée est ensuite annulée)

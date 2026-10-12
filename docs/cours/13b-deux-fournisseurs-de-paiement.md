@@ -250,3 +250,47 @@ Combien de temps au plus un client attend-il sa confirmation ?
 ---
 
 ➡️ **Chapitre suivant :** [14 — Les conversations et la négociation](14-conversations-et-negociation.md)
+
+---
+
+## 7. Ajout du 12/10/2026 — un troisième fournisseur, GeniusPay
+
+MoneyFusion n'a pas validé le compte ; GeniusPay l'a fait. **C'est la
+meilleure preuve que le §2.2 valait la peine** : ajouter un fournisseur a pris
+une classe, une migration de quatre lignes et une route, sans toucher une seule
+règle métier.
+
+| À écrire | Pourquoi |
+|---|---|
+| `ClientGeniusPay` | Le seul fichier qui parle à GeniusPay |
+| `V41` | La contrainte de la base refusait `GENIUSPAY` |
+| Une route de notification | Chaque fournisseur envoie un corps différent |
+| Une valeur de plus dans `FournisseurPaiement` | Le réglage la reconnaît tout seul |
+
+### 7.1 La notion nouvelle : la clé d'idempotence
+
+Une coupure réseau pendant la création d'un paiement laisse un doute : la
+demande est-elle arrivée ? La rejouer risquerait de créer **deux** paiements.
+
+GeniusPay accepte un en-tête `Idempotency-Key` : deux requêtes avec la même clé
+ne créent qu'un paiement. Tout le piège est dans la clé : **une clé tirée au
+hasard à chaque essai ne protège de rien**, puisque le rejeu en aurait une
+autre. On la dérive donc de notre numéro de paiement — toujours la même pour
+le même paiement.
+
+### 7.2 La signature, enfin
+
+Les notifications GeniusPay sont signées : un HMAC-SHA256 du **corps brut**.
+Brut, parce qu'un JSON relu puis réécrit change d'octets (espaces, ordre des
+clés) et donc d'empreinte. D'où la route qui reçoit une `String`, pas un objet.
+
+Et pourtant, la règle du §3.4 ne bouge pas : la signature est vérifiée et
+journalisée, mais ce n'est pas elle qui décide. On redemande l'état.
+
+### Exercices
+
+**Exercice 6.** Pourquoi `UUID.randomUUID()` comme clé d'idempotence serait-il
+pire qu'aucune clé ? Décris le scénario qui le montre.
+
+**Exercice 7.** Écris le test qui prouve qu'une notification avec une signature
+valide mais une référence inconnue ne déclenche **aucun** appel à GeniusPay.
